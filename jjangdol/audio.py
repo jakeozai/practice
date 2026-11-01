@@ -34,18 +34,24 @@ def _device(value) -> int | str | None:
 
 
 class Speaker:
-    """음성 조각을 순서대로 재생. interrupt()로 즉시 멈추고 대기열 비움."""
+    """음성 조각을 순서대로 재생. interrupt()로 즉시 멈추고 대기열 비움.
 
-    BLOCK = 2400       # 한 번에 쓰는 샘플 수 (24kHz 기준 0.1초) → 멈춤 반응 속도
+    오버레이용으로 지금 재생 중인 조각의 정보(now_playing)와 소리 크기(level)도 알려줌.
+    """
+
+    BLOCK = 1200       # 한 번에 쓰는 샘플 수 (24kHz 기준 0.05초) → 멈춤 반응·입 모양 갱신 속도
     ECHO_TAIL = 0.3    # 재생 끝나고 이만큼은 아직 말하는 중으로 침 (스피커 잔향 무시용)
+    LOUD = 6000.0      # 이 정도 RMS면 입을 끝까지 벌림
 
     def __init__(self, sample_rate: int, device=None):
         self.sample_rate = sample_rate
-        self._queue: queue.Queue[tuple[int, np.ndarray]] = queue.Queue()
+        self._queue: queue.Queue[tuple[int, np.ndarray, dict | None]] = queue.Queue()
         self._lock = threading.Lock()
         self._generation = 0
         self._pending = 0
         self._last_end = 0.0
+        self.now_playing: dict | None = None  # 재생 중인 조각의 정보 (예: {"text": ..., "mood": ...})
+        self.level = 0.0                      # 지금 소리 크기 0~1
         sd = _sd()
         self._stream = sd.OutputStream(
             samplerate=sample_rate, channels=1, dtype="int16", device=_device(device)
@@ -58,10 +64,10 @@ class Speaker:
         """interrupt()할 때마다 1씩 늘어남. 대화 루프가 '끊겼는지' 확인할 때 씀."""
         return self._generation
 
-    def enqueue(self, audio: np.ndarray) -> None:
+    def enqueue(self, audio: np.ndarray, info: dict | None = None) -> None:
         with self._lock:
             self._pending += 1
-            self._queue.put((self._generation, audio))
+            self._queue.put((self._generation, audio, info))
 
     def interrupt(self) -> None:
         with self._lock:
@@ -81,16 +87,24 @@ class Speaker:
 
     def _run(self) -> None:
         while True:
-            generation, audio = self._queue.get()
+            generation, audio, info = self._queue.get()
+            if generation == self._generation:
+                self.now_playing = info if info is not None else {}
             try:
                 for i in range(0, len(audio), self.BLOCK):
                     if generation != self._generation:
                         break
-                    self._stream.write(audio[i : i + self.BLOCK])
+                    block = audio[i : i + self.BLOCK]
+                    rms = float(np.sqrt(np.mean(block.astype(np.float32) ** 2))) if len(block) else 0.0
+                    self.level = min(1.0, rms / self.LOUD)
+                    self._stream.write(block)
             finally:
+                self.level = 0.0
                 with self._lock:
                     self._pending -= 1
                     self._last_end = time.monotonic()
+                    if self._pending == 0:
+                        self.now_playing = None
 
 
 class MicListener:

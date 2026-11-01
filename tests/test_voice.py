@@ -1,14 +1,18 @@
 import io
+import json
 import os
+import tempfile
 import time
 import unittest
 import wave
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
 from jjangdol import audio
+from jjangdol.mood import Presence, guess_mood
 from jjangdol.tts import to_speech_text
 from jjangdol.voice import converse
 
@@ -30,6 +34,21 @@ class SpeechTextTest(unittest.TestCase):
     def test_nothing_to_say(self):
         self.assertEqual(to_speech_text("ㅋㅋ", laugh=""), "")
         self.assertEqual(to_speech_text("...!"), "")
+
+
+class MoodTest(unittest.TestCase):
+    def test_default_rules(self):
+        self.assertEqual(guess_mood("아 ㅋㅋㅋ 개웃기네"), "laugh")
+        self.assertEqual(guess_mood("아 ㅅㅂ 또냐"), "angry")
+        self.assertEqual(guess_mood("미친 방금 뭐임"), "surprised")
+        self.assertEqual(guess_mood("오늘 뭐 먹었어"), "talk")
+
+    def test_first_matching_rule_wins(self):
+        rules = {"laugh": ["ㅋㅋ"], "angry": ["ㅅㅂ"]}
+        self.assertEqual(guess_mood("ㅅㅂ ㅋㅋ", rules), "laugh")
+
+    def test_unknown_mood_names_are_ignored(self):
+        self.assertEqual(guess_mood("ㅋㅋ", {"dance": ["ㅋㅋ"]}), "talk")
 
 
 # ── converse (대화 한 턴) ─────────────────────────────
@@ -62,9 +81,11 @@ class FakeSpeaker:
     def __init__(self):
         self.generation = 0
         self.queue = []
+        self.infos = []
 
-    def enqueue(self, clip):
+    def enqueue(self, clip, info=None):
         self.queue.append(clip)
+        self.infos.append(info)
 
 
 class ConverseTest(unittest.TestCase):
@@ -79,6 +100,14 @@ class ConverseTest(unittest.TestCase):
         self.assertEqual([c[0] for c in speaker.queue], [1, 2])
         self.assertIsNotNone(first)
         self.assertTrue(bot.closed)
+
+    def test_sentence_carries_text_and_mood(self):
+        speaker = FakeSpeaker()
+        presence = Presence()
+        with redirect_stdout(io.StringIO()):
+            converse(FakeBot(["아 ㅋㅋ 또 죽었냐."]), FakeTTS(), speaker, "안녕", [], 0.0, None, presence)
+        self.assertEqual(speaker.infos, [{"text": "아 ㅋㅋ 또 죽었냐.", "mood": "laugh"}])
+        self.assertFalse(presence.thinking)
 
     def test_filler_goes_first(self):
         filler = np.zeros(5, dtype=np.int16)
@@ -193,6 +222,15 @@ class AudioTest(unittest.TestCase):
         self.assertTrue(wait_until(lambda: not speaker.is_speaking()))
         self.assertEqual(sum(speaker._stream.blocks), 5000)
 
+    def test_speaker_reports_what_is_playing(self):
+        speaker = self.make_speaker()
+        info = {"text": "안녕", "mood": "talk"}
+        speaker.enqueue(np.full(24000, 3000, dtype=np.int16), info)
+        self.assertTrue(wait_until(lambda: speaker.now_playing == info))
+        self.assertGreater(speaker.level, 0.3)
+        self.assertTrue(wait_until(lambda: speaker.now_playing is None))
+        self.assertEqual(speaker.level, 0.0)
+
     def test_speaker_interrupt(self):
         speaker = self.make_speaker()
         for _ in range(3):
@@ -250,3 +288,62 @@ class RealSTTTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── 돌멩이 창 (PySide6 있을 때만, 화면 없이 그려봄) ────
+
+try:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from jjangdol.overlay import RockOverlay
+
+    HAS_QT = True
+except ImportError:
+    HAS_QT = False
+
+
+@unittest.skipUnless(HAS_QT, "PySide6 없음")
+class OverlayTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+
+    def make(self, info=None, level=0.0, **presence):
+        speaker = SimpleNamespace(now_playing=info, level=level)
+        pres = Presence()
+        for k, v in presence.items():
+            setattr(pres, k, v)
+        state = Path(tempfile.mkdtemp()) / "overlay.json"
+        return RockOverlay(speaker, pres, {"size": 1.0}, state_file=state)
+
+    def test_every_mood_draws(self):
+        cases = [(None, {}), ({"text": "안녕", "mood": "talk"}, {})]
+        cases += [({"text": "x", "mood": m}, {}) for m in ("laugh", "angry", "surprised", "sulk", "smug")]
+        cases += [(None, {"thinking": True})]
+        for info, pres in cases:
+            w = self.make(info, 0.7, **pres)
+            for _ in range(5):
+                w._tick()
+            self.assertFalse(w.grab().isNull())
+
+    def test_mood_follows_speaker_and_presence(self):
+        w = self.make({"text": "ㅋㅋ", "mood": "laugh"}, 0.5)
+        w._tick()
+        self.assertEqual(w._mood, "laugh")
+        self.assertEqual(w._bubble_text, "ㅋㅋ")
+        w = self.make(None, thinking=True)
+        w._tick()
+        self.assertEqual(w._mood, "thinking")
+        w = self.make(None)
+        w._presence.last_user_at -= 10_000
+        w._tick()
+        self.assertIn(w._mood, ("sulk", "sleepy"))
+
+    def test_scale_is_saved(self):
+        w = self.make()
+        w._set_scale(1.5)
+        w._save_state()
+        self.assertEqual(json.loads(w._state_file.read_text())["scale"], 1.5)
+        w._set_scale(9)
+        self.assertEqual(w._scale, 2.0)

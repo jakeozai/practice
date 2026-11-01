@@ -45,3 +45,21 @@ voice_note = """
 - 네 말은 음성으로 읽힌다. 초성 줄임말은 소리 나는 대로 풀어 써라. 괄호, 기호, 이모티콘은 쓰지 마라.
 - 아빠 말은 음성인식으로 받은 거라 오타가 있을 수 있다. 대충 알아들어라. 진짜 모르겠으면 "뭐라고?" 해라.
 """
+
+[overlay]            # 화면 구석 돌멩이
+enabled = true
+size = 1.0           # 크기 배율 (돌멩이 위에서 마우스 휠로도 조절, 0.5~2.0)
+corner = "bottom-right"   # 처음 뜨는 위치: bottom-right / bottom-left / top-right / top-left
+                          # 끌어서 옮기면 그 위치를 기억함 (state/overlay.json)
+click_through = false     # true: 마우스가 돌멩이를 통과 (게임할 때). 위치는 false일 때 끌어서 정해두기
+opacity = 1.0
+bubble = true             # 말풍선
+bubble_linger = 3.0       # 말 끝나고 말풍선이 남아 있는 시간(초)
+sulk_after = 600          # 이 시간(초) 동안 아빠가 말 안 걸면 삐짐 (새벽 1~6시엔 2분 지나면 졺)
+
+[overlay.moods]           # 대사에 이 말이 들어 있으면 그 표정. 위에 있는 게 먼저
+laugh = ["ㅋㅋ", "크크", "ㅎㅎ", "웃기"]
+angry = ["ㅅㅂ", "씨발", "빡치", "빡쳐", "개같"]
+surprised = ["미친", "헐", "뭐임", "대박", "ㄷㄷ", "?!"]
+sulk = ["됐어", "서운", "흥"]
+smug = ["내 덕", "당연", "역시 나"]

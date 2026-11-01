@@ -6,6 +6,7 @@ sherpa-onnx>=2.0,<3     # 말 끝 감지(VAD) + 음성인식, 로컬 CPU
 sounddevice>=0.5        # 마이크·스피커
 edge-tts>=7.3,<8        # 무료 TTS (인터넷 필요)
 miniaudio>=1.71         # TTS mp3 디코딩
+PySide6-Essentials>=6.7 # 화면 구석 돌멩이 창
 
 # 선택: config/filter.toml에서 [classifier]를 켤 때만 필요
 # transformers
