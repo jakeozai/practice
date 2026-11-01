@@ -1,0 +1,5 @@
+anthropic>=2.3,<3
+
+# 선택: config/filter.toml에서 [classifier]를 켤 때만 필요
+# transformers
+# torch

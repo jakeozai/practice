@@ -1,0 +1,54 @@
+# 짱돌 출력 필터 설정
+#
+# 짱돌이 말하기 직전에 문장 단위로 검사해서, 걸리면 그 문장을 빼고 replacement로 바꿈.
+# (나중에 음성 붙이면 TTS 직전, 방송 채팅 읽어줄 때도 이 필터를 그대로 씀)
+#
+# 고친 다음 채팅창에서 /reload 치면 바로 반영됨.
+# 욕은 여기서 안 막음. 욕 수위는 config/persona.md에서 조절.
+
+[settings]
+enabled = true                 # false면 필터 전체 꺼짐
+replacement = "아 그건 패스 ㅋㅋ"  # 걸린 문장 대신 할 말. ""면 그냥 생략
+
+# ── 1차: 정규식 패턴 ─────────────────────────────────────
+# - 카테고리마다 enabled로 켜고 끔
+# - patterns는 파이썬 정규식. 대소문자 무시
+# - 띄어쓰기·점·별표 등을 끼워 넣은 변형("자 살", "자.살")도 같이 검사함
+# - 정규식이 틀리면 실행할 때 어느 카테고리의 어느 패턴인지 알려줌
+
+[categories.hate]
+enabled = true
+description = "특정 집단(성별·지역·장애·인종·국적·종교 등) 비하"
+patterns = [
+  # 차단할 표현을 여기에 추가. 예: "표현1", "표현(2|3)"
+]
+
+[categories.political_group]
+enabled = true
+description = "특정 정치 집단 비하"
+patterns = [
+  # 차단할 표현을 여기에 추가
+]
+
+[categories.self_harm]
+enabled = true
+description = "자해·자살 드립"
+patterns = [
+  "자살(?!골)",        # "자살골"은 통과
+  "자해",
+  "극단적 ?선택",
+  "목숨을 ?끊",
+  "손목을 ?긋",
+]
+
+# ── 2차: 분류 모델 (선택) ────────────────────────────────
+# 한국어 혐오 표현 분류 모델로 한 번 더 검사. 패턴에 없는 표현도 잡지만 무거움.
+# 켜려면: pip install transformers torch  →  enabled = true
+# - 처음 켤 때 모델을 내려받음 (인터넷 필요)
+# - ignore_labels에 있는 라벨은 무시함. 욕은 허용이라 "악플/욕설"은 기본으로 무시
+# - 가족 놀림이 "여성/가족" 라벨에 걸리면 threshold를 올리거나 그 라벨을 ignore에 추가
+[classifier]
+enabled = false
+model = "smilegate-ai/kor_unsmile"
+threshold = 0.5
+ignore_labels = ["악플/욕설", "clean"]
