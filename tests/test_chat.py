@@ -3,7 +3,7 @@ import unittest
 from contextlib import redirect_stdout
 from types import SimpleNamespace
 
-from jjangdol.chat import Jjangdol
+from jjangdol.chat import REFUSAL_LINE, Jjangdol
 from tests.test_filter import CONFIG, make_filter
 
 
@@ -37,8 +37,8 @@ class FakeClient:
         return self._next
 
 
-def make_bot(stream):
-    bot = Jjangdol()
+def make_bot(stream, extra_system=""):
+    bot = Jjangdol(extra_system=extra_system)
     bot.client = FakeClient(stream)
     bot.filter = make_filter(CONFIG)
     return bot
@@ -63,10 +63,13 @@ class ChatTest(unittest.TestCase):
         self.assertEqual(call["output_config"], {"effort": "low"})
         self.assertNotIn("{profile}", call["system"])
 
+    def test_respond_yields_sentences(self):
+        bot = make_bot(FakeStream(["첫 문장. ", "둘째 문장"]))
+        self.assertEqual(list(bot.respond("안녕")), ["첫 문장.", "둘째 문장"])
+
     def test_refusal_drops_turn(self):
         bot = make_bot(FakeStream([], stop_reason="refusal"))
-        with redirect_stdout(io.StringIO()):
-            bot.reply("뭐라도")
+        self.assertEqual(list(bot.respond("뭐라도")), [REFUSAL_LINE])
         self.assertEqual(bot.history, [])
 
     def test_error_drops_turn(self):
@@ -76,9 +79,21 @@ class ChatTest(unittest.TestCase):
             raise RuntimeError("network")
 
         bot.client.messages = SimpleNamespace(stream=boom)
-        with redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
-            bot.reply("안녕")
+        with self.assertRaises(RuntimeError):
+            list(bot.respond("안녕"))
         self.assertEqual(bot.history, [])
+
+    def test_interrupted_turn_is_dropped(self):
+        bot = make_bot(FakeStream(["첫 문장. ", "둘째 문장. ", "셋째"]))
+        replies = bot.respond("안녕")
+        next(replies)
+        replies.close()  # 음성 모드에서 아빠가 끼어든 경우
+        self.assertEqual(bot.history, [])
+
+    def test_extra_system_is_appended(self):
+        bot = make_bot(FakeStream(["응"]), extra_system="[음성 모드]")
+        list(bot.respond("안녕"))
+        self.assertTrue(bot.client.calls[0]["system"].rstrip().endswith("[음성 모드]"))
 
 
 if __name__ == "__main__":

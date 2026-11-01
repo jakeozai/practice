@@ -1,5 +1,12 @@
 anthropic>=2.3,<3
 
+# 음성 모드
+numpy>=1.26
+sherpa-onnx>=2.0,<3     # 말 끝 감지(VAD) + 음성인식, 로컬 CPU
+sounddevice>=0.5        # 마이크·스피커
+edge-tts>=7.3,<8        # 무료 TTS (인터넷 필요)
+miniaudio>=1.71         # TTS mp3 디코딩
+
 # 선택: config/filter.toml에서 [classifier]를 켤 때만 필요
 # transformers
 # torch

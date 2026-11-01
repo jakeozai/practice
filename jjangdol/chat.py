@@ -1,4 +1,4 @@
-"""짱돌 0단계 — 텍스트로 일반 대화 테스트.
+"""짱돌 두뇌 + 0단계 텍스트 대화.
 
 실행:  python -m jjangdol.chat
 명령:  /q 종료 · /reload 설정 파일 다시 읽기 · /reset 대화 기록 지우기
@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import tomllib
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,7 @@ CONFIG_DIR = ROOT / "config"
 # 가성비 기본값. 센스가 부족하면 JJANGDOL_MODEL=claude-sonnet-5-5 로 바꿔서 비교.
 MODEL = os.environ.get("JJANGDOL_MODEL", "claude-haiku-5-5")
 DEBUG = os.environ.get("JJANGDOL_DEBUG") == "1"
+REFUSAL_LINE = "아 그건 패스 ㅋㅋ"
 
 
 def load_system_prompt() -> str:
@@ -34,58 +36,87 @@ def load_system_prompt() -> str:
 
 
 class Jjangdol:
-    def __init__(self) -> None:
+    def __init__(self, extra_system: str = "") -> None:
         self.client = anthropic.Anthropic()
         self.history: list[dict] = []
+        self.extra_system = extra_system.strip()
         self.reload()
 
     def reload(self) -> None:
-        self.system = load_system_prompt()
+        system = load_system_prompt()
+        if self.extra_system:
+            system = f"{system.rstrip()}\n\n{self.extra_system}\n"
+        self.system = system
         self.filter = OutputFilter(CONFIG_DIR / "filter.toml")
 
-    def reply(self, user_text: str) -> None:
+    def respond(self, user_text: str) -> Iterator[str]:
+        """아빠 말에 대한 대답을, 필터를 통과한 문장 단위로 하나씩 내보낸다."""
         # 시각은 시스템 프롬프트가 아니라 메시지에 붙임 → 시스템 프롬프트가 안 바뀌어서 캐시가 유지됨
         stamp = datetime.now().strftime("%H:%M")
         self.history.append({"role": "user", "content": f"[{stamp}] {user_text}"})
-
-        print("짱돌: ", end="", flush=True)
         try:
             with self.client.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
                 system=self.system,
                 messages=self.history,
-                output_config={"effort": "low"},   # 수다엔 깊게 생각할 필요 없음 → 빠르고 쌈
+                output_config={"effort": "low"},      # 수다엔 깊게 생각할 필요 없음 → 빠르고 쌈
                 cache_control={"type": "ephemeral"},  # 대화가 길어지면 앞부분 자동 캐시
             ) as stream:
                 for sentence in split_sentences(stream.text_stream):
-                    self._say(sentence)
+                    said = self._filtered(sentence)
+                    if said:
+                        yield said
                 final = stream.get_final_message()
         except BaseException:
-            self.history.pop()  # 실패한 턴은 기록에서 뺌
-            print()
+            # 실패했거나 중간에 끊긴 턴(아빠가 끼어든 경우 등)은 기록에서 뺌
+            self.history.pop()
             raise
-        print()
 
         if final.stop_reason == "refusal":
             self.history.pop()
             if DEBUG:
-                print(f"  [모델 거절: {final.stop_details}]", file=sys.stderr)
-            print("짱돌: 아 그건 패스 ㅋㅋ")
+                print(f"\n  [모델 거절: {final.stop_details}]", file=sys.stderr)
+            yield REFUSAL_LINE
             return
 
         # 필터로 가린 문장이 있어도 기록엔 모델 원문을 그대로 넣음 (thinking 블록 포함 그대로 돌려줘야 함)
         self.history.append({"role": "assistant", "content": final.content})
 
-    def _say(self, sentence: str) -> None:
+    def reply(self, user_text: str) -> None:
+        """텍스트 모드: 대답을 화면에 출력."""
+        print("짱돌: ", end="", flush=True)
+        try:
+            for sentence in self.respond(user_text):
+                print(sentence, end=" ", flush=True)
+        finally:
+            print()
+
+    def _filtered(self, sentence: str) -> str:
+        sentence = sentence.strip()
+        if not sentence:
+            return ""
         result = self.filter.check(sentence)
         if result.allowed:
-            print(sentence.strip(), end=" ", flush=True)
-            return
+            return sentence
         if DEBUG:
             print(f"\n  [필터: {result.category} / {result.reason}]", file=sys.stderr)
-        if self.filter.replacement:
-            print(self.filter.replacement, end=" ", flush=True)
+        return self.filter.replacement
+
+
+def describe_api_error(e: BaseException) -> tuple[str, bool] | None:
+    """API 오류를 읽을 수 있는 메시지로. (메시지, 더 진행 불가 여부). 모르는 오류면 None."""
+    if isinstance(e, anthropic.AuthenticationError):
+        return "API 키가 틀림. ANTHROPIC_API_KEY 환경변수 확인", True
+    if isinstance(e, TypeError) and "authentication" in str(e):
+        return "API 키가 없음. ANTHROPIC_API_KEY 환경변수를 설정하고 다시 실행", True
+    if isinstance(e, anthropic.RateLimitError):
+        return "요청이 너무 많음. 잠깐 있다가 다시", False
+    if isinstance(e, anthropic.APIConnectionError):
+        return "인터넷 연결 확인", False
+    if isinstance(e, anthropic.APIStatusError):
+        return f"API 오류 {e.status_code}: {e.message}", False
+    return None
 
 
 def main() -> None:
@@ -93,8 +124,6 @@ def main() -> None:
         bot = Jjangdol()
     except (ValueError, RuntimeError, OSError) as e:
         sys.exit(f"설정 오류: {e}")
-    except anthropic.AnthropicError as e:
-        sys.exit(f"API 클라이언트를 못 만듦 (ANTHROPIC_API_KEY 확인): {e}")
 
     print(f"짱돌 테스트 ({MODEL}) — /q 종료 · /reload 설정 다시 읽기 · /reset 기록 지우기")
     while True:
@@ -122,20 +151,16 @@ def main() -> None:
 
         try:
             bot.reply(text)
-        except anthropic.AuthenticationError:
-            sys.exit("API 키가 틀림. ANTHROPIC_API_KEY 환경변수 확인")
-        except TypeError as e:
-            if "authentication" not in str(e):
-                raise
-            sys.exit("API 키가 없음. ANTHROPIC_API_KEY 환경변수를 설정하고 다시 실행")
-        except anthropic.RateLimitError:
-            print("(요청이 너무 많음. 잠깐 있다가 다시)")
-        except anthropic.APIConnectionError:
-            print("(인터넷 연결 확인)")
-        except anthropic.APIStatusError as e:
-            print(f"(API 오류 {e.status_code}: {e.message})")
         except KeyboardInterrupt:
             print("(끊음)")
+        except Exception as e:
+            described = describe_api_error(e)
+            if described is None:
+                raise
+            message, fatal = described
+            if fatal:
+                sys.exit(message)
+            print(f"({message})")
 
 
 if __name__ == "__main__":
