@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getAdminUser } from "@/lib/auth";
 import { AdminNav, NotAdmin } from "../../admin-nav";
 import { JobForm } from "./job-form";
+import { createManualJob } from "./actions";
 
 export const metadata = { title: "공고 수동 등록 — AI잡5" };
 
@@ -17,7 +18,7 @@ async function NewJob() {
           관리자가 확인한 공고라 등록과 동시에 승인돼요. 메일에는 한국어 요약과 원문 링크만 나가요.
         </p>
       </div>
-      <JobForm />
+      <JobForm action={createManualJob} submitLabel="등록 (바로 승인)" />
     </div>
   );
 }

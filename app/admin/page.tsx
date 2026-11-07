@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { getAdminUser } from "@/lib/auth";
 import { loadMetrics, percent } from "@/lib/admin/metrics";
@@ -30,6 +31,16 @@ async function loadPickableJobs(): Promise<PickableJob[]> {
   }));
 }
 
+async function loadSources() {
+  const db = createAdminClient();
+  const [{ data: sources, error }, { count: pending }] = await Promise.all([
+    db.from("sources").select("id, name, kind, endpoint, active, fail_count, last_fetched_at").order("name"),
+    db.from("jobs").select("id", { count: "exact", head: true }).eq("review_state", "pending").or("korea_eligible.is.null,korea_eligible.eq.true"),
+  ]);
+  if (error) throw new Error(error.message);
+  return { sources: sources.filter((s) => s.kind !== "manual"), pending: pending ?? 0 };
+}
+
 function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -45,7 +56,12 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
   if (!admin) return <NotAdmin />;
   await connection(); // metrics use today's date
 
-  const [{ created }, metrics, jobs] = await Promise.all([searchParams, loadMetrics(14), loadPickableJobs()]);
+  const [{ created }, metrics, jobs, collection] = await Promise.all([
+    searchParams,
+    loadMetrics(14),
+    loadPickableJobs(),
+    loadSources(),
+  ]);
   const { DIGEST_SIZE } = appEnv();
   const { totals } = metrics;
 
@@ -101,6 +117,39 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
         <p className="text-xs text-zinc-500">
           클릭률 = 공고 링크를 1번 이상 누른 메일 ÷ 보낸 메일. 보안 스캐너가 링크를 미리 열면 실제보다 높게 잡힐 수 있어요.
         </p>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 className="font-semibold">수집처 {collection.sources.length}곳</h2>
+          <Link href="/admin/review" className="text-sm text-indigo-600 underline">
+            검수 대기 {collection.pending}건
+          </Link>
+        </div>
+        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">수집처</th>
+                <th className="px-4 py-2 font-medium">채용 시스템</th>
+                <th className="px-4 py-2 font-medium">마지막 수집</th>
+                <th className="px-4 py-2 font-medium">연속 실패</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {collection.sources.map((s) => (
+                <tr key={s.id} className={s.active ? "" : "text-zinc-400"}>
+                  <td className="px-4 py-2">{s.name}</td>
+                  <td className="px-4 py-2 font-mono text-xs">
+                    {s.kind}:{s.endpoint}
+                  </td>
+                  <td className="px-4 py-2 text-xs">{s.last_fetched_at ? seoulDate(new Date(s.last_fetched_at)) : "아직 없음"}</td>
+                  <td className={`px-4 py-2 ${s.fail_count >= 3 ? "font-semibold text-red-600" : ""}`}>{s.fail_count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="space-y-3">

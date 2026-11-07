@@ -1,12 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
-import { createManualJob, type CreateJobState } from "./actions";
+import type { CreateJobState } from "./actions";
 
 const input = "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900";
 
-export function JobForm() {
-  const [state, action, pending] = useActionState<CreateJobState, FormData>(createManualJob, {});
+/** Shared by /admin/jobs/new and the review queue. */
+export function JobForm(props: {
+  action: (prev: CreateJobState, formData: FormData) => Promise<CreateJobState>;
+  initial?: Record<string, string>;
+  submitLabel: string;
+}) {
+  const [state, action, pending] = useActionState<CreateJobState, FormData>(props.action, { values: props.initial });
   const v = state.values ?? {};
   const err = state.fieldErrors ?? {};
 
@@ -144,7 +149,7 @@ export function JobForm() {
         disabled={pending}
         className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {pending ? "저장하는 중…" : "등록 (바로 승인)"}
+        {pending ? "저장하는 중…" : props.submitLabel}
       </button>
     </form>
   );

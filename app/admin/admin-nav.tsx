@@ -7,6 +7,9 @@ export function AdminNav({ email }: { email: string }) {
         <Link href="/admin" className="hover:underline">
           대시보드
         </Link>
+        <Link href="/admin/review" className="hover:underline">
+          검수 큐
+        </Link>
         <Link href="/admin/jobs/new" className="hover:underline">
           공고 수동 등록
         </Link>

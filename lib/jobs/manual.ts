@@ -87,10 +87,12 @@ export const ManualJobSchema = z
 
 export type ManualJobInput = z.output<typeof ManualJobSchema>;
 
-export function toJobInsert(j: ManualJobInput, rawPostingId: string, now: Date): JobInsert {
+type JobUpdate = Database["public"]["Tables"]["jobs"]["Update"];
+
+/** Editable fields shared by manual registration and the review queue. */
+export function toJobFields(j: ManualJobInput) {
   const hasPay = j.pay_min !== null || j.pay_max !== null;
   return {
-    raw_posting_id: rawPostingId,
     company: j.company,
     title: j.title,
     title_normalized: normalizeTitle(j.title),
@@ -108,11 +110,41 @@ export function toJobInsert(j: ManualJobInput, rawPostingId: string, now: Date):
     hours_per_week_min: j.hours_per_week_min,
     english_level: j.english_level,
     status: j.status,
+  } satisfies JobUpdate;
+}
+
+export function toJobInsert(j: ManualJobInput, rawPostingId: string, now: Date): JobInsert {
+  return {
+    raw_posting_id: rawPostingId,
+    ...toJobFields(j),
     // Entered and checked by an admin, so it is approved on creation.
     review_state: "approved",
     reviewed_at: now.toISOString(),
     first_seen_at: now.toISOString(),
     last_seen_at: now.toISOString(),
+  };
+}
+
+/** A jobs row as the string values the job form expects (inverse of ManualJobSchema). */
+export function jobToFormValues(job: Database["public"]["Tables"]["jobs"]["Row"]): Record<string, string> {
+  const n = (x: number | null) => (x === null ? "" : String(x));
+  return {
+    company: job.company,
+    title: job.title,
+    url: job.url,
+    summary_ko: job.summary_ko.join("\n"),
+    category: job.category ?? "",
+    languages: job.languages.join(", "),
+    requires_credential: job.requires_credential ? "on" : "",
+    korea_eligible: job.korea_eligible === null ? "" : String(job.korea_eligible),
+    eligibility_note: job.eligibility_note ?? "",
+    pay_min: n(job.pay_min),
+    pay_max: n(job.pay_max),
+    pay_currency: job.pay_currency ?? "USD",
+    pay_unit: job.pay_unit ?? "hour",
+    hours_per_week_min: n(job.hours_per_week_min),
+    english_level: job.english_level ?? "",
+    status: job.status === "closed" ? "unknown" : job.status,
   };
 }
 

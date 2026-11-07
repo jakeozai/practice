@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ManualJobSchema, manualRawPosting, toJobInsert } from "./manual";
+import { ManualJobSchema, jobToFormValues, manualRawPosting, toJobFields, toJobInsert } from "./manual";
 
 const form = {
   company: "Example AI",
@@ -91,4 +91,12 @@ test("raw posting stores no body and is marked processed", () => {
   assert.equal(raw.body, null);
   assert.equal(raw.processed_hash, raw.body_hash);
   assert.equal(raw.external_id, manualRawPosting(j, "source-id").external_id, "same URL → same external_id");
+});
+
+test("a jobs row round-trips through the form values", () => {
+  const parsed = ManualJobSchema.parse(form);
+  const row = { ...toJobInsert(parsed, "raw-id", new Date("2026-11-07T00:00:00Z")) } as Parameters<typeof jobToFormValues>[0];
+  const again = ManualJobSchema.parse(jobToFormValues(row));
+  // What gets saved is identical (pay_currency is defaulted to USD on the first save).
+  assert.deepEqual(toJobFields(again), toJobFields(parsed));
 });
