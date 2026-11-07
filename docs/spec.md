@@ -10,6 +10,7 @@
 
 - AI 간단 일감: AI 학습·평가, 라벨링, 전사, AI 결과물 검수처럼 학위·자격증 없이 할 수 있는 원격 일감 (`jobs.requires_credential = false`)
 - 공고 출처: 해외 AI 데이터 플랫폼(Mercor, OpenTrain AI, Alignerr, Prolific, Meridial, micro1, Welo Data 등)의 공개 공고. 한국 거주자가 지원 가능한 것만.
+- 한국어 공고·한국인 전용 일감에 한정하지 않는다. 전 세계 원격 AI 일감 중 한국에 사는 사람이 지원할 수 있고 자기 기술로 할 수 있는 것을 한국어로 큐레이션한다. 원문이 영어면 지원·소통은 사용자가 직접 한다. 공고가 쓰인 언어는 상관없고, 작업에 필요한 언어는 기술로 본다(공통 발송은 한국어·영어 기준, Phase 2부터 프로필 언어로 매칭).
 - 지원: 서비스가 대신 제출하지 않는다. 사용자가 원문 플랫폼에서 직접 제출한다.
 
 ## 1. MVP 범위
@@ -125,7 +126,7 @@ workers/send-digest.ts
 
 ## 7. 공고 수집 — `workers/fetch-sources.ts`
 
-1. `sources where active` 순회. 소스별 어댑터(`lib/sources/adapters.ts`: greenhouse·lever·ashby·recruitee, `page`는 미구현)가 공통 형태 `{ external_id, url, title, location_raw, body }[]`를 돌려준다. 수집처 목록은 `lib/sources/seeds.ts` = `0002_collection.sql`.
+1. `sources where active` 순회. 소스별 어댑터(`lib/sources/adapters.ts`: greenhouse·lever·ashby·recruitee, `lib/sources/pages.ts`: page)가 공통 형태 `{ external_id, url, title, location_raw, body }[]`를 돌려준다. 수집처 목록은 `lib/sources/seeds.ts` = `0002_collection.sql`.
 
 ```text
 Greenhouse: GET https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs?content=true
@@ -139,7 +140,7 @@ Recruitee:  GET https://{company}.recruitee.com/api/offers/
 2. 정규화한 본문의 sha256을 `body_hash`로 저장하고 `(source_id, external_id)`로 upsert.
 3. 이번 실행에서 안 보인 기존 공고 → 연결된 `jobs.missing_count + 1`, 2 이상이면 `status = 'closed'`. 보이면 `missing_count = 0`, `last_seen_at = now()`.
 4. 실패 처리: 소스 요청 실패 시 `fail_count + 1`, 3회 연속이면 관리자에게 알림 메일. 성공 시 0으로.
-5. `page` 소스: robots.txt 확인, 요청 간 1초 이상 간격, User-Agent `AIJob5Bot/0.1 (+{APP_URL}/bot)`.
+5. `page` 소스: robots.txt 확인, 요청 간 1초 이상 간격, User-Agent `AIJob5Bot/0.1 (+{APP_URL}/bot)`. 사이트의 sitemap에서 일감 URL을 얻고, 아직 저장하지 않은 페이지만 열어 schema.org `JobPosting` JSON-LD(제목·설명·지원 가능 국가·보수·게시일)를 읽는다. 사이트 설정은 `PAGE_SITES`.
 
 ## 8. 공고 처리 — `workers/process-postings.ts`
 

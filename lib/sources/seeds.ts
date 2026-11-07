@@ -1,7 +1,8 @@
 /**
  * Collection sources found in the 2026-11-07 supply check
  * (docs/supply-check-2026-11-07.md). Mirrored by
- * supabase/migrations/0002_collection.sql; seeds.test.ts keeps them in sync.
+ * supabase/migrations/0002_collection.sql and 0003_page_sources.sql;
+ * seeds.test.ts keeps them in sync.
  *
  * `trusted` = an established company's own hiring board. Only trusted
  * sources can be auto-approved, and only when the LLM extraction succeeded
@@ -9,7 +10,7 @@
  */
 import type { FetchableKind } from "./types";
 
-export type SeedSource = { name: string; kind: FetchableKind; endpoint: string; trusted: boolean };
+export type SeedSource = { name: string; kind: FetchableKind | "page"; endpoint: string; trusted: boolean };
 
 export const SEED_SOURCES: SeedSource[] = [
   // Boards that currently carry Korea-eligible AI gigs
@@ -29,4 +30,8 @@ export const SEED_SOURCES: SeedSource[] = [
   { name: "Snorkel AI", kind: "greenhouse", endpoint: "snorkelai", trusted: true },
   { name: "Mercor", kind: "ashby", endpoint: "mercor", trusted: true },
   { name: "Handshake", kind: "ashby", endpoint: "handshake", trusted: true },
+  // AI work platforms' own public work pages (sitemap + JobPosting JSON-LD, robots.txt checked)
+  { name: "Mercor (work listings)", kind: "page", endpoint: "work.mercor.com", trusted: true },
+  { name: "OpenTrain AI", kind: "page", endpoint: "www.opentrain.ai", trusted: false },
+  { name: "OneForma", kind: "page", endpoint: "www.oneforma.com", trusted: true },
 ];
