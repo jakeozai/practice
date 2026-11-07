@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic",
+    "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+  background: #fafafa;
+  color: #18181b;
+  word-break: keep-all;
+}
