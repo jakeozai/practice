@@ -25,6 +25,13 @@ test("korea eligibility from location text (real examples from the supply check)
     ["Japan / North Korea / Remote", false],
     ["Korea, Republic of / Remote", true],
     ["Korea, Democratic People's Republic of", null],
+    // ISO code lists (Mercor, OneForma)
+    ["GBR / Remote", false],
+    ["ZAF / Remote", false],
+    ["MEX / CRI / SLV / GTM / Remote", false],
+    ["KOR / Remote", true],
+    ["CN / MX / NO / KR / GB / US", true],
+    ["Remote", null],
   ];
   for (const [loc, expected] of cases) assert.equal(koreaEligibleFromLocation(loc), expected, String(loc));
 });
