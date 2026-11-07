@@ -22,6 +22,8 @@ jobs:
       ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      # Optional: 사람인 Open API key; without it that source is skipped.
+      SARAMIN_ACCESS_KEY: ${{ secrets.SARAMIN_ACCESS_KEY }}
       # Optional: without these, candidates go to the review queue without summaries.
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       ANTHROPIC_MODEL_FAST: ${{ secrets.ANTHROPIC_MODEL_FAST }}

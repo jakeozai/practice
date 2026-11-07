@@ -8,9 +8,9 @@
 
 이메일 하나만 넣으면 사용자가 평소 쓰는 AI(ChatGPT·Claude·Gemini)가 그 사람의 스펙을 정리해 넘겨주고, 매일 아침 그에 맞는 "AI 간단 일감" 3개를 한국어 요약과 원문 링크로 보내주는 서비스. 지원할 땐 영어 지원서까지 만들어준다.
 
-- AI 간단 일감: AI 학습·평가, 라벨링, 전사, AI 결과물 검수처럼 학위·자격증 없이 할 수 있는 원격 일감 (`jobs.requires_credential = false`)
-- 공고 출처: 해외 AI 데이터 플랫폼(Mercor, OpenTrain AI, Alignerr, Prolific, Meridial, micro1, Welo Data 등)의 공개 공고. 한국 거주자가 지원 가능한 것만.
-- 한국어 공고·한국인 전용 일감에 한정하지 않는다. 전 세계 원격 AI 일감 중 한국에 사는 사람이 지원할 수 있고 자기 기술로 할 수 있는 것을 한국어로 큐레이션한다. 원문이 영어면 지원·소통은 사용자가 직접 한다. 공고가 쓰인 언어는 상관없고, 작업에 필요한 언어는 기술로 본다(공통 발송은 한국어·영어 기준, Phase 2부터 프로필 언어로 매칭).
+- AI 간단 일감: **AI가 필요한 단기 일감 전부**(2026-11-07 사용자 결정). AI 학습·평가, 라벨링, 전사, AI 결과물 검수, 생성형 AI 콘텐츠 제작, AI 챗봇·자동화 구축 등. 프리랜서·계약직·파트타임만 포함하고 기간 없는 정규직은 제외(`jobs.engagement`). 학위·자격이 필요한 일감도 포함하되 `requires_credential`로 표시만 한다.
+- 공고 출처: 해외 AI 데이터 플랫폼(Mercor, OpenTrain AI, Alignerr, Prolific, Meridial, micro1, Welo Data 등)의 공개 공고와 국내 사이트(사람인 공식 API 등). 한국 거주자가 지원 가능한 것만.
+- 언어는 거르지 않는다. 영어·중국어·일본어 등 어떤 언어의 일감이든 포함한다. AI잡5는 한국어로 큐레이션까지만 하고, 지원·소통·작업은 사용자 몫이다. 작업 언어는 정보로만 표시한다.
 - 지원: 서비스가 대신 제출하지 않는다. 사용자가 원문 플랫폼에서 직접 제출한다.
 
 ## 1. MVP 범위
@@ -110,7 +110,7 @@ workers/send-digest.ts
 | applications | 영어 지원서·지원 상태 | `unique(user_id, job_id)` |
 | reviews, reports | 후기, 신고 | 본인 insert만 |
 
-- `candidate_jobs_for_user(user_id, limit)`: 승인됨, 한국 지원 가능, 자격 불필요, 마감 아님, 이전에 안 보낸 공고를 임베딩 거리순으로 돌려준다. `security definer`이며 anon·authenticated 실행 권한을 회수했으므로 service role로만 호출한다.
+- `candidate_jobs_for_user(user_id, limit)`: 승인됨, 한국 지원 가능, 정규직 아님, 마감 아님, 이전에 안 보낸 공고를 임베딩 거리순으로 돌려준다(0004에서 자격 조건 제거). `security definer`이며 anon·authenticated 실행 권한을 회수했으므로 service role로만 호출한다.
 - 영어 수준 순서: `none < reading < conversational < business < native`.
 
 ## 6. 내 AI 프로필 가져오기
@@ -133,6 +133,7 @@ Greenhouse: GET https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs?co
 Lever:      GET https://api.lever.co/v0/postings/{company}?mode=json
 Ashby:      GET https://api.ashbyhq.com/posting-api/job-board/{board_name}
 Recruitee:  GET https://{company}.recruitee.com/api/offers/
+사람인:     GET https://oapi.saramin.co.kr/job-search?access-key=…&keywords=…&job_type=… (공식 API, 하루 500회)
 ```
 
    - 응답 필드명(본문·지역·URL)은 착수 시 실제 응답으로 확인해 어댑터에 고정한다. Greenhouse `content`는 HTML 이스케이프된 HTML이므로 디코드 후 텍스트로 변환한다.
@@ -146,7 +147,7 @@ Recruitee:  GET https://{company}.recruitee.com/api/offers/
 
 대상: `processed_hash is null or processed_hash <> body_hash`인 raw_postings.
 
-1. **키워드 1차 필터** (제안값, LLM 비용 절감): 제목·본문에 `ai trainer, ai training, annotation, annotator, labeling, labeler, rater, evaluator, rlhf, data contributor, transcription, linguist, language expert, korean` 중 하나라도 없으면 건너뛰고 `processed_hash`만 갱신.
+1. **키워드 1차 필터** (제안값, LLM 비용 절감): 제목·본문에 `ai trainer, ai training, annotation, annotator, labeling, labeler, rater, evaluator, rlhf, data contributor, transcription, linguist, language expert, korean`과 일반 AI·국내 용어(`AI` 단어, generative, prompt, chatbot, 인공지능, 라벨링, 학습데이터, 프롬프트 등, `lib/jobs/keywords.ts`) 중 하나라도 없으면 건너뛰고 `processed_hash`만 갱신.
 2. **LLM 추출 1회**: system = `prompts/job-extract.md`, user = `<posting>\n제목: …\n지역: …\n본문:\n{본문 최대 12,000자}\n</posting>`, 모델 `ANTHROPIC_MODEL_FAST`, temperature 0. 응답을 `JobExtractSchema`(zod)로 검증. 실패 시 1회 재시도, 그래도 실패하면 로그만 남기고 다음 실행에서 재시도.
 3. **규칙 판정** (`lib/eligibility.ts`, `lib/status.ts`, `lib/scam.ts`, 각각 단위 테스트)
    - 한국 지원 가능: 지역 문구 규칙이 먼저. `worldwide|global|anywhere|south korea|korea|apac|asia` → true, 특정 국가만 나열(`united states|us only|uk only|canada|…`) → false. 규칙으로 못 정하면 LLM 값, 그것도 null이면 null(자동 승인 불가).
@@ -154,13 +155,13 @@ Recruitee:  GET https://{company}.recruitee.com/api/offers/
    - 재게시: 같은 `company` + `title_normalized`가 60일 안에 3회 이상(제안값)이거나 `is_talent_pool`이면 `status = 'pool'`, 아니면 `'open'`. `repost_count` 갱신.
    - 사기 점수: 신호 1개당 25점(최대 100). 60점 이상이면 `review_state = 'rejected'` (제안값).
 4. **임베딩**: `jobEmbeddingText(job)` = `languages / category / title / summary_ko` 를 `profileEmbeddingText`와 같은 틀로. 1536차원.
-5. **자동 승인**: `source.trusted && korea_eligible === true && scam_score === 0 && !requires_credential` → `approved`. 그 밖은 `pending`.
+5. **자동 승인**: `source.trusted && korea_eligible === true && scam_score === 0` + LLM 추출 성공 → `approved`. AI와 무관(`ai_related = false`)하거나 정규직(`engagement = permanent`)이면 `rejected`. 그 밖은 `pending`.
 6. `jobs`를 `raw_posting_id`로 upsert, `raw_postings.processed_hash = body_hash`.
 
 ## 9. 매칭과 발송 — `workers/send-digest.ts`
 
 - `send_date` = 오늘(Asia/Seoul). 대상 = `profiles.digest_status = 'active'`이고 그날 `digest_sends`가 `sent`·`skipped`가 아닌 사용자.
-- **Phase 1 (전원 동일)**: 승인·한국 가능·자격 불필요·마감 아님·이전에 안 보낸 공고를 `first_seen_at` 최신순 + 시급 높은 순으로 3개(`DIGEST_SIZE`).
+- **Phase 1 (전원 동일)**: 승인·한국 가능·정규직 아님·마감 아님·이전에 안 보낸 공고를 `first_seen_at` 최신순 + 시급 높은 순으로 3개(`DIGEST_SIZE`).
 - **Phase 2 (개인화)**: `candidate_jobs_for_user(user, 50)` → TS 필터 → 점수 → 상위 3개.
   - 필터: 공고 영어 수준 ≤ 내 수준(내 수준 미상이면 `reading`으로 간주, 제안값), 공고 최소 주당 시간 ≤ 내 주당 시간(미상이면 통과), `avoid` 단어가 제목·카테고리에 들어가면 제외.
   - 점수 (제안값): `0.6 × similarity + 0.2 × fresh + 0.2 × payFit`

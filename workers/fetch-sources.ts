@@ -22,6 +22,7 @@ import { isFetchableKind, type FetchableKind, type SourcePosting } from "../lib/
 import { SEED_SOURCES } from "../lib/sources/seeds";
 import { nextMissing, planSync, type ExistingRaw } from "../lib/sources/sync";
 import { bodyHash } from "../lib/sources/text";
+import { SARAMIN_DAILY_CALL_LIMIT, SARAMIN_MAX_PAGES_PER_KEYWORD, SARAMIN_PAGE_SIZE, SARAMIN_PRESETS, parseSaramin, saraminSearchUrl } from "../lib/sources/saramin";
 import { matchesJobKeywords } from "../lib/jobs/keywords";
 import { koreaEligibleFromLocation } from "../lib/eligibility";
 import { sendEmail } from "../lib/email/send";
@@ -34,7 +35,28 @@ const PAUSE_BETWEEN_SOURCES_MS = 1000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const chunks = <T>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 
-type Source = { id: string; name: string; kind: FetchableKind | "page"; endpoint: string; fail_count: number };
+type Source = { id: string; name: string; kind: FetchableKind | "page" | "saramin"; endpoint: string; fail_count: number };
+
+/** 사람인 Open API: one keyword per call, newest first, a few pages each; deduped by posting id. */
+async function fetchSaramin(preset: string, userAgent: string): Promise<SourcePosting[]> {
+  const key = process.env.SARAMIN_ACCESS_KEY;
+  const config = SARAMIN_PRESETS[preset];
+  if (!key || !config) throw new Error(!key ? "SARAMIN_ACCESS_KEY not set" : `unknown saramin preset ${preset}`);
+  const byId = new Map<string, SourcePosting>();
+  let calls = 0;
+  for (const keyword of config.keywords) {
+    for (let page = 0; page < SARAMIN_MAX_PAGES_PER_KEYWORD; page++) {
+      if (calls >= SARAMIN_DAILY_CALL_LIMIT / 2) break; // leave headroom under the daily limit
+      calls++;
+      const json = await fetchJson(saraminSearchUrl(key, keyword, config.jobTypes, page), { userAgent });
+      const { total, postings } = parseSaramin(json);
+      for (const p of postings) byId.set(p.external_id, p);
+      if ((page + 1) * SARAMIN_PAGE_SIZE >= total || postings.length === 0) break;
+      await sleep(300);
+    }
+  }
+  return [...byId.values()];
+}
 
 async function fetchPostings(kind: FetchableKind, endpoint: string, userAgent: string): Promise<SourcePosting[]> {
   return parseSource(kind, await fetchJson(sourceUrl(kind, endpoint), { userAgent }));
@@ -71,7 +93,16 @@ async function dryRun(filter: string | undefined) {
   console.log(`${"source".padEnd(34)} ${"postings".padStart(8)} ${"keyword".padStart(8)} ${"korea=yes".padStart(9)} ${"unknown".padStart(8)}`);
   for (const s of sources) {
     try {
-      const posts = s.kind === "page" ? await samplePages(s.endpoint, ua, lines) : await fetchPostings(s.kind, s.endpoint, ua);
+      if (s.kind === "saramin" && !process.env.SARAMIN_ACCESS_KEY) {
+        console.log(`${s.name.padEnd(34)} skipped: set SARAMIN_ACCESS_KEY (사람인 Open API)`);
+        continue;
+      }
+      const posts =
+        s.kind === "page"
+          ? await samplePages(s.endpoint, ua, lines)
+          : s.kind === "saramin"
+            ? await fetchSaramin(s.endpoint, ua)
+            : await fetchPostings(s.kind, s.endpoint, ua);
       const kw = posts.filter((p) => matchesJobKeywords(p.title, p.body));
       const yes = kw.filter((p) => koreaEligibleFromLocation(p.location_raw) === true);
       const unknown = kw.filter((p) => koreaEligibleFromLocation(p.location_raw) === null);
@@ -202,7 +233,7 @@ async function collectOne(db: ServiceClient, source: Source, userAgent: string) 
       await db.from("sources").update({ fail_count: 0, last_fetched_at: now }).eq("id", source.id);
       return { ok: true as const };
     }
-    posts = await fetchPostings(source.kind, source.endpoint, userAgent);
+    posts = source.kind === "saramin" ? await fetchSaramin(source.endpoint, userAgent) : await fetchPostings(source.kind, source.endpoint, userAgent);
   } catch (e) {
     const failCount = source.fail_count + 1;
     const message = e instanceof SourceFetchError || e instanceof Error ? e.message : String(e);
@@ -245,6 +276,14 @@ async function main() {
   for (const s of data) {
     if (values.source && s.name !== values.source && s.endpoint !== values.source) continue;
     if (s.kind === "manual") continue;
+    if (s.kind === "saramin" && s.endpoint && SARAMIN_PRESETS[s.endpoint]) {
+      if (!process.env.SARAMIN_ACCESS_KEY) {
+        console.warn(`  - skip ${s.name}: SARAMIN_ACCESS_KEY not set`);
+        continue;
+      }
+      sources.push({ ...s, kind: "saramin", endpoint: s.endpoint });
+      continue;
+    }
     if (s.kind === "page" && s.endpoint && PAGE_SITES[s.endpoint]) {
       sources.push({ ...s, kind: "page", endpoint: s.endpoint });
       continue;

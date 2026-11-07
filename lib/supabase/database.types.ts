@@ -1,5 +1,5 @@
 /**
- * Hand-written types for supabase/migrations/0001–0004, in the shape that
+ * Hand-written types for supabase/migrations/0001–0005, in the shape that
  * `supabase gen types typescript` produces. Regenerate with the CLI once a
  * Supabase project is linked, and keep this file in sync with migrations.
  */
@@ -14,7 +14,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "saramin" | "page" | "manual";
           endpoint: string | null;
           trusted: boolean;
           active: boolean;
@@ -25,7 +25,7 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "saramin" | "page" | "manual";
           endpoint?: string | null;
           trusted?: boolean;
           active?: boolean;

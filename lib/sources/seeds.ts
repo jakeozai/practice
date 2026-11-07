@@ -1,7 +1,7 @@
 /**
  * Collection sources found in the 2026-11-07 supply check
  * (docs/supply-check-2026-11-07.md). Mirrored by
- * supabase/migrations/0002_collection.sql and 0003_page_sources.sql;
+ * supabase/migrations/0002, 0003 and 0005;
  * seeds.test.ts keeps them in sync.
  *
  * `trusted` = an established company's own hiring board. Only trusted
@@ -10,7 +10,7 @@
  */
 import type { FetchableKind } from "./types";
 
-export type SeedSource = { name: string; kind: FetchableKind | "page"; endpoint: string; trusted: boolean };
+export type SeedSource = { name: string; kind: FetchableKind | "page" | "saramin"; endpoint: string; trusted: boolean };
 
 export const SEED_SOURCES: SeedSource[] = [
   // Boards that currently carry Korea-eligible AI gigs
@@ -34,4 +34,6 @@ export const SEED_SOURCES: SeedSource[] = [
   { name: "Mercor (work listings)", kind: "page", endpoint: "work.mercor.com", trusted: true },
   { name: "OpenTrain AI", kind: "page", endpoint: "www.opentrain.ai", trusted: false },
   { name: "OneForma", kind: "page", endpoint: "www.oneforma.com", trusted: true },
+  // Korean job board through its official Open API (needs SARAMIN_ACCESS_KEY)
+  { name: "사람인 (AI 단기 일감 검색)", kind: "saramin", endpoint: "ai-short-term", trusted: true },
 ];
