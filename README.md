@@ -1,6 +1,6 @@
 # AI잡5 (가칭)
 
-이메일 하나로 가입하면, 사용자가 쓰는 AI가 정리한 프로필을 받아 매일 아침 맞는 "AI 간단 일감" 5개를 메일로 보내는 서비스.
+이메일 하나로 가입하면, 사용자가 쓰는 AI가 정리한 프로필을 받아 매일 아침 맞는 "AI 간단 일감" 3개를 메일로 보내는 서비스.
 
 - 전체 명세: [`docs/spec.md`](docs/spec.md) · 작업 규칙: [`CLAUDE.md`](CLAUDE.md)
 - 현재 단계: **Phase 0 — 수동 검증** (자세한 범위는 아래 "Phase 0 진행 상황")
@@ -53,7 +53,7 @@ npm run build       # next build
 | `ADMIN_EMAILS` | 예 | `/admin` 접근 허용 이메일, 쉼표 구분 |
 | `RESEND_API_KEY`, `EMAIL_FROM` | 발송 시 | |
 | `EMAIL_TRANSPORT` | 선택 | `file`이면 실제 발송 대신 `.outbox/`에 HTML 저장 |
-| `DIGEST_SIZE` | 선택 | 메일당 공고 수, 기본 5 |
+| `DIGEST_SIZE` | 선택 | 메일당 공고 수, 기본 3 |
 | `ANTHROPIC_*`, 임베딩, `RESEND_WEBHOOK_SECRET` | 아니오 | Phase 1~2 |
 
 ## Phase 0 운영 방법
@@ -109,7 +109,7 @@ proxy.ts                                 세션 갱신, 비로그인 보호 페�
 - [x] `workers/send-manual.ts` (수신거부 헤더·링크, `digest_sends`·`matches` 기록)
 - [x] 지표: 구독 수, 프로필 완료율, 메일 클릭률, 하루 신규 공고 수 (`/admin`)
 
-완료 기준(명세 §15): 하루 5개를 채울 신규 공고 공급 확인, 구독 100명, 메일 클릭률 20% 이상.
+완료 기준(명세 §15): 하루 3개를 채울 신규 공고 공급 확인, 구독 100명, 메일 클릭률 20% 이상.
 
 공급 점검(2026-11-07): 공개 채용 API에서 한국 거주자가 지원할 수 있는 실제 일감은 3건(모두 RWS), 최근 30일 신규는 0건이었다. 등록용 요약까지 [`docs/supply-check-2026-11-07.md`](docs/supply-check-2026-11-07.md)에 정리했다.
 

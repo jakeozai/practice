@@ -6,7 +6,7 @@
 
 ## 0. 한 줄 정의
 
-이메일 하나만 넣으면 사용자가 평소 쓰는 AI(ChatGPT·Claude·Gemini)가 그 사람의 스펙을 정리해 넘겨주고, 매일 아침 그에 맞는 "AI 간단 일감" 5개를 한국어 요약과 원문 링크로 보내주는 서비스. 지원할 땐 영어 지원서까지 만들어준다.
+이메일 하나만 넣으면 사용자가 평소 쓰는 AI(ChatGPT·Claude·Gemini)가 그 사람의 스펙을 정리해 넘겨주고, 매일 아침 그에 맞는 "AI 간단 일감" 3개를 한국어 요약과 원문 링크로 보내주는 서비스. 지원할 땐 영어 지원서까지 만들어준다.
 
 - AI 간단 일감: AI 학습·평가, 라벨링, 전사, AI 결과물 검수처럼 학위·자격증 없이 할 수 있는 원격 일감 (`jobs.requires_credential = false`)
 - 공고 출처: 해외 AI 데이터 플랫폼(Mercor, OpenTrain AI, Alignerr, Prolific, Meridial, micro1, Welo Data 등)의 공개 공고. 한국 거주자가 지원 가능한 것만.
@@ -18,7 +18,7 @@
 1. 이메일 매직링크 가입 (= 더블 옵트인)
 2. 내 AI로 프로필 가져오기 (프롬프트 복사 → 붙여넣기 → 확인 → 저장) + 5문항 대체 폼
 3. 공고 수집·처리 워커 (공개 채용 시스템 API 우선) + 관리자 검수 큐 + 자동 승인 규칙
-4. 매일 아침 5개 메일 (Phase 1은 전원 동일, Phase 2부터 사용자별 개인화)
+4. 매일 아침 3개 메일 (Phase 1은 전원 동일, Phase 2부터 사용자별 개인화)
 5. 공고 상세 페이지 (요약·조건·상태 라벨·원문 링크)
 6. 영어 지원서 생성 (월 무료 한도)
 7. 관심없음·신고 피드백, 수신거부, 반송 처리
@@ -158,14 +158,14 @@ Ashby:      GET https://api.ashbyhq.com/posting-api/job-board/{board_name}
 ## 9. 매칭과 발송 — `workers/send-digest.ts`
 
 - `send_date` = 오늘(Asia/Seoul). 대상 = `profiles.digest_status = 'active'`이고 그날 `digest_sends`가 `sent`·`skipped`가 아닌 사용자.
-- **Phase 1 (전원 동일)**: 승인·한국 가능·자격 불필요·마감 아님·이전에 안 보낸 공고를 `first_seen_at` 최신순 + 시급 높은 순으로 5개.
-- **Phase 2 (개인화)**: `candidate_jobs_for_user(user, 50)` → TS 필터 → 점수 → 상위 5개.
+- **Phase 1 (전원 동일)**: 승인·한국 가능·자격 불필요·마감 아님·이전에 안 보낸 공고를 `first_seen_at` 최신순 + 시급 높은 순으로 3개(`DIGEST_SIZE`).
+- **Phase 2 (개인화)**: `candidate_jobs_for_user(user, 50)` → TS 필터 → 점수 → 상위 3개.
   - 필터: 공고 영어 수준 ≤ 내 수준(내 수준 미상이면 `reading`으로 간주, 제안값), 공고 최소 주당 시간 ≤ 내 주당 시간(미상이면 통과), `avoid` 단어가 제목·카테고리에 들어가면 제외.
   - 점수 (제안값): `0.6 × similarity + 0.2 × fresh + 0.2 × payFit`
     - fresh: 첫 수집 48시간 이내 1, 7일 이내 0.5, 그 외 0
     - payFit: 시급 공고이고 `pay_max ≥ min_hourly_usd`면 1, 미달이면 0, 정보 없음·시급 외 단위면 0.5
   - 추천 이유 (`lib/match.ts`, LLM 없음): 겹치는 항목에서 문구 2개를 골라 " · "로 잇는다. 예: "한국어 원어민 조건 · 영어 독해 수준으로 가능", "번역 경험과 맞는 일 · 주 10시간부터". 없으면 "프로필과 비슷한 일감".
-- **보낼 공고가 0개**면 `digest_sends(status='skipped')`. 1~4개면 있는 만큼 보낸다.
+- **보낼 공고가 0개**면 `digest_sends(status='skipped')`. 1~2개면 있는 만큼 보낸다.
 - **순서와 중복 방지**: 계산 → Resend 발송(멱등 키 `digest-{user_id}-{send_date}`, `[확인 필요]` 현재 SDK의 멱등 키 지원 방식) → 성공 시 `matches`(rank·score·reason)와 `digest_sends('sent', message_id)` 기록. 실패 시 `digest_sends('failed', error)` — 같은 날 재실행 대상.
 - 발송 속도: 요금제 한도 이하로 조절 `[확인 필요]`.
 
@@ -251,7 +251,7 @@ aijob5/
 ├── workers/
 │   ├── fetch-sources.ts
 │   ├── process-postings.ts
-│   ├── send-manual.ts              # Phase 0: 관리자가 고른 5개를 전원에게
+│   ├── send-manual.ts              # Phase 0: 관리자가 고른 3개를 전원에게
 │   └── send-digest.ts
 ├── prompts/
 │   ├── profile-extract.md          # 완료
@@ -280,16 +280,16 @@ aijob5/
 - [ ] 랜딩 + 매직링크 가입 + `/auth/callback` + profiles 생성
 - [ ] `/onboarding` 프로필 가져오기 (프롬프트·복사·붙여넣기·확인·저장). 지인 10명의 ChatGPT·Claude·Gemini로 테스트
 - [ ] `/admin/jobs/new` 수동 공고 등록 (`sources.kind = 'manual'`)
-- [ ] `workers/send-manual.ts`: 관리자가 고른 5개를 active 전원에게 같은 메일로 발송 (수신거부·digest_sends 포함)
+- [ ] `workers/send-manual.ts`: 관리자가 고른 3개를 active 전원에게 같은 메일로 발송 (수신거부·digest_sends 포함)
 - [ ] 구독 수, 프로필 완료율, 메일 클릭률, 하루 신규 공고 수 기록
 
-완료 기준: 하루 5개를 채울 신규 공고 공급 확인, 구독 100명, 메일 클릭률 20% 이상.
+완료 기준: 하루 3개를 채울 신규 공고 공급 확인, 구독 100명, 메일 클릭률 20% 이상.
 
 ### Phase 1 — 수집 자동화 (약 3주)
 - [ ] 소스 어댑터 3종 + `fetch-sources.ts` + 실패 알림
 - [ ] `process-postings.ts`: 키워드 필터, LLM 추출, 규칙 판정(단위 테스트), 자동 승인
 - [ ] `/admin/review` 검수 큐
-- [ ] `DailyFive.tsx` + `send-digest.ts` (전원 동일 5개) + 멱등 처리
+- [ ] `DailyFive.tsx` + `send-digest.ts` (전원 동일 3개) + 멱등 처리
 - [ ] GitHub Actions `collect.yml`, `digest.yml`
 - [ ] 발신 도메인 SPF·DKIM·DMARC, Resend 웹훅(반송·스팸 신고)
 

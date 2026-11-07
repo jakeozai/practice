@@ -7,7 +7,7 @@ const STEPS = [
     title: "내 AI로 프로필 가져오기",
     body: "ChatGPT·Claude·Gemini에 프롬프트를 붙여넣으면, AI가 나를 정리해 줘요. 그 답을 붙여넣기만 하면 돼요.",
   },
-  { title: "매일 아침 5개", body: "한국어 3줄 요약과 원문 링크로, 나에게 맞는 원격 AI 일감을 보내드려요." },
+  { title: "매일 아침 3개", body: "한국어 3줄 요약과 원문 링크로, 나에게 맞는 원격 AI 일감을 보내드려요." },
 ];
 
 const ERRORS: Record<string, string> = {
@@ -43,7 +43,7 @@ export default function Home(props: PageProps<"/">) {
         <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
           매일 아침, 나에게 맞는
           <br />
-          AI 일감 5개
+          AI 일감 3개
         </h1>
         <p className="text-zinc-600">
           AI 학습·평가, 라벨링, 전사, AI 결과물 검수처럼 집에서 할 수 있는 해외 플랫폼 일감을 골라 한국어로 요약해

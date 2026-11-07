@@ -19,7 +19,7 @@ const ServiceEnv = z.object({
 const AppEnv = z.object({
   APP_URL: z.url().transform((u) => u.replace(/\/+$/, "")),
   ADMIN_EMAILS: z.string().default(""),
-  DIGEST_SIZE: z.coerce.number().int().min(1).max(10).default(5),
+  DIGEST_SIZE: z.coerce.number().int().min(1).max(10).default(3),
 });
 
 const LinkEnv = z.object({

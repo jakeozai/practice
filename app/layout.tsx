@@ -3,8 +3,8 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI잡5 — 매일 아침 나에게 맞는 AI 일감 5개",
-  description: "이메일 하나로 가입하면, 내 AI가 정리한 프로필로 매일 아침 원격 AI 일감 5개를 보내드려요.",
+  title: "AI잡5 — 매일 아침 나에게 맞는 AI 일감 3개",
+  description: "이메일 하나로 가입하면, 내 AI가 정리한 프로필로 매일 아침 원격 AI 일감 3개를 보내드려요.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
