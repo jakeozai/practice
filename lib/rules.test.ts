@@ -20,6 +20,11 @@ test("korea eligibility from location text (real examples from the supply check)
     ["Remote, International", null], // xAI: body restricts to US/UK/CA/AU → LLM decides
     ["Remote", null],
     [null, null],
+    // OpenTrain-style applicant country lists
+    ["Afghanistan / North Korea / South Korea / Zambia / Remote", true],
+    ["Japan / North Korea / Remote", false],
+    ["Korea, Republic of / Remote", true],
+    ["Korea, Democratic People's Republic of", null],
   ];
   for (const [loc, expected] of cases) assert.equal(koreaEligibleFromLocation(loc), expected, String(loc));
 });

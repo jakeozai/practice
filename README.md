@@ -76,7 +76,12 @@ npm run build       # next build
 
 ## 공고 수집
 
-15개 수집처(채용 시스템 4종: Greenhouse·Lever·Ashby·Recruitee)의 공개 API에서 매일 공고를 가져옵니다. 목록은 `lib/sources/seeds.ts`와 `supabase/migrations/0002_collection.sql`(같은 내용)에 있습니다.
+AI잡5는 한국어 공고만 모으는 서비스가 아닙니다. 전 세계 원격 AI 일감 중 **한국에 사는 사람이 지원할 수 있고 자기 기술로 할 수 있는 것**을 한국어로 골라 줍니다(원문이 영어면 지원·소통은 사용자가 직접). 공고가 쓰인 언어는 상관없고, 작업에 필요한 언어는 기술로 봅니다.
+
+수집처는 18곳입니다(`lib/sources/seeds.ts` = `supabase/migrations/0002_collection.sql` + `0003_page_sources.sql`).
+
+- **채용 보드 API 15곳**(Greenhouse·Lever·Ashby·Recruitee): Invisible, Welo Data, RWS, TransPerfect 등 고용처의 공개 채용 API.
+- **일감 플랫폼 페이지 3곳**(`page`): Mercor, OpenTrain AI, OneForma. 사이트 sitemap에서 일감 URL을 얻고, 새 페이지만 열어 schema.org `JobPosting` 데이터(지원 가능 국가·보수·게시일)를 읽습니다. robots.txt를 매번 확인하고, 요청 간격은 1초 이상입니다. 사이트 설정은 `lib/sources/pages.ts`의 `PAGE_SITES`.
 
 ```bash
 npm run collect -- --dry-run   # DB 없이: 실제 API를 조회해 수집처별 공고 수만 보고
@@ -88,7 +93,8 @@ npm run process                # 새·바뀐 공고 → jobs (자동 승인 또�
 - **처리**(`workers/process-postings.ts`): 키워드 필터 → 지역 규칙(한국 불가가 확실하면 LLM 호출 없이 건너뜀) → LLM 추출·한국어 요약 1회(실패 시 1회 재시도) → 규칙 판정 → 신뢰 수집처 + 한국 가능 + 사기 신호 없음 + 자격 불필요면 자동 승인, 나머지는 `/admin/review` 검수 큐.
 - `ANTHROPIC_API_KEY`·`ANTHROPIC_MODEL_FAST`가 없으면 LLM 없이 돌고, 후보는 요약 없이 검수 큐로 갑니다(관리자가 요약 작성).
 - 매일 19:00 KST에 `.github/workflows/collect.yml`이 둘을 차례로 실행합니다. 저장소 Secrets에 워크플로 파일에 적힌 값을 등록해야 합니다.
-- 수집처 추가: `sources` 테이블에 행을 넣으면 됩니다(`kind`=greenhouse/lever/ashby/recruitee, `endpoint`=보드 토큰). 시드 목록을 바꿀 땐 두 파일을 같이 고치세요(테스트가 확인).
+- 수집처 추가: `sources` 테이블에 행을 넣으면 됩니다(`kind`=greenhouse/lever/ashby/recruitee이면 `endpoint`=보드 토큰, `page`이면 `PAGE_SITES`에 등록한 호스트). 시드 목록을 바꿀 땐 seeds.ts와 마이그레이션을 같이 고치세요(테스트가 확인).
+- 발송용으로 고를 때: `/admin`과 검수 큐에 작업 언어가 표시되고, 한국어·영어 외 언어가 필요한 일감은 "대부분 구독자에게 안 맞음"으로 표시됩니다(Phase 2부터 프로필 언어로 매칭).
 - 이 개발 환경(클라우드 샌드박스)에서 실행할 땐 `NODE_USE_ENV_PROXY=1`을 앞에 붙여야 합니다. GitHub Actions·Vercel에서는 필요 없습니다.
 
 ## 구조
@@ -112,9 +118,9 @@ lib/
   email/send.ts                          Resend 래퍼(타임아웃·재시도·멱등 키)
   links.ts                               메일 링크 HMAC 서명
   jobs/{format,manual}.ts                표시 형식, 수동 등록 검증
-  sources/                               수집처 어댑터(adapters), 시드 목록, 동기화 계산, HTTP
+  sources/                               채용 보드 어댑터(adapters), 일감 페이지(pages·robots·sitemap·jsonld), 시드, 동기화, HTTP
   llm/                                   Anthropic 래퍼, 공고 추출(extractJob)
-  jobs/{keywords,process}.ts             키워드 필터, 공고 → jobs 판정
+  jobs/{keywords,process,language}.ts    키워드 필터, 공고 → jobs 판정, 작업 언어
   eligibility.ts, status.ts, scam.ts     한국 지원 가능·재게시·사기 규칙
 workers/send-manual.ts                   Phase 0 수동 발송
 workers/fetch-sources.ts                 공고 수집
