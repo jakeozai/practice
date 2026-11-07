@@ -21,3 +21,10 @@ test("prefill links encode the full prompt", () => {
     assert.equal(q, prompt, link.label);
   }
 });
+
+test("prefill links can be enabled per provider", () => {
+  assert.deepEqual(aiPrefillLinks(prompt, { chatgpt: false, claude: false }), []);
+  const only = aiPrefillLinks(prompt, { chatgpt: true, claude: false });
+  assert.equal(only.length, 1);
+  assert.ok(only[0].href.startsWith("https://chatgpt.com/?q="));
+});

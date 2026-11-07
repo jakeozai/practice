@@ -111,12 +111,15 @@ proxy.ts                                 세션 갱신, 비로그인 보호 페�
 
 완료 기준(명세 §15): 하루 5개를 채울 신규 공고 공급 확인, 구독 100명, 메일 클릭률 20% 이상.
 
+공급 점검(2026-11-07): 공개 채용 API에서 한국 거주자가 지원할 수 있는 실제 일감은 3건(모두 RWS), 최근 30일 신규는 0건이었다. 등록용 요약까지 [`docs/supply-check-2026-11-07.md`](docs/supply-check-2026-11-07.md)에 정리했다.
+
 ## 확인 필요 (코드에 자리표시값으로 둔 것)
 
 | 항목 | 위치 | 지금 값 |
 | --- | --- | --- |
-| ChatGPT·Claude 미리 채우기 링크 동작·길이 제한 | `lib/profile/prefill.ts` `PREFILL_LINKS_ENABLED` | `false` (복사 버튼만 표시) |
+| ChatGPT·Claude 미리 채우기 링크 | `lib/profile/prefill.ts` `PREFILL_ENABLED` | 둘 다 꺼짐. 외부 자료상 ChatGPT `?q=`는 입력만 채움, Claude `?q=`는 2025년 10월쯤 끊겼다는 보고. 직접 눌러 보고 하나씩 켜기 |
 | 메일 하단 발신자(운영자) 표기 | `lib/email/constants.ts` `MAIL_FOOTER_SENDER` | `AI잡5 (가칭)` |
-| Resend 요금제 발송 속도 | `lib/email/constants.ts` `SEND_INTERVAL_MS` | 600ms (초당 약 1.7통) |
+| Resend 일·월 발송 한도 | Resend 대시보드 | 요금제마다 다름. 초당 한도는 팀당 10건(전 요금제 동일)이라 `SEND_INTERVAL_MS` 600ms로 충분 |
+| 수집 소스(플랫폼 자체 일감 페이지) | Phase 1 | 공개 채용 API는 공급 부족 — 공급 점검 문서 참고 |
 | 서비스 이름·도메인 | 전체 | 가칭 AI잡5 |
 | 개인정보 처리방침·국외 이전 고지 | Phase 2 | 미작성 |

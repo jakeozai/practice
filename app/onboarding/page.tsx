@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getProfilePrompt } from "@/lib/profile/prompt";
-import { PREFILL_LINKS_ENABLED, aiPrefillLinks } from "@/lib/profile/prefill";
+import { PREFILL_ENABLED, aiPrefillLinks } from "@/lib/profile/prefill";
 import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingFlow } from "./onboarding-flow";
@@ -24,7 +24,7 @@ async function Onboarding() {
     <OnboardingFlow
       email={user.email}
       prompt={prompt}
-      prefillLinks={PREFILL_LINKS_ENABLED ? aiPrefillLinks(prompt) : []}
+      prefillLinks={aiPrefillLinks(prompt, PREFILL_ENABLED)}
       saved={saved}
     />
   );
