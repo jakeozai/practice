@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --test \"lib/**/*.test.ts\" \"workers/**/*.test.ts\"",
-    "send:manual": "tsx --env-file-if-exists=.env.local workers/send-manual.ts"
+    "send:manual": "tsx --env-file-if-exists=.env.local workers/send-manual.ts",
+    "collect": "tsx --env-file-if-exists=.env.local workers/fetch-sources.ts",
+    "process": "tsx --env-file-if-exists=.env.local workers/process-postings.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

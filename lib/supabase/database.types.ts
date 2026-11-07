@@ -1,5 +1,5 @@
 /**
- * Hand-written types for supabase/migrations/0001_init.sql, in the shape that
+ * Hand-written types for supabase/migrations/0001_init.sql + 0002_collection.sql, in the shape that
  * `supabase gen types typescript` produces. Regenerate with the CLI once a
  * Supabase project is linked, and keep this file in sync with migrations.
  */
@@ -14,7 +14,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
           endpoint: string | null;
           trusted: boolean;
           active: boolean;
@@ -25,7 +25,7 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
           endpoint?: string | null;
           trusted?: boolean;
           active?: boolean;
@@ -287,6 +287,10 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      raw_postings_to_process: {
+        Args: { p_limit?: number };
+        Returns: Database["public"]["Tables"]["raw_postings"]["Row"][];
+      };
       candidate_jobs_for_user: {
         Args: { p_user_id: string; p_limit?: number };
         Returns: {
