@@ -8,6 +8,9 @@ import { join } from "node:path";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { SCAM_SIGNALS } from "../scam";
+
+/** permanent = open-ended staff hiring, which AI잡5 doesn't send (short-term work only). */
+export const ENGAGEMENTS = ["freelance", "contract", "part_time", "permanent"] as const;
 import { firstText } from "./client";
 
 export const POSTING_BODY_MAX_CHARS = 12_000;
@@ -32,6 +35,8 @@ const JobExtractWire = z.object({
   hours_per_week_min: nullableNumber,
   english_level: z.enum(["none", "reading", "conversational", "business", "native"]).nullable(),
   is_talent_pool: z.boolean(),
+  ai_related: z.boolean(),
+  engagement: z.enum(ENGAGEMENTS),
   scam_signals: z.array(z.enum(SCAM_SIGNALS)),
   summary_ko: z.array(z.string()),
 });

@@ -39,7 +39,7 @@ export default function Home(props: PageProps<"/">) {
   return (
     <div className="space-y-12">
       <section className="space-y-5">
-        <p className="text-sm font-semibold text-indigo-600">학위·자격증 없이 하는 원격 AI 일감</p>
+        <p className="text-sm font-semibold text-indigo-600">AI가 필요한 단기 일감, 전 세계와 국내에서</p>
         <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
           매일 아침, 나에게 맞는
           <br />

@@ -58,7 +58,7 @@ function parseCli() {
 async function loadJobs(db: ServiceClient, ids: string[]): Promise<DigestJob[]> {
   const { data, error } = await db
     .from("jobs")
-    .select(`${DIGEST_JOB_COLUMNS}, review_state, korea_eligible, requires_credential`)
+    .select(`${DIGEST_JOB_COLUMNS}, review_state, korea_eligible`)
     .in("id", ids);
   if (error) fail(`Loading jobs failed: ${error.message}`);
 
@@ -70,7 +70,6 @@ async function loadJobs(db: ServiceClient, ids: string[]): Promise<DigestJob[]> 
     else if (j.review_state !== "approved") problems.push(`${id}: review_state is ${j.review_state}`);
     else if (j.status === "closed") problems.push(`${id}: closed`);
     else if (j.korea_eligible !== true) problems.push(`${id}: korea_eligible is ${j.korea_eligible}`);
-    else if (j.requires_credential) problems.push(`${id}: requires a credential`);
   }
   if (problems.length) fail(`These jobs can't be sent:\n  ${problems.join("\n  ")}`);
 

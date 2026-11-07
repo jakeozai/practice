@@ -26,6 +26,8 @@ const extraction: JobExtract = {
   hours_per_week_min: 10,
   english_level: "business",
   is_talent_pool: false,
+  ai_related: true,
+  engagement: "freelance",
   scam_signals: [],
   summary_ko: ["AI가 만든 한국어 결과물을 평가하는 일", "한국어 원어민, 영어 B2 이상", "시간당 10달러, 주 10시간 이상"],
 };
@@ -48,10 +50,21 @@ test("trusted source + clean extraction + Korea → auto-approved", () => {
   assert.equal(job.title_normalized, "ai data specialist korean");
 });
 
+test("credentials and work language don't block approval", () => {
+  const expert = buildJob({ raw, source: trusted, extraction: { ...extraction, requires_credential: true, languages: ["ja"] }, sameTitleCount: 1 });
+  assert.equal(expert.review_state, "approved");
+  assert.equal(expert.requires_credential, true, "kept as information");
+});
+
+test("not AI work, or permanent staff hiring → rejected as out of scope", () => {
+  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, ai_related: false }, sameTitleCount: 1 }).review_state, "rejected");
+  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "permanent" }, sameTitleCount: 1 }).review_state, "rejected");
+  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "part_time" }, sameTitleCount: 1 }).review_state, "approved");
+});
+
 test("anything short of every rule → pending", () => {
   const cases = [
     buildJob({ raw, source: { ...trusted, trusted: false }, extraction, sameTitleCount: 1 }),
-    buildJob({ raw, source: trusted, extraction: { ...extraction, requires_credential: true }, sameTitleCount: 1 }),
     buildJob({ raw, source: trusted, extraction: { ...extraction, scam_signals: ["messenger_only"] }, sameTitleCount: 1 }),
     buildJob({ raw: { ...raw, location_raw: "Remote" }, source: trusted, extraction: { ...extraction, korea_eligible: null }, sameTitleCount: 1 }),
   ];

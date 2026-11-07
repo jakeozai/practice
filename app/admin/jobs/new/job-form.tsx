@@ -134,7 +134,7 @@ export function JobForm(props: {
             defaultChecked={v.requires_credential === "on"}
           />
           <label htmlFor="requires_credential" className="text-sm">
-            학위·자격증·면허가 필수예요 (메일 발송 대상에서 빠져요)
+            학위·자격증·면허나 특정 직업 경력이 필수예요 (정보로만 표시, 발송은 막지 않아요)
           </label>
         </div>
       </div>

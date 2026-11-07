@@ -1,5 +1,5 @@
 /**
- * Hand-written types for supabase/migrations/0001_init.sql + 0002_collection.sql, in the shape that
+ * Hand-written types for supabase/migrations/0001–0004, in the shape that
  * `supabase gen types typescript` produces. Regenerate with the CLI once a
  * Supabase project is linked, and keep this file in sync with migrations.
  */
@@ -84,6 +84,7 @@ export type Database = {
           pay_unit: "hour" | "task" | "project" | "month" | null;
           hours_per_week_min: number | null;
           english_level: EnglishLevel | null;
+          engagement: "freelance" | "contract" | "part_time" | "permanent" | null;
           status: "open" | "pool" | "closed" | "unknown";
           repost_count: number;
           scam_score: number;
@@ -113,6 +114,7 @@ export type Database = {
           pay_unit?: "hour" | "task" | "project" | "month" | null;
           hours_per_week_min?: number | null;
           english_level?: EnglishLevel | null;
+          engagement?: "freelance" | "contract" | "part_time" | "permanent" | null;
           status?: "open" | "pool" | "closed" | "unknown";
           repost_count?: number;
           scam_score?: number;

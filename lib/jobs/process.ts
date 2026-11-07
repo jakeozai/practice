@@ -48,9 +48,13 @@ export function buildJob(input: {
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;
 
+  // Out of scope: not work that needs AI, or open-ended staff hiring (AI잡5 sends short-term work).
+  // Credentials and work language are information only; they don't block.
+  const outOfScope = x !== null && (!x.ai_related || x.engagement === "permanent");
+
   let review: JobInsert["review_state"] = "pending";
-  if (isScamRejected(scam)) review = "rejected";
-  else if (x && source.trusted && korea === true && scam === 0 && !requiresCredential) review = "approved";
+  if (isScamRejected(scam) || outOfScope) review = "rejected";
+  else if (x && source.trusted && korea === true && scam === 0) review = "approved";
 
   return {
     raw_posting_id: raw.id,
@@ -70,6 +74,7 @@ export function buildJob(input: {
     pay_unit: x?.pay_unit ?? null,
     hours_per_week_min: x?.hours_per_week_min ?? null,
     english_level: x?.english_level ?? null,
+    engagement: x?.engagement ?? null,
     status: decideStatus({ isTalentPool: x?.is_talent_pool ?? false, sameTitleCount }),
     repost_count: Math.max(0, sameTitleCount - 1),
     scam_score: scam,

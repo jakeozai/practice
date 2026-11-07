@@ -61,15 +61,14 @@ test("keyword filter looks at title and body", () => {
   assert.equal(matchesJobKeywords("Korean Speaker - Freelance Project", ""), true);
   assert.equal(matchesJobKeywords("Specialist", "You will do data ANNOTATION tasks"), true);
   assert.equal(matchesJobKeywords("Account Manager", "Manage enterprise accounts."), false);
+  assert.equal(matchesJobKeywords("Maintain the database", "He said so."), false, "'ai' inside words doesn't count");
+  assert.equal(matchesJobKeywords("AI 영상 편집 프리랜서", ""), true);
+  assert.equal(matchesJobKeywords("데이터 라벨링 재택 알바", ""), true);
+  assert.equal(matchesJobKeywords("Video editor", "Create clips with generative tools."), true);
 });
 
-test("work language, not posting language, decides feasibility", async () => {
-  const { languagesFeasible, missingLanguages, languageNameKo } = await import("./jobs/language");
-  assert.equal(languagesFeasible([]), true, "language-neutral work");
-  assert.equal(languagesFeasible(["en"]), true, "English work is fine for everyone");
-  assert.equal(languagesFeasible(["ko", "en"]), true);
-  assert.deepEqual(missingLanguages(["en", "lt"]), ["lt"]);
-  assert.equal(languagesFeasible(["ja", "ko"], ["ko", "en", "ja"]), true, "Phase 2: profile languages count");
+test("work language is display-only", async () => {
+  const { languageNameKo } = await import("./jobs/language");
   assert.equal(languageNameKo("ja"), "일본어");
   assert.equal(languageNameKo("lt"), "LT");
 });
