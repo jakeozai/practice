@@ -79,3 +79,37 @@ Phase 0 완료 기준 "하루 N개를 채울 신규 공고 공급 확인"(점검
 - **위치 칸보다 본문의 지역 조건이 우선이다.** xAI처럼 위치 칸은 "International"인데 본문에서 국가를 한정하는 경우가 있다. 지역 규칙(`lib/eligibility.ts`)에 `international`을 "가능" 단어로 넣으면 안 된다.
 - 위치 칸의 `Seoul`, `KR`도 한국으로 인식해야 한다(명세 정규식에는 `korea`만 있음).
 - 공개 채용 API는 RWS·Appen 정도만 일감을 올린다. 공급을 늘리려면 플랫폼 자체 일감 페이지를 소스로 넣는 결정이 필요하다(명세 규칙 11: robots.txt 확인, User-Agent 명시).
+
+## 추가 점검 — 수집처 확장 (같은 날, 하루 3개 기준)
+
+검색엔진에서 채용 시스템 도메인별로 한국어 AI 일감을 찾아 고용처의 공개 보드를 더 확인했다. 처음 점검에서 못 찾은 Welo Data(`weloglobal`), Invisible의 프리랜서 보드(Greenhouse `agency`), TransPerfect·DataForce(Recruitee `transperfect`)가 핵심이었다.
+
+### 수집처 15곳 (`lib/sources/seeds.ts`)
+
+`npm run collect -- --dry-run` 실측: 공고 2,906건 → 키워드 통과 + 한국 가능/미확인 603건이 처리 대상.
+
+| 수집처 | 시스템 | 공고 | 키워드 통과 | 한국 가능(규칙) | 미확인 |
+| --- | --- | --- | --- | --- | --- |
+| Invisible (Freelance AI Trainer) | Greenhouse `agency` | 827 | 760 | 206 | 70 |
+| Welo Data | Lever `weloglobal` | 445 | 373 | 129 | 16 |
+| RWS TrainAI | Lever `rws` | 125 | 113 | 3 | 84 |
+| TransPerfect / DataForce | Recruitee `transperfect` | 676 | 158 | 17 | 0 |
+| xAI | Greenhouse `xai` | 303 | 62 | 0 | 59 |
+| Appen | Lever `appen` | 48 | 12 | 0 | 5 |
+| Scale AI, Handshake, Mercor, Toloka, Turing, Labelbox, Prolific, Snorkel AI, Remotasks | Greenhouse·Ashby | 482 | 151 | 0 | 14 |
+
+- "한국 가능"에는 전 세계 원격(World Wide) 공고도 들어간다. 본문을 읽어 실제로 한국 거주자가 지원 가능한지, AI 일감인지(정규직 영업·코디네이터 제외)는 처리 단계(LLM)와 검수 큐가 거른다.
+- 한국 관련 AI 일감만 세면 약 30건: Invisible 14건(한국어 화자·번역·STEM·코딩 등), Welo Data 6건(AI Trainers Network 한국어, 광고 품질 평가 등), RWS 3건, TransPerfect 프리랜서 몇 건.
+- 한국에서 지원 가능한 전 세계 원격·언어 무관 일감: Invisible 약 70건.
+
+### 공급 판단
+
+- **재고**: 지금 열려 있는 한국 지원 가능 일감 약 100건 → 구독자 1명당 하루 3개씩 한 달 정도는 겹치지 않게 보낼 수 있다.
+- **신규 유입**: 이 공고들은 몇 달째 열려 있는 상시 공고가 대부분이다. 최근 90일 안에 처음 올라온 한국 관련·전 세계 공고는 약 15건으로, 하루 3개 신규에는 아직 못 미친다. 매일 수집하며 실측(`/admin` 하루 신규 공고 수)하는 것이 다음 단계다.
+
+### 못 넣은 곳
+
+- Volga Partners(Workable `volga-partners`, 한국 거주 계약직 평가자): Workable API가 이 환경에서 Cloudflare 1015(요청 제한)로 막혀 응답 형식을 확인하지 못했다. GitHub Actions에서는 될 수 있다.
+- LILT, Toloka의 어노테이터 채용: 한국어 공고가 있지만 공개 보드 위치를 찾지 못했다.
+- OpenTrain AI, Mercor·micro1·Alignerr·Outlier·DataAnnotation의 자체 일감 페이지: 공개 채용 API가 아니라 페이지 수집(`page`)이 필요하다. 사이트별 약관·robots.txt 확인이 먼저다(명세 규칙 11).
+- AI 일감 모음 사이트(aitrainer.work, annotation.academy, remowork.life 등): 경쟁 업체 DB라 수집하지 않는다(명세 §14).

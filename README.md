@@ -74,6 +74,23 @@ npm run build       # next build
    - `.env.local`을 자동으로 읽습니다.
 5. **지표**: `/admin` 상단 — 구독 수, 프로필 완료율, 메일 클릭률(공고 링크를 1번 이상 누른 메일 ÷ 보낸 메일), 하루 신규 공고 수.
 
+## 공고 수집
+
+15개 수집처(채용 시스템 4종: Greenhouse·Lever·Ashby·Recruitee)의 공개 API에서 매일 공고를 가져옵니다. 목록은 `lib/sources/seeds.ts`와 `supabase/migrations/0002_collection.sql`(같은 내용)에 있습니다.
+
+```bash
+npm run collect -- --dry-run   # DB 없이: 실제 API를 조회해 수집처별 공고 수만 보고
+npm run collect                # DB의 active 수집처 전부 → raw_postings
+npm run process                # 새·바뀐 공고 → jobs (자동 승인 또는 검수 큐)
+```
+
+- **수집**(`workers/fetch-sources.ts`): 새 공고·바뀐 공고만 저장(`body_hash`). 2회 연속 안 보이면 공고를 마감 처리하고, 수집처가 3회 연속 실패하면 관리자에게 메일을 보냅니다.
+- **처리**(`workers/process-postings.ts`): 키워드 필터 → 지역 규칙(한국 불가가 확실하면 LLM 호출 없이 건너뜀) → LLM 추출·한국어 요약 1회(실패 시 1회 재시도) → 규칙 판정 → 신뢰 수집처 + 한국 가능 + 사기 신호 없음 + 자격 불필요면 자동 승인, 나머지는 `/admin/review` 검수 큐.
+- `ANTHROPIC_API_KEY`·`ANTHROPIC_MODEL_FAST`가 없으면 LLM 없이 돌고, 후보는 요약 없이 검수 큐로 갑니다(관리자가 요약 작성).
+- 매일 19:00 KST에 `.github/workflows/collect.yml`이 둘을 차례로 실행합니다. 저장소 Secrets에 워크플로 파일에 적힌 값을 등록해야 합니다.
+- 수집처 추가: `sources` 테이블에 행을 넣으면 됩니다(`kind`=greenhouse/lever/ashby/recruitee, `endpoint`=보드 토큰). 시드 목록을 바꿀 땐 두 파일을 같이 고치세요(테스트가 확인).
+- 이 개발 환경(클라우드 샌드박스)에서 실행할 땐 `NODE_USE_ENV_PROXY=1`을 앞에 붙여야 합니다. GitHub Actions·Vercel에서는 필요 없습니다.
+
 ## 구조
 
 ```text
@@ -82,7 +99,7 @@ app/
   auth/callback/route.ts                 세션 교환, profiles 생성
   onboarding/                            프롬프트 → 붙여넣기 → 확인 → 저장
   api/profile/{preview,save}/route.ts    파싱(저장 안 함) / 재검증 후 저장
-  admin/                                 지표 대시보드, 발송 공고 선택, 수동 공고 등록
+  admin/                                 지표·수집처 현황, 발송 공고 선택, 수동 등록, 검수 큐(review/)
   r/[token]/route.ts                     클릭 기록 후 원문으로 이동 (Phase 2에 /j/[id]로 변경)
   api/email/unsubscribe/route.ts         GET=확인 페이지로, POST=수신거부(RFC 8058 원클릭 포함)
   unsubscribe/page.tsx                   수신거부 확인 페이지
@@ -95,7 +112,13 @@ lib/
   email/send.ts                          Resend 래퍼(타임아웃·재시도·멱등 키)
   links.ts                               메일 링크 HMAC 서명
   jobs/{format,manual}.ts                표시 형식, 수동 등록 검증
+  sources/                               수집처 어댑터(adapters), 시드 목록, 동기화 계산, HTTP
+  llm/                                   Anthropic 래퍼, 공고 추출(extractJob)
+  jobs/{keywords,process}.ts             키워드 필터, 공고 → jobs 판정
+  eligibility.ts, status.ts, scam.ts     한국 지원 가능·재게시·사기 규칙
 workers/send-manual.ts                   Phase 0 수동 발송
+workers/fetch-sources.ts                 공고 수집
+workers/process-postings.ts              공고 처리
 proxy.ts                                 세션 갱신, 비로그인 보호 페이지 리다이렉트
 ```
 
@@ -111,7 +134,9 @@ proxy.ts                                 세션 갱신, 비로그인 보호 페�
 
 완료 기준(명세 §15): 하루 3개를 채울 신규 공고 공급 확인, 구독 100명, 메일 클릭률 20% 이상.
 
-공급 점검(2026-11-07): 공개 채용 API에서 한국 거주자가 지원할 수 있는 실제 일감은 3건(모두 RWS), 최근 30일 신규는 0건이었다. 등록용 요약까지 [`docs/supply-check-2026-11-07.md`](docs/supply-check-2026-11-07.md)에 정리했다.
+공급 점검(2026-11-07): 수집처를 15곳으로 넓히자 한국 관련 AI 일감이 약 30건, 한국에서 지원 가능한 전 세계 원격 일감이 약 70건 잡혔다. 다만 대부분 몇 달째 열려 있는 상시 공고라, 새로 올라오는 공고는 아직 하루 3개에 못 미친다. 자세한 내용은 [`docs/supply-check-2026-11-07.md`](docs/supply-check-2026-11-07.md).
+
+Phase 1의 수집·처리·검수 큐는 사용자 지시로 앞당겨 구현했다(발송 자동화 `send-digest.ts`는 아직).
 
 ## 확인 필요 (코드에 자리표시값으로 둔 것)
 
@@ -120,6 +145,6 @@ proxy.ts                                 세션 갱신, 비로그인 보호 페�
 | ChatGPT·Claude 미리 채우기 링크 | `lib/profile/prefill.ts` `PREFILL_ENABLED` | 둘 다 꺼짐. 외부 자료상 ChatGPT `?q=`는 입력만 채움, Claude `?q=`는 2025년 10월쯤 끊겼다는 보고. 직접 눌러 보고 하나씩 켜기 |
 | 메일 하단 발신자(운영자) 표기 | `lib/email/constants.ts` `MAIL_FOOTER_SENDER` | `AI잡5 (가칭)` |
 | Resend 일·월 발송 한도 | Resend 대시보드 | 요금제마다 다름. 초당 한도는 팀당 10건(전 요금제 동일)이라 `SEND_INTERVAL_MS` 600ms로 충분 |
-| 수집 소스(플랫폼 자체 일감 페이지) | Phase 1 | 공개 채용 API는 공급 부족 — 공급 점검 문서 참고 |
+| 추가 수집처 | `sources` 테이블 | Workable(Volga Partners)은 이 환경에서 Cloudflare 차단으로 미검증. OpenTrain·Mercor·Alignerr 등 자체 일감 페이지는 약관·robots.txt 확인 후 결정 필요 |
 | 서비스 이름·도메인 | 전체 | 가칭 AI잡5 |
 | 개인정보 처리방침·국외 이전 고지 | Phase 2 | 미작성 |

@@ -125,16 +125,17 @@ workers/send-digest.ts
 
 ## 7. 공고 수집 — `workers/fetch-sources.ts`
 
-1. `sources where active` 순회. 소스별 어댑터 `lib/sources/{greenhouse,lever,ashby,page}.ts`가 공통 형태 `{ external_id, url, title, location_raw, body }[]`를 돌려준다.
+1. `sources where active` 순회. 소스별 어댑터(`lib/sources/adapters.ts`: greenhouse·lever·ashby·recruitee, `page`는 미구현)가 공통 형태 `{ external_id, url, title, location_raw, body }[]`를 돌려준다. 수집처 목록은 `lib/sources/seeds.ts` = `0002_collection.sql`.
 
 ```text
 Greenhouse: GET https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs?content=true
 Lever:      GET https://api.lever.co/v0/postings/{company}?mode=json
 Ashby:      GET https://api.ashbyhq.com/posting-api/job-board/{board_name}
+Recruitee:  GET https://{company}.recruitee.com/api/offers/
 ```
 
    - 응답 필드명(본문·지역·URL)은 착수 시 실제 응답으로 확인해 어댑터에 고정한다. Greenhouse `content`는 HTML 이스케이프된 HTML이므로 디코드 후 텍스트로 변환한다.
-   - 시드 소스와 board token `[확인 필요]`. Meridial 공고는 Greenhouse 경유 사례가 있다.
+   - 시드 소스와 board token: 2026-11-07 점검으로 15곳 확정(`docs/supply-check-2026-11-07.md`). Meridial 공고는 Greenhouse 경유 사례가 있다.
 2. 정규화한 본문의 sha256을 `body_hash`로 저장하고 `(source_id, external_id)`로 upsert.
 3. 이번 실행에서 안 보인 기존 공고 → 연결된 `jobs.missing_count + 1`, 2 이상이면 `status = 'closed'`. 보이면 `missing_count = 0`, `last_seen_at = now()`.
 4. 실패 처리: 소스 요청 실패 시 `fail_count + 1`, 3회 연속이면 관리자에게 알림 메일. 성공 시 0으로.
