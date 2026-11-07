@@ -1,25 +1,27 @@
 /**
- * [확인 필요] "Open in ChatGPT / Claude" buttons that prefill the prompt
- * (spec §2.1-3). Neither service documents these URLs. What third-party
- * tools reported as of 2026-11-07:
- * - ChatGPT `?q=` prefills the input without sending it.
- * - Claude `/new?q=` reportedly stopped working around October 2025.
- * Both stay off until each one is tested by hand; enable them one at a time.
+ * "Analyze with my AI" buttons. Clicking one copies the prompt to the
+ * clipboard AND opens the assistant, so the flow works whether or not the
+ * site honours a prefill parameter:
+ * - ChatGPT `?q=` prefills the message (third-party reports, 2026)
+ * - Claude `/new?q=` was reported to stop working in Oct 2025; harmless if ignored
+ * - Gemini has no prefill parameter; the user pastes
  */
-export const PREFILL_ENABLED = {
-  chatgpt: false,
-  claude: false,
-} as const;
+export type AiAssistant = { id: "chatgpt" | "claude" | "gemini"; label: string; prefills: boolean };
 
-const LINKS = [
-  { key: "chatgpt", label: "ChatGPT에서 열기", base: "https://chatgpt.com/?q=" },
-  { key: "claude", label: "Claude에서 열기", base: "https://claude.ai/new?q=" },
-] as const;
+export const AI_ASSISTANTS: AiAssistant[] = [
+  { id: "chatgpt", label: "ChatGPT", prefills: true },
+  { id: "claude", label: "Claude", prefills: true },
+  { id: "gemini", label: "Gemini", prefills: false },
+];
 
-export function aiPrefillLinks(
-  prompt: string,
-  enabled: Record<(typeof LINKS)[number]["key"], boolean> = { chatgpt: true, claude: true },
-): { label: string; href: string }[] {
+export function assistantUrl(id: AiAssistant["id"], prompt: string): string {
   const q = encodeURIComponent(prompt);
-  return LINKS.filter((l) => enabled[l.key]).map((l) => ({ label: l.label, href: `${l.base}${q}` }));
+  switch (id) {
+    case "chatgpt":
+      return `https://chatgpt.com/?q=${q}`;
+    case "claude":
+      return `https://claude.ai/new?q=${q}`;
+    case "gemini":
+      return "https://gemini.google.com/app";
+  }
 }

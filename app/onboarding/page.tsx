@@ -2,12 +2,11 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getProfilePrompt } from "@/lib/profile/prompt";
-import { PREFILL_ENABLED, aiPrefillLinks } from "@/lib/profile/prefill";
 import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingFlow } from "./onboarding-flow";
 
-export const metadata = { title: "프로필 만들기 — AI잡5" };
+export const metadata = { title: "AI로 나를 분석하기 — AI잡5" };
 
 async function loadSavedProfile(userId: string): Promise<Profile | null> {
   const supabase = await createClient();
@@ -21,24 +20,14 @@ async function Onboarding() {
 
   const [prompt, saved] = await Promise.all([getProfilePrompt(), loadSavedProfile(user.id)]);
   return (
-    <OnboardingFlow
-      email={user.email}
-      prompt={prompt}
-      prefillLinks={aiPrefillLinks(prompt, PREFILL_ENABLED)}
-      saved={saved}
-    />
+    <OnboardingFlow email={user.email} prompt={prompt} saved={saved} />
   );
 }
 
 export default function OnboardingPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">내 AI로 프로필 만들기</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          평소 쓰는 AI가 나를 정리해 주면, 그걸로 매일 아침 맞는 일감을 골라요. 붙여넣은 답변 원문은 저장하지 않아요.
-        </p>
-      </div>
+      <p className="text-xs text-zinc-500">AI 답변 원문은 저장하지 않고, 확인한 분석 결과만 저장해요.</p>
       <Suspense fallback={<p className="text-sm text-zinc-500">불러오는 중…</p>}>
         <Onboarding />
       </Suspense>

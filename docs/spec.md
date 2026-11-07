@@ -17,7 +17,7 @@
 
 **포함**
 1. 이메일 매직링크 가입 (= 더블 옵트인)
-2. 내 AI로 프로필 가져오기 (프롬프트 복사 → 붙여넣기 → 확인 → 저장) + 5문항 대체 폼
+2. 내 AI가 나를 분석 → 확인만 (이메일만으로 구독 완료, 분석은 선택)
 3. 공고 수집·처리 워커 (공개 채용 시스템 API 우선) + 관리자 검수 큐 + 자동 승인 규칙
 4. 매일 아침 3개 메일 (Phase 1은 전원 동일, Phase 2부터 사용자별 개인화)
 5. 공고 상세 페이지 (요약·조건·상태 라벨·원문 링크)
@@ -36,13 +36,11 @@
 1. `/` 랜딩에서 이메일 입력 → `supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: \`${APP_URL}/auth/callback?next=/onboarding\` } })`.
    - Supabase 대시보드에서 커스텀 SMTP를 Resend로 연결해 서비스 도메인으로 발송하고, 인증 메일 템플릿을 한국어로 바꾼다.
 2. 메일 링크 → `/auth/callback`에서 세션 교환(`@supabase/ssr`) → `profiles` 행이 없으면 `{ user_id, email, digest_status: 'active' }`로 생성 → `next`로 이동.
-3. `/onboarding` 1단계 — 프롬프트 안내
-   - `prompts/profile-extract.md` 내용을 보여주고 [프롬프트 복사] 버튼.
-   - [ChatGPT에서 열기] `https://chatgpt.com/?q=<encodeURIComponent(prompt)>`, [Claude에서 열기] `https://claude.ai/new?q=<...>`. `[확인 필요]` 두 주소의 미리 채우기 동작과 주소 길이 제한. 안 되면 버튼을 숨기고 복사만 남긴다.
-   - 프롬프트 파일은 빌드 시 문자열로 읽는다(`fs.readFileSync`를 서버 컴포넌트에서, 또는 `lib/profile/prompt.ts` 상수로 복사). 표식 문자열은 `parse.ts`의 `PROFILE_START`/`PROFILE_END`와 같아야 한다.
-4. 2단계 — 붙여넣기: textarea → `POST /api/profile/preview` → `parseProfileText()`. 실패하면 `PARSE_ERROR_MESSAGES_KO[error]`를 보여준다.
-5. 3단계 — 확인: 필드별 편집 폼. `missing`(영어 수준, 분야, 주당 시간)은 강조하고 채우게 한다. [저장] → `POST /api/profile/save` → 서버에서 `ProfileSchema.parse()`로 재검증 → `toProfileColumns()` 저장, `profile_source = 'ai_import'`. 임베딩 계산은 Phase 2부터.
-6. 대체 경로: [AI가 나를 잘 몰라요] → 5문항 폼(영어 수준, 관심 분야, 주당 시간, 희망 시급, 피하고 싶은 일) → 같은 `Profile` 모양으로 만들어 저장, `profile_source = 'form'`.
+3. 이메일 입력 + 메일 링크 클릭만으로 구독이 끝난다(프로필 없이도 공통 추천을 받는다). 사용자는 자기 정보를 직접 적지 않는다. **평소 쓰는 AI가 사용자를 분석하고, 사용자는 확인만 한다**(2026-11-07 사용자 결정).
+4. `/onboarding` 1단계 — [ChatGPT로 분석]·[Claude로 분석]·[Gemini로 분석] 버튼. 누르면 `prompts/profile-extract.md`를 클립보드에 복사하고 AI를 새 창에 연다(ChatGPT·Claude는 `?q=`로 미리 채우기, 안 되면 붙여넣기). 프롬프트는 AI에게 질문하지 말고 기억·대화 기록으로 바로 분석하라고 하고, 모르는 항목은 비워 두게 한다. [나중에 할게요]로 건너뛸 수 있다.
+   - 프롬프트 파일은 서버 컴포넌트에서 읽는다(`lib/profile/prompt.ts`). 표식 문자열은 `parse.ts`의 `PROFILE_START`/`PROFILE_END`와 같아야 한다.
+5. 2단계 — 돌아오기: [복사한 분석 결과 불러오기](클립보드 읽기) 또는 붙여넣기 → `POST /api/profile/preview` → `parseProfileText()`. 실패하면 `PARSE_ERROR_MESSAGES_KO[error]`.
+6. 3단계 — 확인 카드: "AI가 이렇게 분석했어요"(잘하는 분야·도구·언어·시간·희망 시급·피하고 싶은 일). [맞아요] 한 번으로 `POST /api/profile/save` → 서버에서 `ProfileSchema.parse()`로 재검증 → `toProfileColumns()` 저장, `profile_source = 'ai_import'`. 빈 항목이 있어도 저장한다. [조금 고칠게요]는 선택. 임베딩 계산은 Phase 2부터.
 
 ### 2.2 매일 아침 메일
 
@@ -197,7 +195,7 @@ Recruitee:  GET https://{company}.recruitee.com/api/offers/
 | --- | --- | --- | --- |
 | `/` | 페이지 | - | 랜딩 + 이메일 입력 |
 | `/auth/callback` | 라우트 | - | 세션 교환, profiles 생성 |
-| `/onboarding` | 페이지 | 필요 | 프롬프트 → 붙여넣기 → 확인 → 저장, 5문항 대체 폼 |
+| `/onboarding` | 페이지 | 필요 | 내 AI로 분석 → 결과 불러오기 → 확인 |
 | `/api/profile/preview` | POST | 필요 | `parseProfileText` 결과 반환 (저장 안 함) |
 | `/api/profile/save` | POST | 필요 | 재검증 후 저장 (+ Phase 2부터 임베딩) |
 | `/j/[id]` | 페이지 | - | 승인 공고 상세 (요약·조건·상태·원문 링크) |

@@ -2,12 +2,12 @@ import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 
 const STEPS = [
-  { title: "이메일로 가입", body: "비밀번호 없이 메일로 온 링크만 누르면 끝이에요." },
+  { title: "이메일만 입력", body: "비밀번호도 회원정보도 없어요. 메일로 온 링크를 누르면 구독 완료." },
   {
-    title: "내 AI로 프로필 가져오기",
-    body: "ChatGPT·Claude·Gemini에 프롬프트를 붙여넣으면, AI가 나를 정리해 줘요. 그 답을 붙여넣기만 하면 돼요.",
+    title: "내 AI가 나를 분석",
+    body: "버튼 하나로 평소 쓰는 ChatGPT·Claude·Gemini가 대화 기록으로 나를 분석해요. 나는 확인만.",
   },
-  { title: "매일 아침 3개", body: "전 세계 원격 AI 일감을 한국어 3줄 요약과 원문 링크로 보내드려요. 지원은 원문에서 직접 해요." },
+  { title: "매일 아침 3개", body: "전 세계·국내 AI 단기 일감 중 나에게 맞는 3개를 한국어 요약과 원문 링크로 보내드려요." },
 ];
 
 const ERRORS: Record<string, string> = {

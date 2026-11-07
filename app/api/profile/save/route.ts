@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { ProfileSchema, missingFields, toProfileColumns } from "@/lib/profile/parse";
+import { ProfileSchema, toProfileColumns } from "@/lib/profile/parse";
 import { ensureProfile } from "@/lib/profile/store";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
 const Body = z.object({ profile: z.record(z.string(), z.unknown()) });
-
-const MISSING_KO = { english_level: "영어 수준", fields: "관심 분야", weekly_hours: "주당 가능 시간" } as const;
 
 /** Re-validates the confirmed profile on the server and saves only the parsed fields. */
 export async function POST(request: Request) {
@@ -18,14 +16,8 @@ export async function POST(request: Request) {
   const body = Body.safeParse(await request.json().catch(() => null));
   if (!body.success) return NextResponse.json({ ok: false, message: "잘못된 요청이에요." }, { status: 400 });
 
+  // Re-validated on the server. Empty fields are fine: the user only confirms what their AI found.
   const profile = ProfileSchema.parse(body.data.profile);
-  const missing = missingFields(profile);
-  if (missing.length) {
-    return NextResponse.json(
-      { ok: false, missing, message: `${missing.map((m) => MISSING_KO[m]).join(", ")}을(를) 채워 주세요.` },
-      { status: 422 },
-    );
-  }
 
   await ensureProfile(user.id, user.email);
   const now = new Date().toISOString();

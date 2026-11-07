@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ProfileSchema, missingFields, type MissingField, type Profile } from "@/lib/profile/parse";
+import { useRef, useState } from "react";
+import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import {
   ENGLISH_LEVEL_OPTIONS,
   PREFERRED_TIME_OPTIONS,
@@ -9,142 +9,156 @@ import {
   toDraft,
   type ProfileDraft,
 } from "@/lib/profile/draft";
+import { AI_ASSISTANTS, assistantUrl, type AiAssistant } from "@/lib/profile/prefill";
 
-type Step = "prompt" | "paste" | "confirm" | "done";
-
-const STEP_LABELS: { key: Exclude<Step, "done">; label: string }[] = [
-  { key: "prompt", label: "프롬프트 복사" },
-  { key: "paste", label: "답변 붙여넣기" },
-  { key: "confirm", label: "확인·저장" },
-];
+/**
+ * The user never writes their own profile: their AI analyzes them, they confirm.
+ * analyze → (AI opens in a new tab) → return → confirm → done; edit is optional.
+ */
+type Step = "analyze" | "return" | "confirm" | "edit" | "done" | "skipped";
 
 const input =
   "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900";
-const primary = "rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50";
-const secondary = "rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800";
+const primary = "rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50";
+const secondary = "rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-800";
+const link = "text-sm text-zinc-500 underline underline-offset-2";
 
-export function OnboardingFlow(props: {
-  email: string;
-  prompt: string;
-  prefillLinks: { label: string; href: string }[];
-  saved: Profile | null;
-}) {
-  const [step, setStep] = useState<Step>(props.saved ? "confirm" : "prompt");
-  const [saved, setSaved] = useState<Profile | null>(props.saved);
-  const [base, setBase] = useState<Profile | null>(props.saved);
+export function OnboardingFlow(props: { email: string; prompt: string; saved: Profile | null }) {
+  const [step, setStep] = useState<Step>(props.saved ? "confirm" : "analyze");
+  const [profile, setProfile] = useState<Profile | null>(props.saved);
+  const [isSaved, setIsSaved] = useState(Boolean(props.saved));
+  const [assistant, setAssistant] = useState<AiAssistant | null>(null);
 
+  if (step === "analyze") {
+    return (
+      <AnalyzeStep
+        prompt={props.prompt}
+        onOpened={(a) => {
+          setAssistant(a);
+          setStep("return");
+        }}
+        onSkip={() => setStep("skipped")}
+      />
+    );
+  }
+  if (step === "return") {
+    return (
+      <ReturnStep
+        assistant={assistant}
+        onBack={() => setStep("analyze")}
+        onParsed={(p) => {
+          setProfile(p);
+          setIsSaved(false);
+          setStep("confirm");
+        }}
+      />
+    );
+  }
+  if (step === "confirm" && profile) {
+    return (
+      <ConfirmCard
+        profile={profile}
+        isSaved={isSaved}
+        onSaved={() => {
+          setIsSaved(true);
+          setStep("done");
+        }}
+        onEdit={() => setStep("edit")}
+        onReanalyze={() => setStep("analyze")}
+      />
+    );
+  }
+  if (step === "edit" && profile) {
+    return (
+      <EditForm
+        base={profile}
+        onCancel={() => setStep("confirm")}
+        onSaved={(p) => {
+          setProfile(p);
+          setIsSaved(true);
+          setStep("done");
+        }}
+      />
+    );
+  }
   return (
-    <div className="space-y-6">
-      {step !== "done" && (
-        <ol className="flex gap-2 text-xs">
-          {STEP_LABELS.map((s, i) => (
-            <li
-              key={s.key}
-              className={`flex-1 rounded-full px-3 py-1.5 text-center ${
-                s.key === step ? "bg-zinc-900 font-semibold text-white" : "bg-zinc-100 text-zinc-500"
-              }`}
-            >
-              {i + 1}. {s.label}
-            </li>
-          ))}
-        </ol>
-      )}
-
-      {step === "prompt" && (
-        <PromptStep prompt={props.prompt} prefillLinks={props.prefillLinks} onNext={() => setStep("paste")} />
-      )}
-      {step === "paste" && (
-        <PasteStep
-          onBack={() => setStep("prompt")}
-          onParsed={(profile) => {
-            setBase(profile);
-            setStep("confirm");
-          }}
-        />
-      )}
-      {step === "confirm" && base && (
-        <ConfirmStep
-          key={JSON.stringify(base)}
-          base={base}
-          isSaved={base === saved}
-          onReimport={() => setStep("prompt")}
-          onSaved={(profile) => {
-            setSaved(profile);
-            setBase(profile);
-            setStep("done");
-          }}
-        />
-      )}
-      {step === "done" && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6">
-          <p className="text-lg font-semibold text-emerald-900">저장했어요!</p>
-          <p className="mt-1 text-sm text-emerald-800">
-            곧 아침 메일로 <strong>{props.email}</strong>에 맞는 AI 일감을 보내드릴게요.
-          </p>
-          <button type="button" className={`${secondary} mt-4`} onClick={() => setStep("confirm")}>
-            프로필 다시 고치기
-          </button>
-        </div>
-      )}
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+      <p className="text-lg font-semibold text-emerald-900">{step === "skipped" ? "구독은 이미 완료됐어요" : "확인 완료!"}</p>
+      <p className="mt-1 text-sm text-emerald-800">
+        {step === "skipped" ? (
+          <>
+            <strong>{props.email}</strong>로 매일 아침 AI 일감 3개를 보내드려요. AI 분석을 하면 나에게 맞는 일감으로 골라 드려요.
+          </>
+        ) : (
+          <>
+            내일 아침부터 <strong>{props.email}</strong>로 나에게 맞는 AI 일감 3개를 보내드려요.
+          </>
+        )}
+      </p>
+      <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(step === "skipped" ? "analyze" : "confirm")}>
+        {step === "skipped" ? "지금 AI로 분석하기" : "분석 결과 다시 보기"}
+      </button>
     </div>
   );
 }
 
-function PromptStep(props: { prompt: string; prefillLinks: { label: string; href: string }[]; onNext: () => void }) {
-  const [copied, setCopied] = useState<"idle" | "ok" | "fail">("idle");
+// ── 1. pick an AI ────────────────────────────────────────────────────────
+function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void; onSkip: () => void }) {
+  const [showPrompt, setShowPrompt] = useState(false);
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(props.prompt);
-      setCopied("ok");
-    } catch {
-      setCopied("fail");
-    }
+  function open(a: AiAssistant) {
+    // Open first, synchronously in the click, so popup blockers allow it.
+    window.open(assistantUrl(a.id, props.prompt), "_blank", "noopener,noreferrer");
+    navigator.clipboard?.writeText(props.prompt).catch(() => {});
+    props.onOpened(a);
   }
 
   return (
-    <section className="space-y-4">
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-zinc-700">
-        <li>아래 프롬프트를 복사해서 ChatGPT·Claude·Gemini 중 평소 쓰는 AI에 붙여넣으세요.</li>
-        <li>AI가 질문하면 답해 주세요. 메모리(기억) 기능이 켜져 있을수록 정확해요.</li>
-        <li>
-          AI가 <code className="rounded bg-zinc-100 px-1">&lt;&lt;AIJOB5_PROFILE_V1&gt;&gt;</code> 블록을 출력하면, 그
-          답변을 통째로 복사해 오세요.
-        </li>
-      </ol>
+    <section className="space-y-6">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+        <p className="text-sm font-semibold text-indigo-600">구독 완료 · 1분이면 맞춤 추천</p>
+        <h2 className="mt-1 text-xl font-bold">평소 쓰는 AI가 나를 분석해요</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          직접 적을 건 없어요. AI가 대화 기록과 메모리로 나를 분석하면, 확인만 하면 끝이에요.
+        </p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          {AI_ASSISTANTS.map((a) => (
+            <button key={a.id} type="button" className={primary} onClick={() => open(a)}>
+              {a.label}로 분석하기
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          버튼을 누르면 분석 요청이 복사되고 AI가 새 창에서 열려요. 입력창이 비어 있으면 붙여넣기(⌘V / Ctrl+V) 후 보내세요.
+        </p>
+      </div>
 
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl border border-zinc-200 bg-white p-4 text-xs leading-relaxed text-zinc-700">
-        {props.prompt}
-      </pre>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={primary} onClick={copy}>
-          {copied === "ok" ? "복사했어요 ✓" : "프롬프트 복사"}
+      <div className="flex flex-wrap items-center gap-4">
+        <button type="button" className={link} onClick={props.onSkip}>
+          나중에 할게요
         </button>
-        {props.prefillLinks.map((link) => (
-          <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className={secondary}>
-            {link.label}
-          </a>
-        ))}
-        <button type="button" className={secondary} onClick={props.onNext}>
-          다음: 답변 붙여넣기
+        <button type="button" className={link} onClick={() => setShowPrompt((v) => !v)}>
+          AI에게 보내는 내용 보기
         </button>
       </div>
-      {copied === "fail" && (
-        <p className="text-sm text-red-600" role="alert">
-          자동 복사가 안 돼요. 위 상자에서 직접 선택해 복사해 주세요.
-        </p>
+      {showPrompt && (
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl border border-zinc-200 bg-white p-4 text-xs leading-relaxed text-zinc-700">
+          {props.prompt}
+        </pre>
       )}
     </section>
   );
 }
 
-function PasteStep(props: { onBack: () => void; onParsed: (profile: Profile) => void }) {
-  const [text, setText] = useState("");
+// ── 2. bring the answer back ─────────────────────────────────────────────
+function ReturnStep(props: { assistant: AiAssistant | null; onBack: () => void; onParsed: (p: Profile) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
+  const pasteRef = useRef<HTMLTextAreaElement>(null);
 
-  async function submit() {
+  async function parse(text: string) {
+    if (!text.trim()) return;
     setPending(true);
     setError(null);
     try {
@@ -155,10 +169,10 @@ function PasteStep(props: { onBack: () => void; onParsed: (profile: Profile) => 
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.message ?? "불러오지 못했어요. 다시 시도해 주세요.");
+        setError(data.message ?? "분석 결과를 읽지 못했어요. 다시 시도해 주세요.");
         return;
       }
-      setText(""); // the raw AI answer is not kept around
+      if (pasteRef.current) pasteRef.current.value = ""; // the raw AI answer is not kept
       props.onParsed(ProfileSchema.parse(data.profile));
     } catch {
       setError("네트워크 오류예요. 다시 시도해 주세요.");
@@ -167,55 +181,180 @@ function PasteStep(props: { onBack: () => void; onParsed: (profile: Profile) => 
     }
   }
 
+  async function fromClipboard() {
+    try {
+      await parse(await navigator.clipboard.readText());
+    } catch {
+      // Clipboard reading isn't allowed in this browser: fall back to pasting.
+      setShowPaste(true);
+      setTimeout(() => pasteRef.current?.focus(), 0);
+    }
+  }
+
+  const name = props.assistant?.label ?? "AI";
   return (
-    <section className="space-y-4">
-      <label htmlFor="ai-answer" className="block text-sm font-medium">
-        AI 답변을 그대로 붙여넣으세요
-      </label>
-      <textarea
-        id="ai-answer"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={12}
-        placeholder={"<<AIJOB5_PROFILE_V1>>\n{ ... }\n<<END_AIJOB5_PROFILE>>"}
-        className={`${input} font-mono text-xs`}
-      />
-      {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <button type="button" className={secondary} onClick={props.onBack}>
-          이전
+    <section className="space-y-5">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+        <h2 className="text-xl font-bold">{name}의 분석이 끝나면</h2>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
+          <li>{name} 답변 아래의 복사 버튼으로 답변을 통째로 복사하세요.</li>
+          <li>이 창으로 돌아와 아래 버튼을 누르세요.</li>
+        </ol>
+        <button type="button" className={`${primary} mt-5 w-full sm:w-auto`} disabled={pending} onClick={fromClipboard}>
+          {pending ? "읽는 중…" : "복사한 분석 결과 불러오기"}
         </button>
-        <button type="button" className={primary} disabled={pending || !text.trim()} onClick={submit}>
-          {pending ? "불러오는 중…" : "프로필 불러오기"}
-        </button>
+        {!showPaste && (
+          <button type="button" className={`${link} ml-0 mt-3 block sm:ml-4 sm:inline`} onClick={() => setShowPaste(true)}>
+            직접 붙여넣을게요
+          </button>
+        )}
+        {showPaste && (
+          <textarea
+            ref={pasteRef}
+            rows={6}
+            aria-label="AI 답변 붙여넣기"
+            placeholder="여기에 AI 답변을 붙여넣으세요 (⌘V / Ctrl+V)"
+            className={`${input} mt-4 font-mono text-xs`}
+            onPaste={(e) => {
+              const text = e.clipboardData.getData("text");
+              if (text) {
+                e.preventDefault();
+                void parse(text);
+              }
+            }}
+          />
+        )}
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
       </div>
+      <button type="button" className={link} onClick={props.onBack}>
+        다른 AI로 다시 분석하기
+      </button>
     </section>
   );
 }
 
-const MISSING_HINT: Record<MissingField, string> = {
-  english_level: "영어 수준을 골라 주세요",
-  fields: "관심·경험 분야를 하나 이상 적어 주세요",
-  weekly_hours: "주당 가능 시간을 적어 주세요",
-};
+// ── 3. confirm ───────────────────────────────────────────────────────────
+const englishLabel = (p: Profile) =>
+  ENGLISH_LEVEL_OPTIONS.find((o) => o.value === p.languages.find((l) => l.code === "en")?.level)?.label ?? null;
+const timeLabel = (p: Profile) => PREFERRED_TIME_OPTIONS.find((o) => o.value === p.preferred_time)?.label ?? null;
 
-function ConfirmStep(props: {
-  base: Profile;
+function Chips({ items }: { items: string[] }) {
+  if (!items.length) return <span className="text-zinc-400">—</span>;
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {items.map((x) => (
+        <span key={x} className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-sm text-zinc-800">
+          {x}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[7rem_1fr] gap-3 py-2.5 text-sm">
+      <dt className="text-zinc-500">{label}</dt>
+      <dd className="text-zinc-900">{children}</dd>
+    </div>
+  );
+}
+
+const orDash = (v: string | null) => v ?? <span className="text-zinc-400">—</span>;
+
+function ConfirmCard(props: {
+  profile: Profile;
   isSaved: boolean;
-  onReimport: () => void;
-  onSaved: (profile: Profile) => void;
+  onSaved: () => void;
+  onEdit: () => void;
+  onReanalyze: () => void;
 }) {
+  const p = props.profile;
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const others = p.languages.filter((l) => l.code !== "ko" && l.code !== "en").map((l) => l.code.toUpperCase());
+
+  async function confirm() {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/profile/save", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ profile: p }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.message ?? "저장하지 못했어요.");
+        return;
+      }
+      props.onSaved();
+    } catch {
+      setError("네트워크 오류예요. 다시 시도해 주세요.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <section className="space-y-5">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+        <p className="text-sm font-semibold text-indigo-600">{props.isSaved ? "저장된 분석 결과" : "AI 분석 결과"}</p>
+        <h2 className="mt-1 text-xl font-bold">AI가 이렇게 분석했어요</h2>
+        {p.experience_summary_ko && <p className="mt-3 text-sm leading-relaxed text-zinc-700">{p.experience_summary_ko}</p>}
+
+        <dl className="mt-4 divide-y divide-zinc-100">
+          <Row label="잘하는 분야">
+            <Chips items={[...p.fields, ...p.domain_expertise]} />
+          </Row>
+          <Row label="쓰는 도구">
+            <Chips items={p.skills} />
+          </Row>
+          <Row label="언어">
+            한국어{englishLabel(p) ? ` · 영어: ${englishLabel(p)}` : ""}
+            {others.length ? ` · ${others.join(", ")}` : ""}
+          </Row>
+          <Row label="가능한 시간">
+            {orDash([p.weekly_hours ? `주 ${p.weekly_hours}시간` : null, timeLabel(p)].filter(Boolean).join(" · ") || null)}
+          </Row>
+          <Row label="희망 시급">{p.min_hourly_usd ? `$${p.min_hourly_usd} 이상` : orDash(null)}</Row>
+          <Row label="피하고 싶은 일">
+            <Chips items={p.avoid} />
+          </Row>
+        </dl>
+        <p className="mt-3 text-xs text-zinc-500">빈 항목은 AI가 몰라서 비워 둔 거예요. 그대로 둬도 괜찮아요.</p>
+
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button type="button" className={primary} disabled={pending} onClick={confirm}>
+            {pending ? "저장하는 중…" : props.isSaved ? "이대로 유지" : "맞아요, 이대로 받을게요"}
+          </button>
+          <button type="button" className={link} onClick={props.onEdit}>
+            조금 고칠게요
+          </button>
+        </div>
+      </div>
+      <button type="button" className={link} onClick={props.onReanalyze}>
+        AI로 다시 분석하기
+      </button>
+    </section>
+  );
+}
+
+// ── optional: edit ───────────────────────────────────────────────────────
+function EditForm(props: { base: Profile; onCancel: () => void; onSaved: (p: Profile) => void }) {
   const [draft, setDraft] = useState<ProfileDraft>(() => toDraft(props.base));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
-  const missing = useMemo(() => missingFields(ProfileSchema.parse(fromDraft(draft, props.base))), [draft, props.base]);
   const set = <K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
-  const flag = (field: MissingField) => (missing.includes(field) ? "border-amber-500 ring-2 ring-amber-200" : "");
 
   async function save() {
     setPending(true);
@@ -241,83 +380,24 @@ function ConfirmStep(props: {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-zinc-700">
-          {props.isSaved ? "저장된 프로필이에요. 고칠 곳이 있으면 고쳐서 저장하세요." : "AI가 정리한 내용이에요. 맞는지 확인해 주세요."}
-        </p>
-        <button type="button" className="text-sm text-zinc-500 underline" onClick={props.onReimport}>
-          AI로 다시 가져오기
-        </button>
-      </div>
-
-      {missing.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
-          <p className="font-semibold">일감을 고르려면 아래 항목이 꼭 필요해요</p>
-          <ul className="mt-1 list-disc pl-5">
-            {missing.map((m) => (
-              <li key={m}>{MISSING_HINT[m]}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+    <section className="space-y-5 rounded-2xl border border-zinc-200 bg-white p-6">
+      <h2 className="text-lg font-bold">고칠 곳만 고치세요</h2>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="영어 수준" htmlFor="englishLevel" required>
-          <select
-            id="englishLevel"
-            value={draft.englishLevel}
-            onChange={(e) => set("englishLevel", e.target.value as ProfileDraft["englishLevel"])}
-            className={`${input} ${flag("english_level")}`}
-          >
-            <option value="">선택해 주세요</option>
-            {ENGLISH_LEVEL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+        <Field label="잘하는 분야 (쉼표로 구분)" htmlFor="fields" wide>
+          <input id="fields" value={draft.fields} onChange={(e) => set("fields", e.target.value)} className={input} />
         </Field>
-
-        <Field label="주당 가능 시간" htmlFor="weeklyHours" required>
-          <input
-            id="weeklyHours"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={80}
-            value={draft.weeklyHours}
-            onChange={(e) => set("weeklyHours", e.target.value)}
-            className={`${input} ${flag("weekly_hours")}`}
-            placeholder="예: 10"
-          />
-        </Field>
-
-        <Field label="관심·경험 분야 (쉼표로 구분, 최대 5개)" htmlFor="fields" required wide>
-          <input
-            id="fields"
-            value={draft.fields}
-            onChange={(e) => set("fields", e.target.value)}
-            className={`${input} ${flag("fields")}`}
-            placeholder="예: 번역, 콘텐츠 검수, 라벨링"
-          />
-        </Field>
-
-        <Field label="다룰 수 있는 도구·기술 (최대 10개)" htmlFor="skills" wide>
+        <Field label="쓰는 도구·기술" htmlFor="skills" wide>
           <input id="skills" value={draft.skills} onChange={(e) => set("skills", e.target.value)} className={input} />
         </Field>
-
-        <Field label="전문 지식 분야 (최대 5개)" htmlFor="domainExpertise" wide>
+        <Field label="전문 분야" htmlFor="domainExpertise" wide>
           <input
             id="domainExpertise"
             value={draft.domainExpertise}
             onChange={(e) => set("domainExpertise", e.target.value)}
             className={input}
-            placeholder="예: 법률, 의료, 금융 — 없으면 비워 두세요"
           />
         </Field>
-
-        <Field label="경력 요약 (회사 이름 없이, 300자)" htmlFor="experience" wide>
+        <Field label="경력 요약 (300자)" htmlFor="experience" wide>
           <textarea
             id="experience"
             rows={3}
@@ -327,7 +407,33 @@ function ConfirmStep(props: {
             className={input}
           />
         </Field>
-
+        <Field label="영어" htmlFor="englishLevel">
+          <select
+            id="englishLevel"
+            value={draft.englishLevel}
+            onChange={(e) => set("englishLevel", e.target.value as ProfileDraft["englishLevel"])}
+            className={input}
+          >
+            <option value="">모름</option>
+            {ENGLISH_LEVEL_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="주당 가능 시간" htmlFor="weeklyHours">
+          <input
+            id="weeklyHours"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={80}
+            value={draft.weeklyHours}
+            onChange={(e) => set("weeklyHours", e.target.value)}
+            className={input}
+          />
+        </Field>
         <Field label="선호 시간대" htmlFor="preferredTime">
           <select
             id="preferredTime"
@@ -335,7 +441,7 @@ function ConfirmStep(props: {
             onChange={(e) => set("preferredTime", e.target.value as ProfileDraft["preferredTime"])}
             className={input}
           >
-            <option value="">선택 안 함</option>
+            <option value="">상관없음</option>
             {PREFERRED_TIME_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -343,8 +449,7 @@ function ConfirmStep(props: {
             ))}
           </select>
         </Field>
-
-        <Field label="최소 희망 시급 (USD)" htmlFor="minHourlyUsd">
+        <Field label="희망 시급 (USD)" htmlFor="minHourlyUsd">
           <input
             id="minHourlyUsd"
             type="number"
@@ -354,63 +459,34 @@ function ConfirmStep(props: {
             value={draft.minHourlyUsd}
             onChange={(e) => set("minHourlyUsd", e.target.value)}
             className={input}
-            placeholder="예: 15"
           />
         </Field>
-
-        <Field label="데스크톱·노트북" htmlFor="hasDesktop">
-          <select
-            id="hasDesktop"
-            value={draft.hasDesktop}
-            onChange={(e) => set("hasDesktop", e.target.value as ProfileDraft["hasDesktop"])}
-            className={input}
-          >
-            <option value="">선택 안 함</option>
-            <option value="yes">있어요</option>
-            <option value="no">없어요</option>
-          </select>
-        </Field>
-
-        <Field label="피하고 싶은 일 (쉼표로 구분)" htmlFor="avoid">
-          <input
-            id="avoid"
-            value={draft.avoid}
-            onChange={(e) => set("avoid", e.target.value)}
-            className={input}
-            placeholder="예: 음성 녹음, 얼굴 촬영"
-          />
-        </Field>
-
-        <Field label="메모 (300자)" htmlFor="notes" wide>
-          <textarea
-            id="notes"
-            rows={2}
-            maxLength={300}
-            value={draft.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            className={input}
-          />
+        <Field label="피하고 싶은 일" htmlFor="avoid" wide>
+          <input id="avoid" value={draft.avoid} onChange={(e) => set("avoid", e.target.value)} className={input} />
         </Field>
       </div>
-
       {error && (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
           {error}
         </p>
       )}
-      <button type="button" className={primary} disabled={pending || missing.length > 0} onClick={save}>
-        {pending ? "저장하는 중…" : "이대로 저장"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button type="button" className={primary} disabled={pending} onClick={save}>
+          {pending ? "저장하는 중…" : "저장"}
+        </button>
+        <button type="button" className={link} onClick={props.onCancel}>
+          취소
+        </button>
+      </div>
     </section>
   );
 }
 
-function Field(props: { label: string; htmlFor: string; required?: boolean; wide?: boolean; children: React.ReactNode }) {
+function Field(props: { label: string; htmlFor: string; wide?: boolean; children: React.ReactNode }) {
   return (
     <div className={props.wide ? "sm:col-span-2" : undefined}>
       <label htmlFor={props.htmlFor} className="mb-1 block text-sm font-medium text-zinc-800">
         {props.label}
-        {props.required && <span className="ml-1 text-amber-600">*</span>}
       </label>
       {props.children}
     </div>

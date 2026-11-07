@@ -58,7 +58,7 @@ npm run build       # next build
 
 ## Phase 0 운영 방법
 
-1. **가입·프로필**: `/`에서 이메일 → 메일 링크 → `/onboarding`에서 프롬프트 복사 → 내 AI에 붙여넣기 → 답변 붙여넣기 → 확인·저장.
+1. **가입·프로필**: `/`에서 이메일만 입력 → 메일 링크를 누르면 구독 완료 → `/onboarding`에서 [ChatGPT/Claude/Gemini로 분석] 한 번 → AI 답변을 복사해 돌아와 [불러오기] → "AI가 이렇게 분석했어요" 카드에서 [맞아요]. 사용자는 자기 정보를 직접 적지 않고, 분석은 건너뛸 수도 있습니다.
 2. **공고 등록**: `/admin/jobs/new`에서 원문 주소와 한국어 요약(1~3줄)을 입력. 관리자 입력이라 바로 승인되고, 원문 본문은 저장하지 않습니다.
 3. **보낼 공고 고르기**: `/admin`에서 공고를 순서대로 체크하면 실행할 명령이 나옵니다.
 4. **발송**:
@@ -150,7 +150,7 @@ Phase 1의 수집·처리·검수 큐는 사용자 지시로 앞당겨 구현했
 
 | 항목 | 위치 | 지금 값 |
 | --- | --- | --- |
-| ChatGPT·Claude 미리 채우기 링크 | `lib/profile/prefill.ts` `PREFILL_ENABLED` | 둘 다 꺼짐. 외부 자료상 ChatGPT `?q=`는 입력만 채움, Claude `?q=`는 2025년 10월쯤 끊겼다는 보고. 직접 눌러 보고 하나씩 켜기 |
+| ChatGPT·Claude 미리 채우기 링크 | `lib/profile/prefill.ts` | 버튼이 프롬프트를 클립보드에 복사하고 AI를 열기 때문에, `?q=` 미리 채우기가 안 돼도 붙여넣기로 동작. 실제 ChatGPT·Claude에서 채워지는지는 직접 눌러 확인 필요 |
 | 메일 하단 발신자(운영자) 표기 | `lib/email/constants.ts` `MAIL_FOOTER_SENDER` | `AI잡5 (가칭)` |
 | Resend 일·월 발송 한도 | Resend 대시보드 | 요금제마다 다름. 초당 한도는 팀당 10건(전 요금제 동일)이라 `SEND_INTERVAL_MS` 600ms로 충분 |
 | 추가 수집처 | `sources` 테이블 | Workable(Volga Partners)은 이 환경에서 Cloudflare 차단으로 미검증. OpenTrain·Mercor·Alignerr 등 자체 일감 페이지는 약관·robots.txt 확인 후 결정 필요 |

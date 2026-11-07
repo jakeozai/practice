@@ -11,7 +11,7 @@ export function LoginForm({ next }: { next?: string }) {
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5" role="status">
         <p className="font-semibold text-emerald-900">메일함을 확인해 주세요</p>
         <p className="mt-1 text-sm text-emerald-800">
-          <strong>{state.email}</strong>로 로그인 링크를 보냈어요. 링크를 누르면 바로 프로필 만들기로 넘어가요.
+          <strong>{state.email}</strong>로 링크를 보냈어요. 누르면 구독이 완료되고, 내 AI로 1분 분석하는 화면으로 넘어가요.
         </p>
         <p className="mt-2 text-xs text-emerald-700">메일이 안 보이면 스팸함도 확인해 주세요.</p>
       </div>

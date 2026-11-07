@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { PROFILE_START, PROFILE_END } from "./parse";
-import { aiPrefillLinks } from "./prefill";
+import { AI_ASSISTANTS, assistantUrl } from "./prefill";
 
 const prompt = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../prompts/profile-extract.md"), "utf8");
 
@@ -14,17 +14,14 @@ test("prompt markers match parse.ts constants", () => {
   assert.ok(prompt.indexOf(PROFILE_START) < prompt.indexOf(PROFILE_END));
 });
 
-test("prefill links encode the full prompt", () => {
-  const links = aiPrefillLinks(prompt);
-  for (const link of links) {
-    const q = new URL(link.href).searchParams.get("q");
-    assert.equal(q, prompt, link.label);
-  }
+test("prompt asks the AI to analyze without quizzing the user", () => {
+  assert.match(prompt, /질문하지 말고 바로 분석/);
 });
 
-test("prefill links can be enabled per provider", () => {
-  assert.deepEqual(aiPrefillLinks(prompt, { chatgpt: false, claude: false }), []);
-  const only = aiPrefillLinks(prompt, { chatgpt: true, claude: false });
-  assert.equal(only.length, 1);
-  assert.ok(only[0].href.startsWith("https://chatgpt.com/?q="));
+test("assistant URLs: prefill carries the whole prompt where supported", () => {
+  for (const a of AI_ASSISTANTS) {
+    const url = new URL(assistantUrl(a.id, prompt));
+    if (a.prefills) assert.equal(url.searchParams.get("q"), prompt, a.label);
+    else assert.equal(url.search, "", a.label);
+  }
 });
