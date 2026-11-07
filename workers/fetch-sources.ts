@@ -42,6 +42,8 @@ async function dryRun(filter: string | undefined) {
   let total = 0;
   let candidates = 0;
   const lines: string[] = [];
+  // "korea=yes": the location says a Korea resident can apply (Korea, worldwide, APAC…), whatever the
+  // posting's language. "unknown": the LLM reads the body to decide.
   console.log(`${"source".padEnd(34)} ${"postings".padStart(8)} ${"keyword".padStart(8)} ${"korea=yes".padStart(9)} ${"unknown".padStart(8)}`);
   for (const s of sources) {
     try {
@@ -52,16 +54,14 @@ async function dryRun(filter: string | undefined) {
       total += posts.length;
       candidates += yes.length + unknown.length;
       console.log(`${s.name.padEnd(34)} ${String(posts.length).padStart(8)} ${String(kw.length).padStart(8)} ${String(yes.length).padStart(9)} ${String(unknown.length).padStart(8)}`);
-      for (const p of yes.filter((p) => /korea|seoul|\bKR\b/i.test(`${p.title} ${p.location_raw}`)).slice(0, 12)) {
-        lines.push(`  [${s.name}] ${p.title} | ${p.location_raw}`);
-      }
+      for (const p of yes.slice(0, 5)) lines.push(`  [${s.name}] ${p.title} | ${p.location_raw}`);
     } catch (e) {
       console.log(`${s.name.padEnd(34)} FAILED: ${(e as Error).message}`);
     }
     await sleep(PAUSE_BETWEEN_SOURCES_MS);
   }
   console.log(`\n${total} postings from ${sources.length} sources; ${candidates} would go to processing (keyword match, Korea yes/unknown).`);
-  if (lines.length) console.log(`\nKorea-located examples:\n${lines.join("\n")}`);
+  if (lines.length) console.log(`\nExamples a Korea resident can apply to (any posting language):\n${lines.join("\n")}`);
 }
 
 // ── real run ─────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { loadMetrics, percent } from "@/lib/admin/metrics";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appEnv } from "@/lib/env";
 import { seoulDate } from "@/lib/time";
+import { languageNameKo, missingLanguages } from "@/lib/jobs/language";
 import { AdminNav, NotAdmin } from "./admin-nav";
 import { JobPicker, type PickableJob } from "./job-picker";
 
@@ -15,7 +16,7 @@ async function loadPickableJobs(): Promise<PickableJob[]> {
   const db = createAdminClient();
   const { data, error } = await db
     .from("jobs")
-    .select("id, company, title, status, first_seen_at, korea_eligible, requires_credential")
+    .select("id, company, title, status, first_seen_at, korea_eligible, requires_credential, languages")
     .eq("review_state", "approved")
     .neq("status", "closed")
     .order("first_seen_at", { ascending: false })
@@ -27,7 +28,8 @@ async function loadPickableJobs(): Promise<PickableJob[]> {
     title: j.title,
     status: j.status,
     firstSeen: seoulDate(new Date(j.first_seen_at)),
-    blocked: j.korea_eligible !== true ? "한국 지원 가능 여부 미확인" : j.requires_credential ? "자격 필요" : null,
+    blocked: j.korea_eligible !== true ? "한국 거주자 지원 가능 여부 미확인" : j.requires_credential ? "자격 필요" : null,
+    otherLanguages: missingLanguages(j.languages).map(languageNameKo),
   }));
 }
 

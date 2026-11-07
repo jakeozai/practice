@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getAdminUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { seoulDate } from "@/lib/time";
+import { languageNameKo } from "@/lib/jobs/language";
 import { AdminNav, NotAdmin } from "../admin-nav";
 import { rejectJob } from "./actions";
 
@@ -20,7 +21,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin/review"
 
   let q = createAdminClient()
     .from("jobs")
-    .select("id, company, title, url, korea_eligible, eligibility_note, status, summary_ko, first_seen_at", { count: "exact" })
+    .select("id, company, title, url, korea_eligible, eligibility_note, status, summary_ko, first_seen_at, languages", { count: "exact" })
     .eq("review_state", "pending")
     .order("first_seen_at", { ascending: false })
     .limit(LIMIT);
@@ -36,7 +37,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin/review"
         <div>
           <h1 className="text-xl font-bold">검수 큐</h1>
           <p className="mt-1 text-sm text-zinc-600">
-            자동 승인되지 않은 수집 공고 {count ?? 0}건{showAll ? "" : " (한국 지원 불가로 판정된 공고 제외)"}. 요약을 확인·작성하고 승인하세요.
+            자동 승인되지 않은 수집 공고 {count ?? 0}건{showAll ? "" : " (한국 거주자 지원 불가로 판정된 공고 제외)"}. 요약을 확인·작성하고 승인하세요.
           </p>
         </div>
         <Link href={showAll ? "/admin/review" : "/admin/review?all=1"} className="text-sm text-zinc-500 underline">
@@ -60,9 +61,10 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin/review"
                   {job.company} — {job.title}
                 </p>
                 <p className="text-xs text-zinc-500">
-                  {seoulDate(new Date(job.first_seen_at))} · {job.status} · 한국{" "}
+                  {seoulDate(new Date(job.first_seen_at))} · {job.status} · 한국 거주자 지원{" "}
                   {job.korea_eligible === true ? "가능" : job.korea_eligible === false ? "불가" : "미확인"} ·{" "}
                   {job.eligibility_note ?? "지역 정보 없음"}
+                  {job.languages.length > 0 && ` · 작업 언어 ${job.languages.map(languageNameKo).join("·")}`}
                 </p>
                 <p className="text-xs text-zinc-500">
                   {job.summary_ko.length ? `요약: ${job.summary_ko[0]}` : "요약 없음 — 원문을 보고 작성 필요"}

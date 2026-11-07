@@ -25,7 +25,7 @@
 
 필드 기준:
 - category: language = 언어 평가·번역·현지화·전사 / domain = 특정 전문 분야 평가 / labeling = 라벨링·어노테이션·데이터 수집 / other = 그 밖.
-- languages: 작업에 쓰는 언어의 ISO 639-1 코드. 예: ["ko", "en"].
+- languages: 공고가 쓰인 언어가 아니라 작업에 필요한 언어의 ISO 639-1 코드. 예: 영어로 AI 답변을 평가하면 ["en"], 한국어 음성을 전사하면 ["ko"]. 특정 언어가 필요 없으면 ["en"](지시문·소통 언어).
 - location_raw: 지원 가능 지역을 말하는 문구를 짧게 그대로. 없으면 null.
 - korea_eligible: 한국 거주자가 지원할 수 있으면 true, 특정 국가 거주자만이면 false, 알 수 없으면 null.
 - requires_credential: 학위·자격증·면허·특정 직업 경력이 필수면 true. "우대"는 false.
@@ -33,4 +33,4 @@
 - english_level: 업무에 필요한 영어 수준. 지시문을 읽는 정도면 reading, 유창함(fluent)을 요구하면 business, 원어민이면 native, 언급이 없으면 null.
 - is_talent_pool: 특정 프로젝트가 아니라 인재풀 등록이나 향후 프로젝트용 모집이면 true.
 - scam_signals: 선입금·보증금 요구(upfront_payment), 메신저로만 연락(messenger_only), 개인 계좌 송금(personal_account), 비현실적 수익 약속(unrealistic_pay)이 보이면 넣는다.
-- summary_ko: 한국어 3줄, 각 60자 이내. 원문 문장을 번역하지 말고 무슨 일인지, 지원 조건, 보수·시간을 새 문장으로 쓴다.
+- summary_ko: 한국어 3줄, 각 60자 이내. 원문 문장을 번역하지 말고 무슨 일인지, 지원 조건(필요한 언어·수준, 기술, 지역), 보수·시간을 새 문장으로 쓴다.

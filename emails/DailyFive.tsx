@@ -99,7 +99,7 @@ export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl,
           <Heading as="h1" style={s.heading}>
             {dailyFiveSubject(jobs.length, dateLabel)}
           </Heading>
-          <Text style={s.lead}>학위·자격증 없이 할 수 있는 원격 AI 일감을 골랐어요.</Text>
+          <Text style={s.lead}>전 세계에서 올라온 원격 AI 일감 중, 한국에서 지원할 수 있는 것을 골랐어요.</Text>
 
           {jobs.map((job) => (
             <Section key={job.id} style={s.card}>
@@ -129,7 +129,9 @@ export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl,
           ))}
 
           <Hr style={{ borderColor: "#e4e4e7", margin: "20px 0 14px" }} />
-          <Text style={s.footer}>보수·지원 조건은 원문에서 최종 확인하세요. 지원은 원문 플랫폼에서 직접 해요.</Text>
+          <Text style={s.footer}>
+            원문은 대부분 영어예요. 보수·지원 조건은 원문에서 최종 확인하고, 지원과 소통은 원문 플랫폼에서 직접 해요.
+          </Text>
           <Text style={s.footer}>
             <Link href={profileUrl} style={s.footerLink}>
               프로필 수정

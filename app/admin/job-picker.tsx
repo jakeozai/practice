@@ -10,6 +10,8 @@ export type PickableJob = {
   firstSeen: string;
   /** Why it can't be mailed, or null if it can. */
   blocked: string | null;
+  /** Work languages beyond Korean/English: most subscribers can't do these. */
+  otherLanguages: string[];
 };
 
 /** Pick up to `max` jobs and get the send-manual command for them. */
@@ -48,6 +50,9 @@ export function JobPicker({ jobs, max }: { jobs: PickableJob[]; max: number }) {
                 <p className="text-xs text-zinc-500">
                   {job.status} · 등록 {job.firstSeen}
                   {job.blocked && <span className="ml-2 text-amber-700">발송 불가: {job.blocked}</span>}
+                  {!job.blocked && job.otherLanguages.length > 0 && (
+                    <span className="ml-2 text-amber-700">필요 언어 {job.otherLanguages.join("·")} — 대부분 구독자에게 안 맞음</span>
+                  )}
                 </p>
                 <p className="font-mono text-[11px] text-zinc-400">{job.id}</p>
               </div>
