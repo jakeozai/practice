@@ -10,7 +10,7 @@ import { languageNameKo } from "@/lib/jobs/language";
 import { AdminNav, NotAdmin } from "./admin-nav";
 import { JobPicker, type PickableJob } from "./job-picker";
 
-export const metadata = { title: "관리자 — AI잡5" };
+export const metadata = { title: "관리자 — 덕잡" };
 
 async function loadPickableJobs(): Promise<PickableJob[]> {
   const db = createAdminClient();

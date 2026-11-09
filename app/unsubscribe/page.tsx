@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { verifyLink } from "@/lib/links";
 import { linkEnv } from "@/lib/env";
 
-export const metadata = { title: "수신거부 — AI잡5", robots: { index: false } };
+export const metadata = { title: "수신거부 — 덕잡", robots: { index: false } };
 
 async function Unsubscribe({ searchParams }: { searchParams: PageProps<"/unsubscribe">["searchParams"] }) {
   const params = await searchParams;
@@ -14,7 +14,7 @@ async function Unsubscribe({ searchParams }: { searchParams: PageProps<"/unsubsc
     return (
       <div className="rounded-xl border border-zinc-200 bg-white p-6">
         <p className="text-lg font-semibold">수신거부했어요</p>
-        <p className="mt-1 text-sm text-zinc-600">이제 AI잡5 아침 메일이 가지 않아요. 그동안 고마웠어요.</p>
+        <p className="mt-1 text-sm text-zinc-600">이제 덕잡 아침 메일이 가지 않아요. 그동안 고마웠어요.</p>
       </div>
     );
   }

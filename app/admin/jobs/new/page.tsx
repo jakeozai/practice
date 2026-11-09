@@ -4,7 +4,7 @@ import { AdminNav, NotAdmin } from "../../admin-nav";
 import { JobForm } from "./job-form";
 import { createManualJob } from "./actions";
 
-export const metadata = { title: "공고 수동 등록 — AI잡5" };
+export const metadata = { title: "공고 수동 등록 — 덕잡" };
 
 async function NewJob() {
   const admin = await getAdminUser();

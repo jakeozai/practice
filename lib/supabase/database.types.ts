@@ -14,7 +14,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "saramin" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
           endpoint: string | null;
           trusted: boolean;
           active: boolean;
@@ -25,7 +25,7 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "saramin" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
           endpoint?: string | null;
           trusted?: boolean;
           active?: boolean;
@@ -289,6 +289,10 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      claim_login_link: {
+        Args: { p_email_hash: string; p_ip_hash: string | null };
+        Returns: string;
+      };
       raw_postings_to_process: {
         Args: { p_limit?: number };
         Returns: Database["public"]["Tables"]["raw_postings"]["Row"][];

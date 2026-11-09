@@ -35,10 +35,11 @@ test("subject, card content and unsubscribe headers", async () => {
   assert.equal(mail.idempotencyKey, `digest-${UID}-2026-11-08`);
   assert.match(mail.headers["List-Unsubscribe"], /^<https:\/\/aijob5\.example\/api\/email\/unsubscribe\?t=[\w-]+\.[\w-]+>$/);
   assert.equal(mail.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
-  for (const part of ["실제 프로젝트", "Example AI", "Korean AI Trainer", "시간당 $30~35 · 주 15시간~", "수신거부", "프로필 수정"]) {
+  for (const part of ["실제 프로젝트", "Example AI", "Korean AI Trainer", "시간당 $30~35 · 주 15시간~", "메일 그만 받기", "프로필 수정", "개인정보 처리방침"]) {
     assert.ok(mail.html.includes(part), `html has ${part}`);
   }
   assert.ok(mail.text.includes("한국어 AI 답변을 평가하는 일"));
+  assert.ok(mail.text.includes("a@example.com님이 덕잡 일일 메일을 구독해서"), "footer says why the mail came");
 });
 
 test("detail link is a signed click token for this user and job", async () => {

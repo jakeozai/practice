@@ -1,6 +1,6 @@
 /**
  * Work language is shown as information only. It never filters a job out:
- * AI잡5 curates in Korean, and whether to take an English, Chinese or
+ * 덕잡 curates in Korean, and whether to take an English, Chinese or
  * Japanese job is the subscriber's call.
  */
 const NAMES_KO: Record<string, string> = {

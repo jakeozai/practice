@@ -8,7 +8,7 @@ import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/Dai
 import { formatConditions, statusBadge } from "../jobs/format";
 import { signLink } from "../links";
 import { koreanMonthDay, seoulDayStartUtc } from "../time";
-import { MAIL_FOOTER_SENDER } from "../email/constants";
+import { BRAND, contactEmail } from "../brand";
 import { unsubscribeHeaders, type OutgoingEmail } from "../email/send";
 import type { Tables } from "../supabase/database.types";
 
@@ -63,11 +63,16 @@ export async function composeDigestEmail(input: {
   const dateLabel = koreanMonthDay(sendDate);
   const element = (
     <DailyFive
+      brand={BRAND.name}
       dateLabel={dateLabel}
       jobs={cards}
+      recipientEmail={recipient.email}
+      logoUrl={`${appUrl}/duck-mail.png`}
+      appUrl={appUrl}
       profileUrl={`${appUrl}/onboarding`}
       unsubscribeUrl={unsubscribeUrl}
-      senderInfo={MAIL_FOOTER_SENDER}
+      privacyUrl={`${appUrl}/privacy`}
+      contactEmail={contactEmail()}
     />
   );
 

@@ -1,11 +1,4 @@
 /**
- * [확인 필요] Operator line at the bottom of every mail (spec §9, §16).
- * Replace once the side-job rules are checked; until then only the
- * placeholder service name is shown.
- */
-export const MAIL_FOOTER_SENDER = "AI잡5 (가칭)";
-
-/**
  * Pause between sends (spec §9). Resend's API limit is 10 requests/s per
  * team, shared by every API key on the team and the same on every plan
  * (checked 2026-11-07, resend.com/docs/api-reference/rate-limit). 600 ms

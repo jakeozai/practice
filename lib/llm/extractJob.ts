@@ -9,7 +9,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { SCAM_SIGNALS } from "../scam";
 
-/** permanent = open-ended staff hiring, which AI잡5 doesn't send (short-term work only). */
+/** permanent = open-ended staff hiring, which 덕잡 doesn't send (short-term work only). */
 export const ENGAGEMENTS = ["freelance", "contract", "part_time", "permanent"] as const;
 import { firstText } from "./client";
 

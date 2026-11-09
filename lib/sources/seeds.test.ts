@@ -6,7 +6,6 @@ import { dirname, join } from "node:path";
 import { SEED_SOURCES } from "./seeds";
 import { SLUG_PATTERN } from "./types";
 import { PAGE_SITES } from "./pages";
-import { SARAMIN_PRESETS } from "./saramin";
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "../../supabase/migrations");
 const sql = readdirSync(dir)
@@ -29,7 +28,6 @@ test("seed endpoints are unique and valid for their kind", () => {
   assert.equal(new Set(keys).size, keys.length);
   for (const s of SEED_SOURCES) {
     if (s.kind === "page") assert.ok(PAGE_SITES[s.endpoint], `no PAGE_SITES entry for ${s.endpoint}`);
-    else if (s.kind === "saramin") assert.ok(SARAMIN_PRESETS[s.endpoint], `no SARAMIN_PRESETS entry for ${s.endpoint}`);
     else assert.match(s.endpoint, SLUG_PATTERN);
   }
 });

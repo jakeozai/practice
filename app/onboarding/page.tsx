@@ -6,7 +6,7 @@ import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingFlow } from "./onboarding-flow";
 
-export const metadata = { title: "AI로 나를 분석하기 — AI잡5" };
+export const metadata = { title: "AI로 나를 분석하기 — 덕잡" };
 
 async function loadSavedProfile(userId: string): Promise<Profile | null> {
   const supabase = await createClient();

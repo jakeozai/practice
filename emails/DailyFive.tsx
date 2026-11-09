@@ -1,17 +1,6 @@
 import type { StatusBadge } from "../lib/jobs/format";
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Hr,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
+import { mailColor, mailFont } from "./theme";
 
 export type DailyFiveJob = {
   id: string;
@@ -28,67 +17,54 @@ export type DailyFiveJob = {
 };
 
 export type DailyFiveProps = {
+  brand: string;
   dateLabel: string;
   jobs: DailyFiveJob[];
+  recipientEmail: string;
+  logoUrl: string;
+  appUrl: string;
   profileUrl: string;
   unsubscribeUrl: string;
-  senderInfo: string;
+  privacyUrl: string;
+  /** Public contact (privacy policy §14); omitted until the service domain exists. */
+  contactEmail: string | null;
 };
 
 export function dailyFiveSubject(count: number, dateLabel: string): string {
   return `오늘의 AI 일감 ${count}개 · ${dateLabel}`;
 }
 
-const font =
-  '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Segoe UI", sans-serif';
-
+const pill = { display: "inline-block", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "2px 10px", margin: "0 0 8px" };
 const s = {
-  body: { backgroundColor: "#f4f4f5", margin: 0, padding: "24px 0", fontFamily: font },
-  container: { backgroundColor: "#ffffff", borderRadius: 12, maxWidth: 560, padding: "28px 24px" },
-  heading: { fontSize: 20, lineHeight: "28px", margin: "0 0 4px", color: "#18181b" },
-  lead: { fontSize: 14, color: "#52525b", margin: "0 0 20px" },
-  card: { border: "1px solid #e4e4e7", borderRadius: 10, padding: "16px 16px 12px", margin: "0 0 14px" },
-  badgeOpen: {
-    display: "inline-block",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#065f46",
-    backgroundColor: "#d1fae5",
-    borderRadius: 999,
-    padding: "2px 10px",
-    margin: "0 0 8px",
-  },
-  badgePool: {
-    display: "inline-block",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#92400e",
-    backgroundColor: "#fef3c7",
-    borderRadius: 999,
-    padding: "2px 10px",
-    margin: "0 0 8px",
-  },
-  company: { fontSize: 13, color: "#71717a", margin: "0 0 2px" },
-  title: { fontSize: 16, fontWeight: 700, color: "#18181b", margin: "0 0 8px", lineHeight: "22px" },
-  summary: { fontSize: 14, color: "#3f3f46", margin: "0 0 2px", lineHeight: "21px" },
-  conditions: { fontSize: 13, color: "#18181b", fontWeight: 600, margin: "10px 0 2px" },
-  reason: { fontSize: 13, color: "#4f46e5", margin: "0 0 10px" },
+  body: { backgroundColor: mailColor.page, margin: 0, padding: "24px 0", fontFamily: mailFont },
+  container: { backgroundColor: mailColor.card, borderRadius: 16, maxWidth: 560, padding: "28px 24px" },
+  heading: { fontSize: 20, fontWeight: 800, lineHeight: "28px", margin: "12px 0 18px", color: mailColor.ink },
+  card: { border: `1px solid ${mailColor.line}`, borderRadius: 14, padding: "16px 16px 12px", margin: "0 0 12px" },
+  badgeOpen: { ...pill, color: "#1F5130", backgroundColor: "#D3F2DC" },
+  badgePool: { ...pill, color: "#8A4B0F", backgroundColor: "#FFE8CC" },
+  company: { fontSize: 13, color: mailColor.muted, margin: "0 0 2px" },
+  title: { fontSize: 16, fontWeight: 700, color: mailColor.ink, margin: "0 0 8px", lineHeight: "22px" },
+  summary: { fontSize: 14, color: mailColor.ink, margin: "0 0 2px", lineHeight: "21px" },
+  conditions: { fontSize: 13, color: mailColor.ink, fontWeight: 700, margin: "10px 0 2px" },
+  reason: { fontSize: 13, color: mailColor.accent, margin: "0 0 10px" },
   button: {
-    backgroundColor: "#18181b",
+    backgroundColor: mailColor.ink,
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: 600,
-    borderRadius: 8,
-    padding: "10px 16px",
+    fontWeight: 700,
+    borderRadius: 999,
+    padding: "10px 18px",
     textDecoration: "none",
   },
-  smallLink: { fontSize: 12, color: "#71717a", marginLeft: 12 },
-  footer: { fontSize: 12, color: "#71717a", lineHeight: "18px", margin: "0 0 6px" },
-  footerLink: { color: "#71717a", textDecoration: "underline" },
+  smallLink: { fontSize: 12, color: mailColor.muted, marginLeft: 12 },
+  footer: { fontSize: 12, color: mailColor.muted, lineHeight: "18px", margin: "0 0 6px" },
+  footerLink: { color: mailColor.muted, textDecoration: "underline" },
 } as const;
 
-export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl, senderInfo }: DailyFiveProps) {
+export default function DailyFive(props: DailyFiveProps) {
+  const { brand, dateLabel, jobs } = props;
   const preview = jobs[0]?.summary[0] ?? dailyFiveSubject(jobs.length, dateLabel);
+  const host = props.appUrl.replace(/^https?:\/\//, "");
 
   return (
     <Html lang="ko">
@@ -96,16 +72,12 @@ export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl,
       <Preview>{preview}</Preview>
       <Body style={s.body}>
         <Container style={s.container}>
-          <Heading as="h1" style={s.heading}>
-            {dailyFiveSubject(jobs.length, dateLabel)}
-          </Heading>
-          <Text style={s.lead}>전 세계에서 올라온 원격 AI 일감 중, 한국에서 지원할 수 있는 것을 골랐어요.</Text>
+          <Img src={props.logoUrl} width="36" height="36" alt={brand} />
+          <Text style={s.heading}>{dailyFiveSubject(jobs.length, dateLabel)}</Text>
 
           {jobs.map((job) => (
             <Section key={job.id} style={s.card}>
-              {job.badge && (
-                <Text style={job.badge.tone === "open" ? s.badgeOpen : s.badgePool}>{job.badge.label}</Text>
-              )}
+              {job.badge && <Text style={job.badge.tone === "open" ? s.badgeOpen : s.badgePool}>{job.badge.label}</Text>}
               <Text style={s.company}>{job.company}</Text>
               <Text style={s.title}>{job.title}</Text>
               {job.summary.slice(0, 3).map((line, i) => (
@@ -117,7 +89,7 @@ export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl,
               {job.reason && <Text style={s.reason}>{job.reason}</Text>}
               <Section style={{ margin: "8px 0 4px" }}>
                 <Button href={job.detailUrl} style={s.button}>
-                  자세히 보고 지원 준비
+                  자세히 보기
                 </Button>
                 {job.feedbackUrl && (
                   <Link href={job.feedbackUrl} style={s.smallLink}>
@@ -128,20 +100,29 @@ export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl,
             </Section>
           ))}
 
-          <Hr style={{ borderColor: "#e4e4e7", margin: "20px 0 14px" }} />
+          <Hr style={{ borderColor: mailColor.line, margin: "20px 0 14px" }} />
+          {/* Footer per docs/legal/privacy-research-2026-11-09.md (c): why you got this, how to stop, policy, contact. */}
           <Text style={s.footer}>
-            원문은 대부분 영어예요. 보수·지원 조건은 원문에서 최종 확인하고, 지원과 소통은 원문 플랫폼에서 직접 해요.
+            {props.recipientEmail}님이 {brand} 일일 메일을 구독해서 보내 드렸어요. 조건과 마감은 원문 공고에서 꼭 다시 확인하세요.{" "}
+            {brand}은 지원서를 대신 내거나 회원 정보를 채용사에 넘기지 않아요.
           </Text>
           <Text style={s.footer}>
-            <Link href={profileUrl} style={s.footerLink}>
+            <Link href={props.profileUrl} style={s.footerLink}>
               프로필 수정
             </Link>
             {"  ·  "}
-            <Link href={unsubscribeUrl} style={s.footerLink}>
-              수신거부
+            <Link href={props.unsubscribeUrl} style={s.footerLink}>
+              메일 그만 받기
+            </Link>
+            {"  ·  "}
+            <Link href={props.privacyUrl} style={s.footerLink}>
+              개인정보 처리방침
             </Link>
           </Text>
-          <Text style={s.footer}>{senderInfo}</Text>
+          <Text style={s.footer}>
+            {brand}
+            {props.contactEmail ? ` · 문의 ${props.contactEmail}` : ""} · {host}
+          </Text>
         </Container>
       </Body>
     </Html>
@@ -150,10 +131,15 @@ export default function DailyFive({ dateLabel, jobs, profileUrl, unsubscribeUrl,
 
 /** Sample data for previewing the template locally. */
 DailyFive.PreviewProps = {
+  brand: "덕잡",
   dateLabel: "11월 8일",
+  recipientEmail: "me@example.com",
+  logoUrl: "http://localhost:3000/duck-mail.png",
+  appUrl: "http://localhost:3000",
   profileUrl: "http://localhost:3000/onboarding",
   unsubscribeUrl: "http://localhost:3000/api/email/unsubscribe?t=preview",
-  senderInfo: "AI잡5 (가칭)",
+  privacyUrl: "http://localhost:3000/privacy",
+  contactEmail: null,
   jobs: [
     {
       id: "1",

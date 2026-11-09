@@ -48,7 +48,7 @@ export function buildJob(input: {
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;
 
-  // Out of scope: not work that needs AI, or open-ended staff hiring (AI잡5 sends short-term work).
+  // Out of scope: not work that needs AI, or open-ended staff hiring (덕잡 sends short-term work).
   // Credentials and work language are information only; they don't block.
   const outOfScope = x !== null && (!x.ai_related || x.engagement === "permanent");
 

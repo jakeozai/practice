@@ -1,12 +1,63 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic",
-    "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR",
+    "Segoe UI", system-ui, sans-serif;
+}
+
+/* 덕잡: warm paper background, brown ink, one orange accent. The duck stays small. */
+:root {
+  --bg: #f6efe4;
+  --card: #fffdf8;
+  --ink: #3a2218;
+  --muted: #7a6658;
+  --line: #e8dccb;
+  --accent: #e9762b;
+  --mustard: #ee9f36;
 }
 
 body {
-  background: #fafafa;
-  color: #18181b;
+  background: var(--bg);
+  color: var(--ink);
   word-break: keep-all;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border bg-[var(--card)] p-6;
+    border-color: var(--line);
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-base font-bold text-white transition disabled:opacity-50;
+    background: var(--ink);
+  }
+  .btn-primary:hover {
+    background: #2a1810;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border px-6 py-3 text-base font-semibold;
+    border-color: var(--line);
+    background: var(--card);
+  }
+  .link-muted {
+    @apply text-sm underline underline-offset-2;
+    color: var(--muted);
+  }
+  .field {
+    @apply w-full rounded-full border bg-white px-5 py-3 text-base outline-none;
+    border-color: var(--line);
+  }
+  .field:focus {
+    border-color: var(--ink);
+  }
+  .field-box {
+    @apply w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none;
+    border-color: var(--line);
+  }
+  .field-box:focus {
+    border-color: var(--ink);
+  }
+  .text-muted {
+    color: var(--muted);
+  }
 }

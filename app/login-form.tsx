@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { requestMagicLink, type MagicLinkState } from "./actions";
 
@@ -8,12 +9,12 @@ export function LoginForm({ next }: { next?: string }) {
 
   if (state.status === "sent") {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5" role="status">
-        <p className="font-semibold text-emerald-900">메일함을 확인해 주세요</p>
-        <p className="mt-1 text-sm text-emerald-800">
-          <strong>{state.email}</strong>로 링크를 보냈어요. 누르면 구독이 완료되고, 내 AI로 1분 분석하는 화면으로 넘어가요.
+      <div className="card" role="status">
+        <p className="text-lg font-bold">메일함을 확인해 주세요</p>
+        <p className="mt-1 text-sm text-muted">
+          <strong className="text-[var(--ink)]">{state.email}</strong>로 보낸 메일의 [시작하기]를 누르면 끝이에요. 안 보이면 스팸함도
+          확인해 주세요.
         </p>
-        <p className="mt-2 text-xs text-emerald-700">메일이 안 보이면 스팸함도 확인해 주세요.</p>
       </div>
     );
   }
@@ -21,6 +22,8 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <form action={action} className="space-y-3">
       {next && <input type="hidden" name="next" value={next} />}
+      {/* Honeypot: hidden from people, filled by naive bots. */}
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
       <label htmlFor="email" className="sr-only">
         이메일
       </label>
@@ -31,15 +34,11 @@ export function LoginForm({ next }: { next?: string }) {
           type="email"
           required
           autoComplete="email"
-          placeholder="you@example.com"
-          className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base outline-none focus:border-zinc-900"
+          placeholder="이메일 주소"
+          className="field min-w-0 flex-1"
         />
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-zinc-900 px-5 py-3 font-semibold text-white disabled:opacity-50"
-        >
-          {pending ? "보내는 중…" : "무료로 받아보기"}
+        <button type="submit" disabled={pending} className="btn-primary">
+          {pending ? "보내는 중…" : "무료로 받기"}
         </button>
       </div>
       {state.status === "error" && (
@@ -47,8 +46,12 @@ export function LoginForm({ next }: { next?: string }) {
           {state.message}
         </p>
       )}
-      <p className="text-xs text-zinc-500">
-        가입하면 매일 아침 일감 메일을 받는 데 동의하는 거예요. 메일 하단에서 언제든 수신거부할 수 있어요.
+      <p className="text-xs leading-relaxed text-muted">
+        메일을 보내려고 이메일 주소를 처리해요. 자세한 내용은{" "}
+        <Link href="/privacy" className="font-semibold underline underline-offset-2">
+          개인정보 처리방침
+        </Link>
+        에 있어요. 수신거부는 메일 하단에서 언제든 할 수 있고, 만 14세 미만은 가입할 수 없어요.
       </p>
     </form>
   );

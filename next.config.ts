@@ -3,9 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  // /onboarding reads prompts/profile-extract.md at runtime; ship it with the function.
+  // These routes read prompts/*.md at runtime; ship the files with their functions.
   outputFileTracingIncludes: {
     "/onboarding": ["./prompts/profile-extract.md"],
+    "/api/cron/collect": ["./prompts/job-extract.md"],
   },
   turbopack: {
     rules: {

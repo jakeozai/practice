@@ -9,7 +9,7 @@ import { AdminNav, NotAdmin } from "../../admin-nav";
 import { JobForm } from "../../jobs/new/job-form";
 import { approveJob, rejectJob } from "../actions";
 
-export const metadata = { title: "공고 검수 — AI잡5" };
+export const metadata = { title: "공고 검수 — 덕잡" };
 
 async function Review({ params }: { params: PageProps<"/admin/review/[id]">["params"] }) {
   const admin = await getAdminUser();

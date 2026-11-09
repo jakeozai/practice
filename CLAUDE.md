@@ -1,4 +1,4 @@
-# AI잡5 (가칭)
+# 덕잡 (가칭 AI잡5에서 변경, 2026-11-09)
 
 이메일 하나로 가입하면, 사용자가 쓰는 AI(ChatGPT·Claude·Gemini)가 정리한 프로필을 받아 매일 아침 그 사람에게 맞는 "AI 간단 일감" 3개를 메일로 보내는 서비스.
 
@@ -6,10 +6,11 @@
 
 ## 스택
 - Next.js (App Router) + TypeScript, Vercel 배포
-- Supabase: Postgres + pgvector, Auth(이메일 매직링크), RLS
+- Supabase: Postgres + pgvector, Auth(이메일 매직링크 — 링크는 앱이 `auth.admin.generateLink`로 만들어 Resend로 직접 발송), RLS
 - Resend + React Email (`@react-email/components`)
-- 워커: `workers/*.ts`를 tsx로 실행, GitHub Actions 크론
-- LLM: Anthropic SDK. 모델 ID는 env(`ANTHROPIC_MODEL_FAST`, `ANTHROPIC_MODEL_SMART`)에서만 읽는다
+- 워커: 로직은 `lib/workers/*.ts`. Vercel Cron이 `/api/cron/*`로 매일 실행하고, `workers/*.ts`는 같은 로직의 CLI(tsx)
+- LLM: Anthropic SDK를 Vercel AI Gateway 경유로 사용(OIDC, 별도 키 없음). 모델 ID는 env(`ANTHROPIC_MODEL_FAST`)에서만 읽는다
+- 임베딩(Phase 2): OpenAI `text-embedding-3-small`(1536차원), AI Gateway 경유
 - 검증: zod (v4)
 
 ## 이미 있는 파일 (그대로 쓰고, 고칠 땐 테스트도 같이)
@@ -37,7 +38,7 @@
 
 ## 시간
 - DB는 `timestamptz`(UTC). `send_date`는 Asia/Seoul 기준 날짜.
-- GitHub Actions 크론은 UTC. 수집 19:00 KST = `0 10 * * *`, 발송 08:00 KST = `0 23 * * *`(전날 UTC).
+- Vercel Cron(`vercel.json`)은 UTC. 수집 19:00 KST = `0 10 * * *`, 발송 08:00 KST = `0 23 * * *`(전날 UTC). Hobby 요금제는 지정한 시각부터 1시간 안에 실행된다.
 
 ## 컨벤션
 - UI 문구·메일 문구는 한국어. 코드 식별자·커밋 메시지는 영어.

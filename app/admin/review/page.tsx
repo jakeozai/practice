@@ -8,7 +8,7 @@ import { languageNameKo } from "@/lib/jobs/language";
 import { AdminNav, NotAdmin } from "../admin-nav";
 import { rejectJob } from "./actions";
 
-export const metadata = { title: "검수 큐 — AI잡5" };
+export const metadata = { title: "검수 큐 — 덕잡" };
 
 const LIMIT = 200;
 

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="70 84 186 214" role="img" aria-label="덕잡 오리">
+  <path d="M150 332 V188 C148 142 166 100 204 92 C236 86 251 116 250 158 V332" fill="#FBE7D0" stroke="#3A2218" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M166 176 C182 164 210 166 220 186 C228 204 214 228 192 228 C172 228 162 208 166 176 Z" fill="#E3C3A0" opacity=".75"/>
+  <path d="M98 156 C122 160 150 158 176 153 C184 158 184 168 172 172 C148 178 116 176 102 168 C97 164 96 160 98 156 Z" fill="#C8541E" stroke="#3A2218" stroke-width="3.2" stroke-linejoin="round"/>
+  <g transform="rotate(3 122 152)">
+    <path d="M110 146 L136 146 L145 172 L147 292 L101 294 L100 172 Z" fill="#FFF9F0" stroke="#3A2218" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M111 154 L135 154 L142 168 C130 164 114 165 103 169 Z" fill="#3A2218" opacity=".13"/>
+    <path d="M118 158 L114 176 M128 158 L131 176" stroke="#3A2218" stroke-width="1.6" stroke-linecap="round" opacity=".35"/>
+    <path d="M111 204 H137 M111 218 H139 M111 232 H130" stroke="#3A2218" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>
+    <circle cx="134" cy="272" r="6.5" fill="#E9762B"/>
+  </g>
+  <path d="M178 121 C150 116 112 116 90 126 C76 133 77 150 93 154 C120 159 152 157 178 152 C188 146 188 128 178 121 Z" fill="#E9762B" stroke="#3A2218" stroke-width="3.2" stroke-linejoin="round"/>
+  <circle cx="110" cy="131" r="2.6" fill="#3A2218"/>
+  <circle cx="216" cy="132" r="4.6" fill="#3A2218"/>
+</svg>
