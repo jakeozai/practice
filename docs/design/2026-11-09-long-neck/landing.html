@@ -1,0 +1,115 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>덕잡</title>
+<style>
+@font-face{font-family:P;src:url(file:///tmp/claude-0/-home-user-practice/282b8755-d911-5188-80ab-abb6243c4f27/scratchpad/fontpkg/node_modules/pretendard/dist/web/static/woff2/Pretendard-Regular.woff2)format("woff2");font-weight:400}
+@font-face{font-family:P;src:url(file:///tmp/claude-0/-home-user-practice/282b8755-d911-5188-80ab-abb6243c4f27/scratchpad/fontpkg/node_modules/pretendard/dist/web/static/woff2/Pretendard-SemiBold.woff2)format("woff2");font-weight:600}
+@font-face{font-family:P;src:url(file:///tmp/claude-0/-home-user-practice/282b8755-d911-5188-80ab-abb6243c4f27/scratchpad/fontpkg/node_modules/pretendard/dist/web/static/woff2/Pretendard-ExtraBold.woff2)format("woff2");font-weight:800}
+:root{--bg:#EE9F36;--ink:#3A2218;--cream:#FFF9F0;--body:#FBE7D0;--orange:#E9762B;--s:1.3;--rail-right:72px}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:P,sans-serif;word-break:keep-all}
+.page{position:relative;max-width:1280px;margin:0 auto;overflow:hidden}
+/* the duck: head at top, neck as a column the whole page long, body at the bottom */
+.rail{position:absolute;top:96px;bottom:0;right:var(--rail-right);width:calc(420px*var(--s));pointer-events:none;z-index:1}
+.rail .head{position:absolute;top:0;left:0;width:calc(360px*var(--s))}
+.rail .neck{position:absolute;left:calc(148.4px*var(--s));width:calc(103.2px*var(--s));top:calc(328px*var(--s));bottom:calc(266px*var(--s));
+  background:var(--body);border-left:calc(3.2px*var(--s)) solid var(--ink);border-right:calc(3.2px*var(--s)) solid var(--ink)}
+.rail .body{position:absolute;bottom:0;left:0;width:calc(420px*var(--s))}
+/* content stops where the neck starts */
+.content{position:relative;z-index:2;padding:0 calc(var(--rail-right) + 420px*var(--s) - 148px*var(--s)) 0 72px}
+nav{display:flex;align-items:center;justify-content:space-between;height:96px;margin-right:calc(-1*(var(--rail-right) + 420px*var(--s) - 148px*var(--s)) + 72px)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:26px;letter-spacing:-.02em}.logo img{width:40px;height:40px}
+nav a{color:var(--ink);font-weight:600;text-decoration:none}
+section{padding:80px 0}
+.hero{padding-top:110px;min-height:640px}
+.eyebrow{font-weight:600;font-size:16px;opacity:.75;margin:0 0 18px}
+h1{font-weight:800;font-size:60px;line-height:1.15;letter-spacing:-.035em;margin:0}
+h2{font-weight:800;font-size:38px;letter-spacing:-.03em;margin:0 0 10px}
+.lead{font-size:19px;line-height:1.65;margin:22px 0 34px;opacity:.85;max-width:560px}
+.muted{opacity:.75;font-size:17px;margin:0 0 36px}
+form{display:flex;gap:10px;max-width:500px}
+input{flex:1;min-width:0;font:inherit;font-size:17px;padding:16px 22px;border-radius:999px;border:2.5px solid var(--ink);background:var(--cream);color:var(--ink);outline:none}
+button{font:inherit;font-weight:800;font-size:17px;padding:0 28px;white-space:nowrap;border-radius:999px;border:0;background:var(--ink);color:var(--cream)}
+.note{font-size:14px;opacity:.7;margin-top:14px}
+.steps{display:grid;gap:26px}
+.step{display:flex;align-items:center}
+.step .card{flex:0 0 min(470px,100%)}
+.step .wire{flex:1;height:0;border-top:2.5px dashed var(--ink);opacity:.55;position:relative}
+.step .wire::after{content:"";position:absolute;right:-7px;top:-8.5px;width:14px;height:14px;border-radius:50%;background:var(--ink)}
+.card{background:var(--cream);border:2.5px solid var(--ink);border-radius:20px;padding:22px 24px;box-shadow:6px 6px 0 rgba(58,34,24,.2)}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--cream);font-weight:800;font-size:15px;margin-bottom:10px}
+.card h3{margin:0 0 6px;font-size:21px;font-weight:800;letter-spacing:-.02em}.card p{margin:0;font-size:15.5px;line-height:1.6;opacity:.85}
+.jobs{display:grid;gap:18px;max-width:640px}
+.job .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.badge{font-size:12.5px;font-weight:800;padding:4px 10px;border-radius:999px;background:#D3F2DC;color:#1F5130}.badge.pool{background:#FFE8CC;color:#8A4B0F}
+.src{font-size:13px;opacity:.65;font-weight:600}
+.job h3{font-size:20px}.job ul{margin:10px 0 14px;padding-left:18px;font-size:15px;line-height:1.7}
+.job .meta{display:flex;justify-content:space-between;align-items:center;border-top:2px dashed rgba(58,34,24,.25);padding-top:12px;font-weight:800}
+.job .meta a{font-size:14px;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:10px;max-width:660px}
+.chip{background:var(--cream);border:2px solid var(--ink);border-radius:999px;padding:8px 16px;font-weight:600;font-size:15px}
+.final{padding-bottom:calc(220px*var(--s))}
+footer{position:relative;z-index:2;padding:0 72px 36px;font-size:13px;opacity:.7}
+/* mobile: thinner duck tucked to the right edge */
+@media (max-width:640px){
+  :root{--s:.44;--rail-right:-46px}
+  .content{padding:0 calc(var(--rail-right) + 420px*var(--s) - 148px*var(--s) + 10px) 0 20px}
+  nav{height:72px;margin-right:calc(-1*(var(--rail-right) + 420px*var(--s) - 148px*var(--s) + 10px) + 20px)}
+  .rail{top:84px}.logo{font-size:22px}.logo img{width:34px;height:34px}
+  section{padding:56px 0}.hero{padding-top:150px;min-height:0}
+  h1{font-size:31px}h2{font-size:27px}.lead{font-size:16px}.muted{font-size:15px}
+  form{flex-direction:column}button{padding:16px}
+  .step .card{flex-basis:100%}.step .wire{display:none}
+  .card{padding:18px}.card h3{font-size:18px}.job h3{font-size:17px}
+  .chip{font-size:13px;padding:6px 12px}
+  .final{padding-bottom:40px}footer{padding:0 170px 28px 20px;min-height:120px}
+}
+</style></head><body><div class="page">
+<div class="rail" aria-hidden="true"><img class="head" src="head.svg" alt=""><div class="neck"></div><img class="body" src="body.svg" alt=""></div>
+<div class="content">
+<nav><div class="logo"><img src="icon.svg" alt="">덕잡</div><a href="#">로그인</a></nav>
+
+<section class="hero">
+  <p class="eyebrow">매일 아침 8시, 메일함으로 꽥</p>
+  <h1>목 빠지게 기다리던 일감,<br>덕잡이 물어다 줄게요</h1>
+  <p class="lead">전 세계와 국내에 흩어진 AI 단기 일감 중 나에게 맞는 3개를 매일 아침 한국어로 골라 드려요. 영어 공고여도 요약은 한국어예요.</p>
+  <form onsubmit="return false"><input placeholder="이메일 주소" aria-label="이메일"><button>받아보기</button></form>
+  <p class="note">이메일만 넣으면 끝 · 무료 · 언제든 수신거부</p>
+</section>
+
+<section>
+  <h2>덕잡은 이렇게 일해요</h2><p class="muted">목을 쭉 빼고, 세 단계면 끝나요.</p>
+  <div class="steps">
+    <div class="step"><div class="card"><span class="num">1</span><h3>이메일만 넣으세요</h3><p>비밀번호도 회원정보도 없어요. 메일 속 링크를 누르면 구독 끝.</p></div><div class="wire"></div></div>
+    <div class="step"><div class="card"><span class="num">2</span><h3>평소 쓰는 AI가 나를 분석해요</h3><p>ChatGPT·Claude·Gemini 버튼 한 번. 직접 적을 건 없고 확인만 하면 돼요.</p></div><div class="wire"></div></div>
+    <div class="step"><div class="card"><span class="num">3</span><h3>매일 아침 3개를 물어다 드려요</h3><p>한국어 3줄 요약, 보수·시간, 원문 링크까지. 지원은 원문에서 직접 해요.</p></div><div class="wire"></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>오늘 물어온 일감</h2><p class="muted">이런 메일이 매일 아침 와요 · 11월 9일</p>
+  <div class="jobs">
+    <article class="card job"><div class="top"><span class="badge">실제 프로젝트</span><span class="src">OpenTrain AI</span></div>
+      <h3>Senior Video Editor, QA</h3>
+      <ul><li>AI·사람이 편집한 영상을 기획안·스타일 기준으로 평가</li><li>프리미어·다빈치 등 편집 툴 2개 이상 능숙하면 지원</li><li>원격 파트타임, 한국 거주자 지원 가능</li></ul>
+      <div class="meta"><span>시간당 $25~51 · 주 20시간~</span><a href="#">자세히 보기 →</a></div></article>
+    <article class="card job"><div class="top"><span class="badge pool">상시 모집</span><span class="src">Invisible</span></div>
+      <h3>Korean Language Data Contributor</h3>
+      <ul><li>텍스트·음성·이미지로 한국어 AI 학습 데이터 만들기</li><li>한국어 원어민이면 지원 가능</li><li>전 세계 원격</li></ul>
+      <div class="meta"><span>시간당 $6~65</span><a href="#">자세히 보기 →</a></div></article>
+    <article class="card job"><div class="top"><span class="badge">실제 프로젝트</span><span class="src">OpenTrain AI</span></div>
+      <h3>Image Editing QA Reviewer</h3>
+      <ul><li>AI가 고친 이미지가 지시대로 됐는지 검수</li><li>영어 독해와 꼼꼼한 눈만 있으면 OK</li><li>전 세계 지원 가능</li></ul>
+      <div class="meta"><span>주 20시간~</span><a href="#">자세히 보기 →</a></div></article>
+  </div>
+</section>
+
+<section>
+  <h2>전 세계 18곳에서 물어와요</h2><p class="muted">언어 상관없이, AI가 필요한 단기 일감이면 다 물어와요.</p>
+  <div class="chips"><span class="chip">Invisible</span><span class="chip">Welo Data</span><span class="chip">RWS TrainAI</span><span class="chip">TransPerfect</span><span class="chip">OpenTrain AI</span><span class="chip">Mercor</span><span class="chip">OneForma</span><span class="chip">Appen</span><span class="chip">xAI</span><span class="chip">Scale AI</span><span class="chip">Toloka</span><span class="chip">Turing</span><span class="chip">Prolific</span><span class="chip">Labelbox</span><span class="chip">Snorkel AI</span><span class="chip">Handshake</span><span class="chip">Remotasks</span><span class="chip">사람인</span></div>
+</section>
+
+<section class="final">
+  <h2>내일 아침 8시,<br>첫 일감을 받아보세요</h2><p class="muted">덕잡이 목 빠지게 기다리고 있어요.</p>
+  <form onsubmit="return false"><input placeholder="이메일 주소" aria-label="이메일"><button>받아보기</button></form>
+</section>
+</div>
+<footer>덕잡 · 공고 요약과 원문 링크만 보내요. 지원은 원문 플랫폼에서 직접 해요.</footer>
+</div></body></html>
