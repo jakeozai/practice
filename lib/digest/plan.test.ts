@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { planManualDigest, summarizePlan, type DigestStatus } from "./plan";
+import { planManualDigest, rankForEveryone, summarizePlan, type DigestStatus } from "./plan";
 
 const a = { user_id: "u-a", email: "a@example.com" };
 const b = { user_id: "u-b", email: "b@example.com" };
@@ -69,4 +69,16 @@ test("caps at maxJobs and ignores duplicate ids and recipients", () => {
     maxJobs: 5,
   });
   assert.deepEqual(plan, [{ kind: "send", recipient: a, jobIds: ["j1", "j2", "j3", "j4", "j5"] }]);
+});
+
+test("Phase 1 order: Korean work, then English-only, then other languages; otherwise unchanged", () => {
+  const jobs = [
+    { id: "bosnian", languages: ["bs", "en"] },
+    { id: "en-1", languages: ["en"] },
+    { id: "ko-1", languages: ["ko", "en"] },
+    { id: "none", languages: [] },
+    { id: "ko-2", languages: ["ko"] },
+  ];
+  assert.deepEqual(rankForEveryone(jobs).map((j) => j.id), ["ko-1", "ko-2", "en-1", "none", "bosnian"]);
+  assert.equal(jobs[0].id, "bosnian", "input not mutated");
 });

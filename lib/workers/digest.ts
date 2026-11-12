@@ -4,7 +4,8 @@
  * /api/cron/digest.
  *
  * Candidate jobs: approved, open to Korea residents, not permanent staff
- * hiring, not closed — newest first, then the highest pay.
+ * hiring, not closed — newest first, then the highest pay, then Korean-language
+ * work moved ahead (rankForEveryone).
  * Order per user: render → send with idempotency key
  * `digest-{user_id}-{send_date}` → on success write matches + digest_sends('sent');
  * on failure digest_sends('failed') so a rerun on the same day retries.
@@ -12,7 +13,7 @@
  */
 import type { ServiceClient } from "../supabase/service";
 import { appEnv, emailEnv, linkEnv } from "../env";
-import { planManualDigest, summarizePlan, type DigestStatus, type Recipient } from "../digest/plan";
+import { planManualDigest, rankForEveryone, summarizePlan, type DigestStatus, type Recipient } from "../digest/plan";
 import { composeDigestEmail, DIGEST_JOB_COLUMNS, type DigestJob } from "../digest/compose";
 import { sendEmail } from "../email/send";
 import { SEND_INTERVAL_MS } from "../email/constants";
@@ -20,7 +21,7 @@ import { pastDeadline, sleep, type RunOptions } from "./run";
 
 const PAGE = 1000;
 /** How many fresh jobs to consider; each user gets the first DIGEST_SIZE they haven't seen. */
-export const CANDIDATE_POOL = 30;
+export const CANDIDATE_POOL = 60;
 /** Leave time to record the last send before the function limit. */
 const DEADLINE_MARGIN_MS = 20_000;
 
@@ -36,7 +37,7 @@ export async function loadCandidateJobs(db: ServiceClient, limit = CANDIDATE_POO
     .order("pay_max", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw new Error(`load candidate jobs: ${error.message}`);
-  return data;
+  return rankForEveryone(data);
 }
 
 export async function loadRecipients(db: ServiceClient, only?: string): Promise<Recipient[]> {

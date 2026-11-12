@@ -57,3 +57,19 @@ export function summarizePlan(plan: PlanItem[]) {
     alreadyDone: plan.filter((p) => p.kind === "already_done").length,
   };
 }
+
+/**
+ * (제안값, 2026-11-12) Phase 1 mails the same jobs to every subscriber, and they
+ * all read Korean: work in Korean first, then English-only work, then other
+ * languages. Language never removes a job (spec §0); it only orders them.
+ */
+export function languageTier(languages: string[]): number {
+  if (languages.includes("ko")) return 2;
+  if (languages.every((l) => l === "en")) return 1;
+  return 0;
+}
+
+/** Stable: within a tier the incoming order (newest, then best paid) is kept. */
+export function rankForEveryone<T extends { languages: string[] }>(jobs: T[]): T[] {
+  return [...jobs].sort((a, b) => languageTier(b.languages) - languageTier(a.languages));
+}
