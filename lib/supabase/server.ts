@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { Database } from "./database.types";
 import { supabasePublicEnv } from "../env";
 
@@ -9,7 +10,9 @@ import { supabasePublicEnv } from "../env";
  * session, RLS applies). Create one per request.
  */
 export async function createClient() {
-  // cookies() first: it marks the render as request-time before anything else runs.
+  // Request-time only: the auth client reads the clock (session expiry), which Next.js
+  // rejects in any prerender, including runtime prefetches that do have cookies.
+  await connection();
   const cookieStore = await cookies();
   const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } = supabasePublicEnv();
 

@@ -105,11 +105,27 @@ export type MessagesClient = {
 
 export const EXTRACT_ATTEMPTS = 2; // 1 call + 1 retry (CLAUDE.md rule 4)
 
+/**
+ * True when the call failed because the model service can't be used right now
+ * (auth, plan, quota, rate limit, outage, network) rather than because of this
+ * posting. Such postings stay unprocessed for the next run (spec §8) instead of
+ * landing in the review queue without a summary. 400/422 are about the request,
+ * so they count as this posting's failure.
+ */
+export function isServiceFailure(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  const status = (e as { status?: unknown }).status;
+  if (typeof status === "number") return status !== 400 && status !== 422;
+  return e.name === "APIConnectionError" || e.name === "APIConnectionTimeoutError";
+}
+
 export async function extractJob(
   client: MessagesClient,
   model: string,
   posting: PostingInput,
-): Promise<{ ok: true; data: JobExtract; calls: number } | { ok: false; error: string; calls: number }> {
+): Promise<
+  { ok: true; data: JobExtract; calls: number } | { ok: false; error: string; calls: number; unavailable: boolean }
+> {
   let lastError = "";
   for (let attempt = 1; attempt <= EXTRACT_ATTEMPTS; attempt++) {
     try {
@@ -125,7 +141,9 @@ export async function extractJob(
       lastError = `invalid output (${parsed.error})`;
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
+      // The SDK already retried 429/5xx; another attempt won't help, and the posting isn't at fault.
+      if (isServiceFailure(e)) return { ok: false, error: lastError, calls: attempt, unavailable: true };
     }
   }
-  return { ok: false, error: lastError, calls: EXTRACT_ATTEMPTS };
+  return { ok: false, error: lastError, calls: EXTRACT_ATTEMPTS, unavailable: false };
 }

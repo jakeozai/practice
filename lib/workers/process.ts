@@ -52,6 +52,8 @@ export type ProcessStats = {
   keptReviewed: number;
   llmCalls: number;
   llmFailed: number;
+  /** Postings left for the next run because the model service refused or was down. */
+  llmUnavailable: number;
   errors: number;
 };
 
@@ -65,7 +67,9 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
   if (sErr) throw new Error(`load sources: ${sErr.message}`);
   const sources = new Map<string, SourceInfo>(sourceRows.map((s) => [s.id, { name: s.name, trusted: s.trusted }]));
 
-  const stats: ProcessStats = { seen: 0, skipKeyword: 0, skipRegion: 0, approved: 0, pending: 0, rejected: 0, keptReviewed: 0, llmCalls: 0, llmFailed: 0, errors: 0 };
+  const stats: ProcessStats = { seen: 0, skipKeyword: 0, skipRegion: 0, approved: 0, pending: 0, rejected: 0, keptReviewed: 0, llmCalls: 0, llmFailed: 0, llmUnavailable: 0, errors: 0 };
+  /** Set on the first service-level LLM failure: the rest of the run would fail the same way. */
+  let llmDown: string | null = null;
   const attempted = new Set<string>();
 
   async function handle(raw: Tables<"raw_postings">) {
@@ -86,12 +90,22 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
         return;
       }
 
+      if (llmDown) {
+        stats.llmUnavailable++;
+        return; // not marked processed: retried next run
+      }
+
       let extraction: JobExtract | null = null;
       if (client && llm) {
         const r = await extractJob(client, llm.model, raw);
         stats.llmCalls += r.calls;
         if (r.ok) extraction = r.data;
-        else {
+        else if (r.unavailable) {
+          stats.llmUnavailable++;
+          if (!llmDown) opts.log(`  ! LLM unavailable (${r.error.slice(0, 300)}); candidates wait for the next run.`);
+          llmDown = r.error;
+          return;
+        } else {
           stats.llmFailed++;
           opts.log(`  ! LLM failed for ${raw.url}: ${r.error} → review queue`);
         }
@@ -141,7 +155,7 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
   opts.log(
     `Processed ${stats.seen}: skipped ${stats.skipKeyword} (no keyword) + ${stats.skipRegion} (region), ` +
       `approved ${stats.approved}, pending ${stats.pending}, rejected ${stats.rejected}, kept ${stats.keptReviewed} reviewed; ` +
-      `LLM calls ${stats.llmCalls} (failed ${stats.llmFailed}); errors ${stats.errors}` +
+      `LLM calls ${stats.llmCalls} (failed ${stats.llmFailed}, unavailable ${stats.llmUnavailable}); errors ${stats.errors}` +
       (outOfTime ? "; stopped at the deadline, the rest waits for the next run." : "."),
   );
   return stats;

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildJob, triage } from "./process";
-import { extractJob, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
+import { extractJob, isServiceFailure, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
 
 const raw = {
   id: "raw-1",
@@ -143,4 +143,19 @@ test("extractJob: retries once, then gives up", async () => {
   const failed = await extractJob(fakeClient([new Error("overloaded"), "nope"]), "m", raw);
   assert.equal(failed.ok, false);
   assert.equal(failed.calls, 2);
+  if (!failed.ok) assert.equal(failed.unavailable, false, "bad output is the posting's failure");
+});
+
+test("extractJob: a refused or unreachable service stops at once and is not the posting's fault", async () => {
+  const refused = Object.assign(new Error("403 Free tier users do not have access to this model"), { status: 403 });
+  const r = await extractJob(fakeClient([refused, JSON.stringify(extraction)]), "m", raw);
+  assert.equal(r.ok, false);
+  assert.equal(r.calls, 1);
+  if (!r.ok) assert.equal(r.unavailable, true);
+
+  const badRequest = Object.assign(new Error("400 prompt too long"), { status: 400 });
+  assert.equal(isServiceFailure(badRequest), false);
+  assert.equal(isServiceFailure(Object.assign(new Error("x"), { status: 429 })), true);
+  assert.equal(isServiceFailure(Object.assign(new Error("x"), { name: "APIConnectionError" })), true);
+  assert.equal(isServiceFailure(new Error("invalid output")), false);
 });
