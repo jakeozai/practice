@@ -8,7 +8,7 @@ export const maxDuration = 300;
 const BUDGET_MS = 285_000;
 
 /**
- * Every 10 minutes (Supabase pg_cron, migration 0008): turn waiting postings
+ * Every 10 minutes from 19:00 to 05:50 KST (Supabase pg_cron, migrations 0008/0009): turn waiting postings
  * into jobs (spec §8). LLM calls are paced to the Gateway rate limit, so the
  * backlog drains over several runs; with nothing waiting a run ends at once.
  */
