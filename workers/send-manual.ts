@@ -72,6 +72,7 @@ async function loadJobs(db: ServiceClient, ids: string[]): Promise<DigestJob[]> 
       company: j.company,
       title: j.title,
       title_ko: j.title_ko,
+      url: j.url,
       summary_ko: j.summary_ko,
       status: j.status,
       category: j.category,

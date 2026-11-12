@@ -17,12 +17,22 @@ import { AI_ASSISTANTS, assistantUrl, type AiAssistant } from "@/lib/profile/pre
  */
 type Step = "analyze" | "return" | "confirm" | "edit" | "done" | "skipped";
 
+/** One job of the next mail, for the preview on the done screen. */
+export type PreviewJob = { id: string; headline: string; company: string; line: string | null; pay: string | null; url: string };
+
 const input = "field-box";
 const primary = "btn-primary";
 const secondary = "btn-secondary";
 const link = "link-muted";
 
-export function OnboardingFlow(props: { email: string; prompt: string; saved: Profile | null }) {
+export function OnboardingFlow(props: {
+  email: string;
+  prompt: string;
+  saved: Profile | null;
+  preview: PreviewJob[];
+  /** "내일 아침 6시" */
+  nextMail: string;
+}) {
   const [step, setStep] = useState<Step>(props.saved ? "confirm" : "analyze");
   const [profile, setProfile] = useState<Profile | null>(props.saved);
   const [isSaved, setIsSaved] = useState(Boolean(props.saved));
@@ -80,14 +90,45 @@ export function OnboardingFlow(props: { email: string; prompt: string; saved: Pr
     );
   }
   return (
-    <div className="card">
-      <p className="text-lg font-bold">{step === "skipped" ? "구독 완료!" : "확인 완료!"}</p>
-      <p className="mt-1 text-sm text-muted">
-        매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 AI 일감 3개를 보내드려요.
-      </p>
-      <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(step === "skipped" ? "analyze" : "confirm")}>
-        {step === "skipped" ? "지금 AI로 분석하기" : "분석 결과 다시 보기"}
-      </button>
+    <section className="space-y-6">
+      <div className="card">
+        <p className="text-lg font-bold">{step === "skipped" ? "구독 완료!" : "확인 완료!"}</p>
+        <p className="mt-1 text-sm text-muted">
+          매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 AI 일감 3개를 보내드려요.
+        </p>
+        <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(step === "skipped" ? "analyze" : "confirm")}>
+          {step === "skipped" ? "지금 AI로 분석하기" : "분석 결과 다시 보기"}
+        </button>
+      </div>
+      {props.preview.length > 0 && <NextMailPreview jobs={props.preview} when={props.nextMail} />}
+    </section>
+  );
+}
+
+// ── done: what the next mail carries ─────────────────────────────────────
+function NextMailPreview(props: { jobs: PreviewJob[]; when: string }) {
+  return (
+    <div>
+      <p className="text-sm font-bold">{props.when}에 이런 일감이 와요</p>
+      <ul className="mt-3 space-y-2">
+        {props.jobs.map((j) => (
+          <li key={j.id}>
+            <a
+              href={j.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-2xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]"
+            >
+              <p className="font-bold leading-snug">{j.headline}</p>
+              <p className="mt-0.5 text-xs text-muted">
+                {j.company}
+                {j.pay ? ` · ${j.pay}` : ""}
+              </p>
+              {j.line && <p className="mt-1.5 text-sm leading-relaxed">{j.line}</p>}
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -170,7 +211,7 @@ function ReturnStep(props: { assistant: AiAssistant | null; onBack: () => void; 
       <div className="card">
         <h2 className="text-2xl font-extrabold tracking-tight">{name} 답변을 복사했나요?</h2>
         <p className="mt-2 text-sm text-muted">
-          {name} 창에 입력창이 비어 있으면 붙여넣기(⌘V / Ctrl+V)로 보내고, 답변 아래 복사 버튼을 누른 뒤 돌아오세요.
+          {name} 창에 입력창이 비어 있으면 붙여넣기(⌘V / Ctrl+V)로 보내고, 답변 속 코드 블록의 복사 버튼을 누른 뒤 돌아오세요.
         </p>
         <button type="button" className={`${primary} mt-5 w-full sm:w-auto`} disabled={pending} onClick={fromClipboard}>
           {pending ? "읽는 중…" : "분석 결과 불러오기"}

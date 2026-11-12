@@ -18,6 +18,7 @@ const job: DigestJob = {
   languages: ["ko", "en"],
   english_level: "reading",
   engagement: "freelance",
+  url: "https://example.com/jobs/1",
   pay_min: 30,
   pay_max: 35,
   pay_currency: "USD",
@@ -86,4 +87,11 @@ test("card falls back to the original title when there is no Korean one", () => 
   assert.equal(card.headline, "Korean AI Trainer");
   assert.equal(card.originalTitle, null);
   assert.equal(card.category, null);
+});
+
+test("top line: the day's numbers when they make sense, else the plain intro", async () => {
+  const withStats = await composeDigestEmail({ ...input, stats: { newPostings: 120, koreaJobs: 9 } });
+  assert.ok(withStats.text.includes("지난 하루 새로 올라온 공고 120개 중 한국에서 지원할 수 있는 AI 일감 9개, 그중 1개를 골랐어요."));
+  const plain = await composeDigestEmail(input);
+  assert.ok(plain.text.includes("한국에서 지원할 수 있는 단기 일감만 골라"));
 });

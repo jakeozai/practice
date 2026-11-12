@@ -1,5 +1,5 @@
 /**
- * Hand-written types for supabase/migrations/0001–0007, in the shape that
+ * Hand-written types for supabase/migrations/0001–0010, in the shape that
  * `supabase gen types typescript` produces. Regenerate with the CLI once a
  * Supabase project is linked, and keep this file in sync with migrations.
  */
@@ -47,6 +47,7 @@ export type Database = {
           body: string | null;
           body_hash: string;
           fetched_at: string;
+          first_seen_at: string;
           processed_hash: string | null;
         };
         Insert: {
@@ -59,6 +60,7 @@ export type Database = {
           body?: string | null;
           body_hash: string;
           fetched_at?: string;
+          first_seen_at?: string;
           processed_hash?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["raw_postings"]["Insert"]>;

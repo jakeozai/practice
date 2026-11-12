@@ -10,29 +10,12 @@ import { signLink } from "../links";
 import { koreanMonthDay, koreanWeekday, seoulDayStartUtc } from "../time";
 import { BRAND, contactEmail } from "../brand";
 import { unsubscribeHeaders, type OutgoingEmail } from "../email/send";
-import type { Tables } from "../supabase/database.types";
+import { curationLine } from "./plan";
+import type { CurationStats } from "./candidates";
 
-export type DigestJob = Pick<
-  Tables<"jobs">,
-  | "id"
-  | "company"
-  | "title"
-  | "title_ko"
-  | "summary_ko"
-  | "status"
-  | "category"
-  | "languages"
-  | "english_level"
-  | "engagement"
-  | "pay_min"
-  | "pay_max"
-  | "pay_currency"
-  | "pay_unit"
-  | "hours_per_week_min"
->;
-
-export const DIGEST_JOB_COLUMNS =
-  "id, company, title, title_ko, summary_ko, status, category, languages, english_level, engagement, pay_min, pay_max, pay_currency, pay_unit, hours_per_week_min" as const;
+// The job shape and columns live in candidates.ts (no React Email there); re-exported for callers.
+export { DIGEST_JOB_COLUMNS, type DigestJob } from "./candidates";
+import type { DigestJob } from "./candidates";
 
 /** One mail card. The posting text never appears, only our Korean summary and structured fields (CLAUDE.md rule 1). */
 export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null): DailyFiveJob {
@@ -60,11 +43,13 @@ export async function composeDigestEmail(input: {
   jobs: DigestJob[];
   /** Per-job recommendation line (Phase 2). */
   reasons?: Map<string, string>;
+  /** Day's numbers for the top line (null: plain intro). */
+  stats?: CurationStats | null;
   sendDate: string;
   appUrl: string;
   linkSecret: string;
 }): Promise<OutgoingEmail> {
-  const { recipient, jobs, reasons, sendDate, appUrl, linkSecret } = input;
+  const { recipient, jobs, reasons, stats, sendDate, appUrl, linkSecret } = input;
   // Issue time pinned to the send date keeps the payload identical on reruns.
   const issuedAt = seoulDayStartUtc(sendDate);
   const uid = recipient.user_id;
@@ -85,6 +70,7 @@ export async function composeDigestEmail(input: {
       brand={BRAND.name}
       dateLabel={dateLabel}
       dayLabel={`${dateLabel} ${koreanWeekday(sendDate)}`}
+      curation={curationLine(stats, cards.length)}
       jobs={cards}
       recipientEmail={recipient.email}
       logoUrl={`${appUrl}/duck-mail.png`}

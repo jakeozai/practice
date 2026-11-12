@@ -73,3 +73,14 @@ export function languageTier(languages: string[]): number {
 export function rankForEveryone<T extends { languages: string[] }>(jobs: T[]): T[] {
   return [...jobs].sort((a, b) => languageTier(b.languages) - languageTier(a.languages));
 }
+
+/**
+ * The line at the top of the mail: how much was looked at to pick these few.
+ * Null (the mail keeps its plain intro) when the numbers would read oddly, e.g.
+ * nothing new came in or fewer new jobs passed than the mail carries.
+ */
+export function curationLine(stats: { newPostings: number; koreaJobs: number } | null | undefined, picked: number): string | null {
+  if (!stats || picked <= 0 || stats.newPostings <= 0 || stats.koreaJobs < picked) return null;
+  const n = (x: number) => x.toLocaleString("ko-KR");
+  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 지원할 수 있는 AI 일감 ${n(stats.koreaJobs)}개, 그중 ${picked}개를 골랐어요.`;
+}

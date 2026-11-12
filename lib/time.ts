@@ -33,6 +33,14 @@ export function isIsoDate(s: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
 }
 
+/** The daily mail goes out at 06:00 KST (2026-11-12 decision; pg_cron 21:00 UTC). */
+export const SEND_HOUR_KST = 6;
+
+/** The send instant of a Seoul calendar day: 06:00 KST. */
+export function seoulSendTime(isoDate: string): Date {
+  return new Date(`${isoDate}T${String(SEND_HOUR_KST).padStart(2, "0")}:00:00+09:00`);
+}
+
 /** First instant (UTC) of a Seoul calendar day. Korea has no DST, so the offset is fixed. */
 export function seoulDayStartUtc(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00+09:00`);

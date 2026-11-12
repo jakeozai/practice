@@ -26,6 +26,8 @@ export type DailyFiveProps = {
   dateLabel: string;
   /** "11월 13일 금요일" — top of the mail. */
   dayLabel: string;
+  /** "지난 하루 새로 올라온 공고 N개 중 …" — replaces the plain intro when present. */
+  curation?: string | null;
   jobs: DailyFiveJob[];
   recipientEmail: string;
   logoUrl: string;
@@ -192,7 +194,9 @@ export default function DailyFive(props: DailyFiveProps) {
 
           <Text style={s.day}>{`${props.dayLabel} · 좋은 아침이에요`}</Text>
           <Text style={s.heading}>{`오늘의 AI 일감 ${jobs.length}개`}</Text>
-          <Text style={s.intro}>전 세계 공고 중 한국에서 지원할 수 있는 단기 일감만 골라 한국어로 정리했어요.</Text>
+          <Text style={s.intro}>
+            {props.curation ?? "전 세계 공고 중 한국에서 지원할 수 있는 단기 일감만 골라 한국어로 정리했어요."}
+          </Text>
 
           {jobs.map((job, i) => (
             <JobCard key={job.id} job={job} index={i} />

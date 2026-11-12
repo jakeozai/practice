@@ -129,3 +129,9 @@ test("오류 코드", () => {
   assert.deepEqual(parseProfileText(wrap("{ 이건 json이 아님 }")), { ok: false, error: "INVALID_JSON" });
   assert.deepEqual(parseProfileText("x".repeat(MAX_INPUT_CHARS + 1)), { ok: false, error: "TOO_LARGE" });
 });
+
+test("표식까지 통째로 코드 블록에 넣은 답(프롬프트 규칙 4)과 그 복사 버튼 결과를 모두 읽는다", () => {
+  const block = wrap(JSON.stringify(goodJson));
+  assert.equal(parseProfileText("분석했어요.\n\n```text\n" + block + "\n```\n").ok, true, "answer with the fence");
+  assert.equal(parseProfileText(block).ok, true, "what the copy button gives");
+});

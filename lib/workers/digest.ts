@@ -13,32 +13,16 @@
  */
 import type { ServiceClient } from "../supabase/service";
 import { appEnv, emailEnv, linkEnv } from "../env";
-import { planManualDigest, rankForEveryone, summarizePlan, type DigestStatus, type Recipient } from "../digest/plan";
-import { composeDigestEmail, DIGEST_JOB_COLUMNS, type DigestJob } from "../digest/compose";
+import { planManualDigest, summarizePlan, type DigestStatus, type Recipient } from "../digest/plan";
+import { composeDigestEmail } from "../digest/compose";
+import { loadCandidateJobs, loadCurationStats, type DigestJob } from "../digest/candidates";
 import { sendEmail } from "../email/send";
 import { SEND_INTERVAL_MS } from "../email/constants";
 import { pastDeadline, sleep, type RunOptions } from "./run";
 
 const PAGE = 1000;
-/** How many fresh jobs to consider; each user gets the first DIGEST_SIZE they haven't seen. */
-export const CANDIDATE_POOL = 60;
 /** Leave time to record the last send before the function limit. */
 const DEADLINE_MARGIN_MS = 20_000;
-
-export async function loadCandidateJobs(db: ServiceClient, limit = CANDIDATE_POOL): Promise<DigestJob[]> {
-  const { data, error } = await db
-    .from("jobs")
-    .select(DIGEST_JOB_COLUMNS)
-    .eq("review_state", "approved")
-    .eq("korea_eligible", true)
-    .neq("status", "closed")
-    .or("engagement.is.null,engagement.neq.permanent")
-    .order("first_seen_at", { ascending: false })
-    .order("pay_max", { ascending: false, nullsFirst: false })
-    .limit(limit);
-  if (error) throw new Error(`load candidate jobs: ${error.message}`);
-  return rankForEveryone(data);
-}
 
 export async function loadRecipients(db: ServiceClient, only?: string): Promise<Recipient[]> {
   const out: Recipient[] = [];
@@ -125,6 +109,11 @@ export async function sendDigest(
   if (!opts.dryRun) emailEnv(); // fail before the loop, not once per recipient
 
   const jobs = opts.jobs ?? (await loadCandidateJobs(db));
+  // The top-line numbers describe the automatic pick, not a hand-picked (Phase 0) list.
+  const stats = opts.jobs ? null : await loadCurationStats(db, opts.sendDate).catch((e) => {
+    opts.log(`  ! curation stats unavailable (${e instanceof Error ? e.message : e}); plain intro`);
+    return null;
+  });
   const jobById = new Map(jobs.map((j) => [j.id, j]));
   const recipients = await loadRecipients(db, opts.only);
   const plan = planManualDigest({
@@ -163,6 +152,7 @@ export async function sendDigest(
       const mail = await composeDigestEmail({
         recipient,
         jobs: item.jobIds.map((id) => jobById.get(id)!),
+        stats,
         sendDate: opts.sendDate,
         appUrl: APP_URL,
         linkSecret: EMAIL_LINK_SECRET,

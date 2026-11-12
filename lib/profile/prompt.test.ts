@@ -18,6 +18,10 @@ test("prompt asks the AI to analyze without quizzing the user", () => {
   assert.match(prompt, /질문하지 말고 바로 분석/);
 });
 
+test("prompt asks for one code block, so the AI shows a copy button", () => {
+  assert.match(prompt, /코드 블록 하나/);
+});
+
 test("assistant URLs: prefill carries the whole prompt where supported", () => {
   for (const a of AI_ASSISTANTS) {
     const url = new URL(assistantUrl(a.id, prompt));
