@@ -2,6 +2,8 @@ import { connection, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCronRequest } from "@/lib/cron";
 import { AI_GATEWAY_BASE_URL, createAnthropic, fastModelConfig, firstText } from "@/lib/llm/client";
+import { extractJob, type MessagesClient } from "@/lib/llm/extractJob";
+import { triage } from "@/lib/jobs/process";
 
 export const maxDuration = 60;
 
@@ -15,7 +17,9 @@ type GatewayModel = {
 /**
  * Operator check (cron-token protected): which language models this Vercel
  * account may call through AI Gateway right now, and whether the configured
- * model (or ?model=) answers a one-line Messages API request.
+ * model (or ?model=) answers a one-line Messages API request. With ?extract=N
+ * it also runs the real extraction on N waiting postings and returns only the
+ * extracted fields (never the posting text, CLAUDE.md rule 1). Nothing is saved.
  */
 export async function GET(request: Request) {
   await connection();
@@ -51,11 +55,26 @@ export async function GET(request: Request) {
     probe = `error: ${(e instanceof Error ? e.message : String(e)).slice(0, 300)}`;
   }
 
+  const db = createAdminClient();
+  const extractN = Math.min(5, Number(new URL(request.url).searchParams.get("extract") ?? 0) || 0);
+  const samples: unknown[] = [];
+  if (extractN > 0) {
+    const { data: batch } = await db.rpc("raw_postings_to_process", { p_limit: 200 });
+    const candidates = (batch ?? []).filter((r) => triage(r) === "candidate").slice(0, extractN);
+    const client = createAnthropic(config) as unknown as MessagesClient;
+    for (const raw of candidates) {
+      const started = Date.now();
+      const r = await extractJob(client, model, raw);
+      samples.push({ url: raw.url, ms: Date.now() - started, ...(r.ok ? { data: r.data } : { error: r.error.slice(0, 300) }) });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     via: config.via,
     model,
     probe,
+    samples,
     account: body.request_context_availability ?? null,
     eligibleCount: eligible.length,
     cheapestEligible: eligible.slice(0, 40),
