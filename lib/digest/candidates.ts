@@ -34,8 +34,12 @@ export type DigestJob = Pick<
 export const DIGEST_JOB_COLUMNS =
   "id, company, title, title_ko, summary_ko, status, category, languages, english_level, engagement, url, pay_min, pay_max, pay_currency, pay_unit, hours_per_week_min" as const;
 
-/** How many fresh jobs to consider; each user gets the first DIGEST_SIZE they haven't seen. */
-export const CANDIDATE_POOL = 60;
+/**
+ * How many jobs to rank; each user gets the first DIGEST_SIZE they haven't
+ * seen. Large enough that Korean-language work isn't cut off by a burst of
+ * newer foreign-language postings before rankForEveryone sees it.
+ */
+export const CANDIDATE_POOL = 500;
 
 /**
  * Approved, open to Korea residents, not permanent staff hiring, not closed —

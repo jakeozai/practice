@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildJob, triage } from "./process";
+import { boardCompany, buildJob, decideCompany, triage } from "./process";
 import { extractJob, isServiceFailure, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
 
 const raw = {
@@ -33,7 +33,7 @@ const extraction: JobExtract = {
   summary_ko: ["AI가 만든 한국어 결과물을 평가하는 일", "한국어 원어민, 영어 B2 이상", "시간당 10달러, 주 10시간 이상"],
 };
 
-const trusted = { name: "RWS TrainAI", trusted: true };
+const trusted = { name: "RWS TrainAI", trusted: true, kind: "lever" };
 
 test("triage: keyword, then region, before any LLM call", () => {
   assert.equal(triage(raw), "candidate");
@@ -166,4 +166,15 @@ test("extractJob: a refused or unreachable service stops at once and is not the 
   assert.equal(isServiceFailure(Object.assign(new Error("x"), { status: 429 })), true);
   assert.equal(isServiceFailure(Object.assign(new Error("x"), { name: "APIConnectionError" })), true);
   assert.equal(isServiceFailure(new Error("invalid output")), false);
+});
+
+test("company: a hiring-system board's owner; on page sources the LLM's answer unless it's a placeholder", () => {
+  const invisible = { name: "Invisible (Freelance AI Trainer)", trusted: true, kind: "greenhouse" };
+  assert.equal(boardCompany(invisible.name), "Invisible");
+  assert.equal(decideCompany(invisible, "N/A"), "Invisible");
+  assert.equal(decideCompany(invisible, "AI QA Trainer"), "Invisible");
+  const opentrain = { name: "OpenTrain AI", trusted: false, kind: "page" };
+  assert.equal(decideCompany(opentrain, "Acme Labs"), "Acme Labs");
+  assert.equal(decideCompany(opentrain, "n/a"), "OpenTrain AI");
+  assert.equal(decideCompany(opentrain, null), "OpenTrain AI");
 });

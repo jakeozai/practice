@@ -20,7 +20,27 @@ export type RawForProcessing = {
   body: string | null;
 };
 
-export type SourceInfo = { name: string; trusted: boolean };
+export type SourceInfo = { name: string; trusted: boolean; kind: string };
+
+/** "Invisible (Freelance AI Trainer)" → "Invisible": source names carry admin notes in parentheses. */
+export function boardCompany(sourceName: string): string {
+  return sourceName.replace(/\s*\(.*\)\s*$/, "").trim() || sourceName;
+}
+
+const NO_COMPANY = /^(?:n\/?a|unknown|none|not specified|undisclosed|confidential|없음|미상|-+)$/i;
+
+/**
+ * Who you apply through. A hiring-system board (Greenhouse, Lever, Ashby,
+ * Recruitee) belongs to one company, so its name wins over whatever the LLM
+ * read in the text (2026-11-12: "N/A", or the job title, for Invisible).
+ * Page sources can list other companies' jobs, so there the LLM's answer is
+ * used unless it is a placeholder.
+ */
+export function decideCompany(source: SourceInfo, llmCompany: string | null | undefined): string {
+  if (source.kind !== "page" && source.kind !== "manual") return boardCompany(source.name);
+  const c = llmCompany?.trim();
+  return c && !NO_COMPANY.test(c) ? c : boardCompany(source.name);
+}
 
 /**
  * Before any LLM call (cost rule 10):
@@ -43,7 +63,7 @@ export function buildJob(input: {
 }): JobInsert {
   const { raw, source, extraction: x, sameTitleCount } = input;
   const title = x?.title || raw.title?.trim() || "(제목 없음)";
-  const company = x?.company || source.name;
+  const company = decideCompany(source, x?.company);
   const korea = decideKoreaEligible(raw.location_raw, x?.korea_eligible);
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;

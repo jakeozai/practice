@@ -16,7 +16,7 @@ import type { ServiceClient } from "../supabase/service";
 import { createAnthropic, fastModelConfig } from "../llm/client";
 import { extractJob, type JobExtract, type MessagesClient } from "../llm/extractJob";
 import { createPacer, llmRequestsPerMinute, pacedClient } from "../llm/pace";
-import { buildJob, triage, type SourceInfo } from "../jobs/process";
+import { buildJob, decideCompany, triage, type SourceInfo } from "../jobs/process";
 import { normalizeTitle } from "../jobs/format";
 import { REPOST_WINDOW_DAYS } from "../status";
 import type { Tables } from "../supabase/database.types";
@@ -69,9 +69,9 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
   const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, pacer) : null;
   if (!llm) opts.log("No LLM configured (ANTHROPIC_MODEL_FAST + AI Gateway or ANTHROPIC_API_KEY): candidates go to the review queue without summaries.");
 
-  const { data: sourceRows, error: sErr } = await db.from("sources").select("id, name, trusted");
+  const { data: sourceRows, error: sErr } = await db.from("sources").select("id, name, trusted, kind");
   if (sErr) throw new Error(`load sources: ${sErr.message}`);
-  const sources = new Map<string, SourceInfo>(sourceRows.map((s) => [s.id, { name: s.name, trusted: s.trusted }]));
+  const sources = new Map<string, SourceInfo>(sourceRows.map((s) => [s.id, { name: s.name, trusted: s.trusted, kind: s.kind }]));
 
   const stats: ProcessStats = { seen: 0, skipKeyword: 0, skipRegion: 0, approved: 0, pending: 0, rejected: 0, keptReviewed: 0, llmCalls: 0, llmFailed: 0, llmUnavailable: 0, errors: 0 };
   /** Set on the first service-level LLM failure: the rest of the run would fail the same way. */
@@ -122,8 +122,8 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
         }
       }
 
-      const source = sources.get(raw.source_id) ?? { name: "Unknown", trusted: false };
-      const company = extraction?.company || source.name;
+      const source = sources.get(raw.source_id) ?? { name: "Unknown", trusted: false, kind: "page" };
+      const company = decideCompany(source, extraction?.company);
       const job = buildJob({
         raw,
         source,
