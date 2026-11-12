@@ -22,6 +22,15 @@ test("prompt asks for one code block, so the AI shows a copy button", () => {
   assert.match(prompt, /코드 블록 하나/);
 });
 
+test("prompt also asks the user's AI for an English resume PDF, without inventing anything", () => {
+  assert.match(prompt, /영어 이력서 PDF/);
+  assert.match(prompt, /resume_en\.pdf/);
+  assert.match(prompt, /절대 만들지 마/);
+  // The profile block comes first and stays the only code block, so the copy button grabs it.
+  assert.ok(prompt.indexOf("<<END_AIJOB5_PROFILE>>") < prompt.indexOf("[2] 영어 이력서 PDF ("));
+  assert.match(prompt, /이력서 쪽에는 코드 블록을 쓰지 마/);
+});
+
 test("assistant URLs: prefill carries the whole prompt where supported", () => {
   for (const a of AI_ASSISTANTS) {
     const url = new URL(assistantUrl(a.id, prompt));

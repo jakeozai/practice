@@ -135,3 +135,10 @@ test("표식까지 통째로 코드 블록에 넣은 답(프롬프트 규칙 4)�
   assert.equal(parseProfileText("분석했어요.\n\n```text\n" + block + "\n```\n").ok, true, "answer with the fence");
   assert.equal(parseProfileText(block).ok, true, "what the copy button gives");
 });
+
+test("분석 답 뒤에 영문 이력서가 이어져도 프로필 블록만 읽는다", () => {
+  const answer =
+    "```\n" + wrap(JSON.stringify(goodJson)) + "\n```\n\n" +
+    "Here is your resume (resume_en.pdf).\nSUMMARY\nBilingual Korean-English evaluator {not json}.\n";
+  assert.equal(parseProfileText(answer).ok, true);
+});

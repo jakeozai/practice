@@ -148,7 +148,7 @@ function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void
       <div className="card">
         <p className="text-sm font-semibold text-[var(--accent)]">구독 완료</p>
         <h2 className="mt-1 text-2xl font-extrabold tracking-tight">평소 쓰는 AI로 1분 분석</h2>
-        <p className="mt-2 text-sm text-muted">AI가 나를 분석하면 확인만 하면 돼요. 나에게 맞는 일감으로 골라 드려요.</p>
+        <p className="mt-2 text-sm text-muted">AI가 나를 분석하고, 지원할 때 쓸 영어 이력서 PDF도 만들어 줘요. 덕잡에는 분석 결과만 가져와요.</p>
         <div className="mt-5 grid gap-2 sm:grid-cols-3">
           {AI_ASSISTANTS.map((a) => (
             <button key={a.id} type="button" className={primary} onClick={() => open(a)}>
