@@ -8,7 +8,7 @@
 - Next.js (App Router) + TypeScript, Vercel 배포
 - Supabase: Postgres + pgvector, Auth(이메일 매직링크 — 링크는 앱이 `auth.admin.generateLink`로 만들어 Resend로 직접 발송), RLS
 - Resend + React Email (`@react-email/components`)
-- 워커: 로직은 `lib/workers/*.ts`. Vercel Cron이 `/api/cron/*`로 매일 실행하고, `workers/*.ts`는 같은 로직의 CLI(tsx)
+- 워커: 로직은 `lib/workers/*.ts`. `/api/cron/*`을 Supabase pg_cron(정각)과 Vercel Cron(예비)이 매일 부르고, `workers/*.ts`는 같은 로직의 CLI(tsx)
 - LLM: Anthropic SDK를 Vercel AI Gateway 경유로 사용(OIDC, 별도 키 없음). 모델 ID는 env(`ANTHROPIC_MODEL_FAST`)에서만 읽는다
 - 임베딩(Phase 2): OpenAI `text-embedding-3-small`(1536차원), AI Gateway 경유
 - 검증: zod (v4)
@@ -38,7 +38,8 @@
 
 ## 시간
 - DB는 `timestamptz`(UTC). `send_date`는 Asia/Seoul 기준 날짜.
-- Vercel Cron(`vercel.json`)은 UTC. 수집 19:00 KST = `0 10 * * *`, 발송 08:00 KST = `0 23 * * *`(전날 UTC). Hobby 요금제는 지정한 시각부터 1시간 안에 실행된다.
+- 발송은 매일 06:00 KST 정각(2026-11-12 결정). Supabase pg_cron이 `0 21 * * *`(UTC)에 pg_net으로 `/api/cron/digest`를 부른다(`0007_exact_daily_schedule.sql`, 토큰은 Vault에만 있고 앱은 `verify_cron_token`으로 확인).
+- Vercel Cron(`vercel.json`, UTC, Hobby는 지정한 시각부터 1시간 안에 실행): 수집 19:00 KST = `0 10 * * *`, 발송 예비 07:00 KST = `0 22 * * *`(6시에 못 받은 사람만 보냄).
 
 ## 컨벤션
 - UI 문구·메일 문구는 한국어. 코드 식별자·커밋 메시지는 영어.

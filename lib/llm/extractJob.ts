@@ -16,6 +16,8 @@ import { firstText } from "./client";
 export const POSTING_BODY_MAX_CHARS = 12_000;
 /** Summary line limit. The prompt asks for 60; a little slack avoids needless review-queue fallbacks. */
 export const SUMMARY_LINE_MAX = 80;
+/** Korean title limit (jobs.title_ko check allows 60). */
+export const TITLE_KO_MAX = 40;
 
 const nullableNumber = z.number().nullable();
 
@@ -23,6 +25,7 @@ const nullableNumber = z.number().nullable();
 const JobExtractWire = z.object({
   company: z.string(),
   title: z.string(),
+  title_ko: z.string(),
   category: z.enum(["language", "domain", "labeling", "other"]),
   languages: z.array(z.string()),
   location_raw: z.string().nullable(),
@@ -45,6 +48,8 @@ const JobExtractWire = z.object({
 export const JobExtractSchema = JobExtractWire.extend({
   company: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(200),
+  /** The prompt asks for 25 characters; the DB allows 60. */
+  title_ko: z.string().trim().min(1).max(TITLE_KO_MAX),
   languages: z
     .array(z.string().trim().toLowerCase())
     .transform((ls) => [...new Set(ls.filter((l) => /^[a-z]{2}$/.test(l)))].slice(0, 5)),

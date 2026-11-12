@@ -60,6 +60,7 @@ export function buildJob(input: {
     raw_posting_id: raw.id,
     company,
     title,
+    title_ko: x?.title_ko ?? null,
     title_normalized: normalizeTitle(title),
     url: raw.url,
     summary_ko: x?.summary_ko ?? [],

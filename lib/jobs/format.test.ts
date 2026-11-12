@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatPay, formatConditions, normalizeTitle, statusBadge } from "./format";
+import { formatPay, formatConditions, jobFacts, normalizeTitle, statusBadge } from "./format";
 
 const base = { pay_min: null, pay_max: null, pay_currency: null, pay_unit: null, hours_per_week_min: null };
 
@@ -32,4 +32,29 @@ test("statusBadge", () => {
   assert.deepEqual(statusBadge("open"), { label: "실제 프로젝트", tone: "open" });
   assert.deepEqual(statusBadge("pool"), { label: "상시 모집 — 대기가 길 수 있음", tone: "pool" });
   assert.equal(statusBadge("unknown"), null);
+});
+
+test("jobFacts: pay always, the rest when known", () => {
+  const none = { ...base, languages: [], english_level: null, engagement: null };
+  assert.deepEqual(jobFacts(none), [{ label: "보수", value: "원문에서 확인" }]);
+  assert.deepEqual(
+    jobFacts({
+      ...base,
+      pay_min: 30,
+      pay_max: 35,
+      pay_currency: "USD",
+      pay_unit: "hour",
+      hours_per_week_min: 10,
+      languages: ["ko", "en"],
+      english_level: "reading",
+      engagement: "freelance",
+    }),
+    [
+      { label: "보수", value: "시간당 $30~35" },
+      { label: "시간", value: "주 10시간부터" },
+      { label: "작업 언어", value: "한국어, 영어" },
+      { label: "영어", value: "읽기 수준" },
+      { label: "형태", value: "프리랜서" },
+    ],
+  );
 });

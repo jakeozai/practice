@@ -22,9 +22,14 @@ export async function confirmLogin(formData: FormData) {
   if (!parsed.success) redirect("/?error=auth");
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({ token_hash: parsed.data.token_hash, type: parsed.data.type });
+  // "email" accepts both kinds of token generateLoginToken can mail: a magic link for a confirmed
+  // user, and a confirmation token for a new or not-yet-confirmed one ("magiclink" rejects the latter).
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: parsed.data.token_hash, type: "email" });
   const user = data?.user;
-  if (error || !user?.email) redirect("/?error=auth");
+  if (error || !user?.email) {
+    console.error(`verifyOtp failed: ${error?.code ?? "no user"}`);
+    redirect("/?error=auth");
+  }
 
   try {
     await ensureProfile(user.id, user.email);

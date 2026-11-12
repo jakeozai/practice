@@ -14,6 +14,7 @@ const raw = {
 const extraction: JobExtract = {
   company: "RWS",
   title: "AI Data Specialist - Korean",
+  title_ko: "한국어 AI 결과물 평가",
   category: "labeling",
   languages: ["ko", "en"],
   location_raw: "South Korea (remote)",
@@ -47,6 +48,7 @@ test("trusted source + clean extraction + Korea → auto-approved", () => {
   assert.equal(job.status, "open");
   assert.equal(job.korea_eligible, true);
   assert.deepEqual(job.summary_ko, extraction.summary_ko);
+  assert.equal(job.title_ko, "한국어 AI 결과물 평가");
   assert.equal(job.title_normalized, "ai data specialist korean");
 });
 
@@ -77,6 +79,7 @@ test("no LLM (or LLM failed) → pending with what the rules know", () => {
   assert.equal(job.company, "RWS TrainAI");
   assert.equal(job.korea_eligible, true, "from the location rule");
   assert.deepEqual(job.summary_ko, []);
+  assert.equal(job.title_ko, null);
 });
 
 test("scam signals ≥ 60 points → rejected; reposts → pool", () => {

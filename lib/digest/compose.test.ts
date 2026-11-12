@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { composeDigestEmail, type DigestJob } from "./compose";
+import { composeDigestEmail, digestCard, type DigestJob } from "./compose";
 import { verifyLink } from "../links";
 
 const SECRET = "test-secret-test-secret-test-secret-0123";
@@ -11,8 +11,13 @@ const job: DigestJob = {
   id: JOB_ID,
   company: "Example AI",
   title: "Korean AI Trainer",
+  title_ko: "한국어 AI 답변 평가",
   summary_ko: ["한국어 AI 답변을 평가하는 일", "전 세계 원격 지원 가능", "시간당 30~35달러"],
   status: "open",
+  category: "language",
+  languages: ["ko", "en"],
+  english_level: "reading",
+  engagement: "freelance",
   pay_min: 30,
   pay_max: 35,
   pay_currency: "USD",
@@ -35,7 +40,22 @@ test("subject, card content and unsubscribe headers", async () => {
   assert.equal(mail.idempotencyKey, `digest-${UID}-2026-11-08`);
   assert.match(mail.headers["List-Unsubscribe"], /^<https:\/\/aijob5\.example\/api\/email\/unsubscribe\?t=[\w-]+\.[\w-]+>$/);
   assert.equal(mail.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
-  for (const part of ["실제 프로젝트", "Example AI", "Korean AI Trainer", "시간당 $30~35 · 주 15시간~", "메일 그만 받기", "프로필 수정", "개인정보 처리방침"]) {
+  for (const part of [
+    "11월 8일 일요일",
+    "실제 프로젝트",
+    "언어 작업",
+    "한국어 AI 답변 평가",
+    "Example AI · Korean AI Trainer",
+    "시간당 $30~35",
+    "주 15시간부터",
+    "한국어, 영어",
+    "읽기 수준",
+    "프리랜서",
+    "공고 보러 가기",
+    "메일 그만 받기",
+    "프로필 수정",
+    "개인정보 처리방침",
+  ]) {
     assert.ok(mail.html.includes(part), `html has ${part}`);
   }
   assert.ok(mail.text.includes("한국어 AI 답변을 평가하는 일"));
@@ -59,4 +79,11 @@ test("same input renders the same payload (safe idempotent rerun)", async () => 
   const second = await composeDigestEmail(input);
   assert.equal(first.html, second.html);
   assert.deepEqual(first.headers, second.headers);
+});
+
+test("card falls back to the original title when there is no Korean one", () => {
+  const card = digestCard({ ...job, title_ko: null, category: "other" }, "https://x/r/t");
+  assert.equal(card.headline, "Korean AI Trainer");
+  assert.equal(card.originalTitle, null);
+  assert.equal(card.category, null);
 });

@@ -7,6 +7,7 @@
 {
   "company": string,
   "title": string,
+  "title_ko": string,
   "category": "language" | "domain" | "labeling" | "other",
   "languages": string[],
   "location_raw": string | null,
@@ -26,6 +27,7 @@
 }
 
 필드 기준:
+- title_ko: 무슨 일인지 알 수 있는 한국어 제목, 25자 이내. 회사명은 빼고 작업 내용과 언어를 담는다. 원문 제목을 직역하지 않는다. 예: "한국어 AI 답변 평가", "일본어 음성 전사", "AI 이미지 생성 콘텐츠 제작".
 - category: language = 언어 평가·번역·현지화·전사 / domain = 특정 전문 분야 평가 / labeling = 라벨링·어노테이션·데이터 수집 / other = 그 밖.
 - languages: 공고가 쓰인 언어가 아니라 작업에 필요한 언어의 ISO 639-1 코드. 예: 영어로 AI 답변을 평가하면 ["en"], 한국어 음성을 전사하면 ["ko"]. 특정 언어가 필요 없으면 ["en"](지시문·소통 언어).
 - location_raw: 지원 가능 지역을 말하는 문구를 짧게 그대로. 없으면 null.

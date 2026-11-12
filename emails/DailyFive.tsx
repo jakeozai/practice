@@ -1,15 +1,19 @@
-import type { StatusBadge } from "../lib/jobs/format";
+import type { JobFact, StatusBadge } from "../lib/jobs/format";
 import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
 import { mailColor, mailFont } from "./theme";
 
 export type DailyFiveJob = {
   id: string;
+  /** Korean title (jobs.title_ko), or the original title when there is none. */
+  headline: string;
   company: string;
-  title: string;
+  /** Original title, shown small under a Korean headline. Null when the headline already is it. */
+  originalTitle: string | null;
   /** Korean 3-line summary (jobs.summary_ko). Never the original posting text. */
   summary: string[];
   badge: StatusBadge | null;
-  conditions: string;
+  category: string | null;
+  facts: JobFact[];
   reason: string | null;
   detailUrl: string;
   /** Phase 2 (/feedback). Hidden when absent. */
@@ -18,7 +22,10 @@ export type DailyFiveJob = {
 
 export type DailyFiveProps = {
   brand: string;
+  /** "11월 13일" — subject line. */
   dateLabel: string;
+  /** "11월 13일 금요일" — top of the mail. */
+  dayLabel: string;
   jobs: DailyFiveJob[];
   recipientEmail: string;
   logoUrl: string;
@@ -34,36 +41,134 @@ export function dailyFiveSubject(count: number, dateLabel: string): string {
   return `오늘의 AI 일감 ${count}개 · ${dateLabel}`;
 }
 
-const pill = { display: "inline-block", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "2px 10px", margin: "0 0 8px" };
+const pill = {
+  display: "inline-block",
+  fontSize: 12,
+  fontWeight: 700,
+  lineHeight: "20px",
+  borderRadius: 999,
+  padding: "0 10px",
+  marginRight: 6,
+} as const;
+
 const s = {
-  body: { backgroundColor: mailColor.page, margin: 0, padding: "24px 0", fontFamily: mailFont },
-  container: { backgroundColor: mailColor.card, borderRadius: 16, maxWidth: 560, padding: "28px 24px" },
-  heading: { fontSize: 20, fontWeight: 800, lineHeight: "28px", margin: "12px 0 18px", color: mailColor.ink },
-  card: { border: `1px solid ${mailColor.line}`, borderRadius: 14, padding: "16px 16px 12px", margin: "0 0 12px" },
-  badgeOpen: { ...pill, color: "#1F5130", backgroundColor: "#D3F2DC" },
-  badgePool: { ...pill, color: "#8A4B0F", backgroundColor: "#FFE8CC" },
-  company: { fontSize: 13, color: mailColor.muted, margin: "0 0 2px" },
-  title: { fontSize: 16, fontWeight: 700, color: mailColor.ink, margin: "0 0 8px", lineHeight: "22px" },
-  summary: { fontSize: 14, color: mailColor.ink, margin: "0 0 2px", lineHeight: "21px" },
-  conditions: { fontSize: 13, color: mailColor.ink, fontWeight: 700, margin: "10px 0 2px" },
-  reason: { fontSize: 13, color: mailColor.accent, margin: "0 0 10px" },
-  button: {
+  body: {
+    backgroundColor: mailColor.page,
+    margin: 0,
+    padding: "28px 0 36px",
+    fontFamily: mailFont,
+    color: mailColor.ink,
+    // Korean wraps between words, not mid-word.
+    wordBreak: "keep-all" as const,
+  },
+  container: { maxWidth: 560, padding: "0 16px" },
+  brandRow: { margin: "0 0 18px" },
+  brandName: { fontSize: 17, fontWeight: 800, color: mailColor.ink, margin: 0, lineHeight: "32px" },
+  day: { fontSize: 13, color: mailColor.muted, margin: "0 0 4px" },
+  heading: { fontSize: 23, fontWeight: 800, lineHeight: "32px", margin: "0 0 6px", color: mailColor.ink },
+  intro: { fontSize: 14, lineHeight: "22px", color: mailColor.muted, margin: "0 0 22px" },
+  card: {
+    backgroundColor: "#FFFFFF",
+    border: `1px solid ${mailColor.line}`,
+    borderRadius: 18,
+    padding: "20px 20px 18px",
+    margin: "0 0 14px",
+  },
+  number: {
+    ...pill,
+    padding: "0",
+    width: 20,
+    textAlign: "center" as const,
+    color: "#FFFFFF",
     backgroundColor: mailColor.ink,
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: 700,
+  },
+  badgeOpen: { ...pill, color: "#1F5130", backgroundColor: "#D7F0DE" },
+  badgePool: { ...pill, color: "#8A4B0F", backgroundColor: "#FFE8CC" },
+  chip: { ...pill, fontWeight: 600, color: mailColor.muted, backgroundColor: "#F3ECE1" },
+  headline: { fontSize: 19, fontWeight: 800, lineHeight: "27px", color: mailColor.ink, margin: "12px 0 2px" },
+  origin: { fontSize: 13, lineHeight: "19px", color: mailColor.muted, margin: "0 0 12px" },
+  summary: { fontSize: 14, lineHeight: "22px", color: mailColor.ink, margin: "0 0 3px" },
+  bullet: { color: mailColor.accent, fontWeight: 800 },
+  facts: { backgroundColor: "#FAF5EC", borderRadius: 12, padding: "10px 14px", margin: "14px 0 16px", width: "100%" },
+  factLabel: { fontSize: 13, lineHeight: "22px", color: mailColor.muted, width: 72, verticalAlign: "top" as const, padding: "1px 0" },
+  factValue: { fontSize: 13, lineHeight: "22px", color: mailColor.ink, fontWeight: 700, padding: "1px 0" },
+  reason: { fontSize: 13, color: mailColor.accent, margin: "0 0 12px" },
+  button: {
+    display: "block",
+    textAlign: "center" as const,
+    backgroundColor: mailColor.accent,
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: 800,
     borderRadius: 999,
-    padding: "10px 18px",
+    padding: "13px 18px",
     textDecoration: "none",
   },
-  smallLink: { fontSize: 12, color: mailColor.muted, marginLeft: 12 },
+  buttonNote: { fontSize: 12, lineHeight: "18px", color: mailColor.muted, textAlign: "center" as const, margin: "8px 0 0" },
+  smallLink: { fontSize: 12, color: mailColor.muted },
+  tip: {
+    backgroundColor: "#FFF4E6",
+    border: `1px solid #F6D9B8`,
+    borderRadius: 14,
+    padding: "14px 16px",
+    margin: "6px 0 0",
+  },
+  tipTitle: { fontSize: 14, fontWeight: 800, color: mailColor.ink, margin: "0 0 4px" },
+  tipText: { fontSize: 13, lineHeight: "20px", color: mailColor.ink, margin: 0 },
   footer: { fontSize: 12, color: mailColor.muted, lineHeight: "18px", margin: "0 0 6px" },
   footerLink: { color: mailColor.muted, textDecoration: "underline" },
 } as const;
 
+function JobCard({ job, index }: { job: DailyFiveJob; index: number }) {
+  return (
+    <Section style={s.card}>
+      <Text style={{ margin: 0, lineHeight: "20px" }}>
+        <span style={s.number}>{index + 1}</span>
+        {job.badge && <span style={job.badge.tone === "open" ? s.badgeOpen : s.badgePool}>{job.badge.label}</span>}
+        {job.category && <span style={s.chip}>{job.category}</span>}
+      </Text>
+      <Text style={s.headline}>{job.headline}</Text>
+      <Text style={s.origin}>{job.originalTitle ? `${job.company} · ${job.originalTitle}` : job.company}</Text>
+
+      {job.summary.slice(0, 3).map((line, i) => (
+        <Text key={i} style={s.summary}>
+          <span style={s.bullet}>·</span> {line}
+        </Text>
+      ))}
+
+      <table role="presentation" cellPadding={0} cellSpacing={0} style={s.facts}>
+        <tbody>
+          {job.facts.map((f) => (
+            <tr key={f.label}>
+              <td style={s.factLabel}>{f.label}</td>
+              <td style={s.factValue}>{f.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {job.reason && <Text style={s.reason}>{job.reason}</Text>}
+      <Button href={job.detailUrl} style={s.button}>
+        공고 보러 가기 →
+      </Button>
+      <Text style={s.buttonNote}>
+        {job.company} 공고 페이지로 이동해요. 지원은 그곳에서 직접 해요.
+        {job.feedbackUrl && (
+          <>
+            {"  ·  "}
+            <Link href={job.feedbackUrl} style={s.smallLink}>
+              관심 없어요
+            </Link>
+          </>
+        )}
+      </Text>
+    </Section>
+  );
+}
+
 export default function DailyFive(props: DailyFiveProps) {
-  const { brand, dateLabel, jobs } = props;
-  const preview = jobs[0]?.summary[0] ?? dailyFiveSubject(jobs.length, dateLabel);
+  const { brand, jobs } = props;
+  const preview = jobs[0] ? `${jobs[0].headline} · ${jobs[0].summary[0] ?? ""}` : dailyFiveSubject(0, props.dateLabel);
   const host = props.appUrl.replace(/^https?:\/\//, "");
 
   return (
@@ -72,39 +177,38 @@ export default function DailyFive(props: DailyFiveProps) {
       <Preview>{preview}</Preview>
       <Body style={s.body}>
         <Container style={s.container}>
-          <Img src={props.logoUrl} width="36" height="36" alt={brand} />
-          <Text style={s.heading}>{dailyFiveSubject(jobs.length, dateLabel)}</Text>
+          <table role="presentation" cellPadding={0} cellSpacing={0} style={s.brandRow}>
+            <tbody>
+              <tr>
+                <td style={{ paddingRight: 8, verticalAlign: "middle" }}>
+                  <Img src={props.logoUrl} width="32" height="32" alt="" />
+                </td>
+                <td style={{ verticalAlign: "middle" }}>
+                  <Text style={s.brandName}>{brand}</Text>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-          {jobs.map((job) => (
-            <Section key={job.id} style={s.card}>
-              {job.badge && <Text style={job.badge.tone === "open" ? s.badgeOpen : s.badgePool}>{job.badge.label}</Text>}
-              <Text style={s.company}>{job.company}</Text>
-              <Text style={s.title}>{job.title}</Text>
-              {job.summary.slice(0, 3).map((line, i) => (
-                <Text key={i} style={s.summary}>
-                  · {line}
-                </Text>
-              ))}
-              <Text style={s.conditions}>{job.conditions}</Text>
-              {job.reason && <Text style={s.reason}>{job.reason}</Text>}
-              <Section style={{ margin: "8px 0 4px" }}>
-                <Button href={job.detailUrl} style={s.button}>
-                  자세히 보기
-                </Button>
-                {job.feedbackUrl && (
-                  <Link href={job.feedbackUrl} style={s.smallLink}>
-                    관심 없어요
-                  </Link>
-                )}
-              </Section>
-            </Section>
+          <Text style={s.day}>{`${props.dayLabel} · 좋은 아침이에요`}</Text>
+          <Text style={s.heading}>{`오늘의 AI 일감 ${jobs.length}개`}</Text>
+          <Text style={s.intro}>전 세계 공고 중 한국에서 지원할 수 있는 단기 일감만 골라 한국어로 정리했어요.</Text>
+
+          {jobs.map((job, i) => (
+            <JobCard key={job.id} job={job} index={i} />
           ))}
 
-          <Hr style={{ borderColor: mailColor.line, margin: "20px 0 14px" }} />
+          <Section style={s.tip}>
+            <Text style={s.tipTitle}>지원 전에 확인하세요</Text>
+            <Text style={s.tipText}>· 지원 가능 국가와 마감은 원문 공고 기준이에요.</Text>
+            <Text style={s.tipText}>· 돈을 먼저 내라거나 메신저로만 연락하자는 곳은 지원하지 마세요.</Text>
+          </Section>
+
+          <Hr style={{ borderColor: mailColor.line, margin: "24px 0 14px" }} />
           {/* Footer per docs/legal/privacy-research-2026-11-09.md (c): why you got this, how to stop, policy, contact. */}
           <Text style={s.footer}>
-            {props.recipientEmail}님이 {brand} 일일 메일을 구독해서 보내 드렸어요. 조건과 마감은 원문 공고에서 꼭 다시 확인하세요.{" "}
-            {brand}은 지원서를 대신 내거나 회원 정보를 채용사에 넘기지 않아요.
+            {props.recipientEmail}님이 {brand} 일일 메일을 구독해서 보내 드렸어요. {brand}은 지원서를 대신 내거나 회원
+            정보를 채용사에 넘기지 않아요.
           </Text>
           <Text style={s.footer}>
             <Link href={props.profileUrl} style={s.footerLink}>
@@ -132,7 +236,8 @@ export default function DailyFive(props: DailyFiveProps) {
 /** Sample data for previewing the template locally. */
 DailyFive.PreviewProps = {
   brand: "덕잡",
-  dateLabel: "11월 8일",
+  dateLabel: "11월 13일",
+  dayLabel: "11월 13일 금요일",
   recipientEmail: "me@example.com",
   logoUrl: "http://localhost:3000/duck-mail.png",
   appUrl: "http://localhost:3000",
@@ -143,11 +248,18 @@ DailyFive.PreviewProps = {
   jobs: [
     {
       id: "1",
+      headline: "한국어 AI 답변 평가",
       company: "Example AI",
-      title: "Korean AI Trainer",
-      summary: ["한국어 AI 답변을 평가하고 고쳐 쓰는 일", "한국어 원어민, 전 세계 원격 지원 가능", "시간당 30~35달러, 주 15시간부터"],
+      originalTitle: "Korean AI Trainer",
+      summary: ["AI가 쓴 한국어 답변을 읽고 점수를 매기는 일", "한국어 원어민, 영어 지시문을 읽을 수 있으면 지원 가능", "시간당 30~35달러, 주 10시간부터 원격"],
       badge: { label: "실제 프로젝트", tone: "open" },
-      conditions: "시간당 $30~35 · 주 15시간~",
+      category: "언어 작업",
+      facts: [
+        { label: "보수", value: "시간당 $30~35" },
+        { label: "시간", value: "주 10시간부터" },
+        { label: "작업 언어", value: "한국어, 영어" },
+        { label: "영어", value: "읽기 수준" },
+      ],
       reason: null,
       detailUrl: "http://localhost:3000/r/preview",
     },

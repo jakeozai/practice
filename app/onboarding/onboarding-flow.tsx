@@ -83,7 +83,7 @@ export function OnboardingFlow(props: { email: string; prompt: string; saved: Pr
     <div className="card">
       <p className="text-lg font-bold">{step === "skipped" ? "구독 완료!" : "확인 완료!"}</p>
       <p className="mt-1 text-sm text-muted">
-        매일 아침 8시, <strong className="text-[var(--ink)]">{props.email}</strong>로 AI 일감 3개를 보내드려요.
+        매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 AI 일감 3개를 보내드려요.
       </p>
       <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(step === "skipped" ? "analyze" : "confirm")}>
         {step === "skipped" ? "지금 AI로 분석하기" : "분석 결과 다시 보기"}

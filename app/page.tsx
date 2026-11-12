@@ -31,7 +31,7 @@ export default function Home(props: PageProps<"/">) {
         {/* eslint-disable-next-line @next/next/no-img-element -- small static SVG logo */}
         <img src="/duck.svg" alt="" width={64} height={74} />
         <h1 className="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-5xl">
-          매일 아침 8시,
+          매일 아침 6시,
           <br />
           AI 일감 3개를
           <br className="sm:hidden" /> 물어다 드려요

@@ -1,5 +1,6 @@
 /** Display helpers shared by the mail template, admin pages and (later) /j/[id]. */
 import type { Tables } from "../supabase/database.types";
+import { languageNameKo } from "./language";
 
 type Job = Tables<"jobs">;
 
@@ -17,6 +18,46 @@ export const CATEGORY_LABELS_KO = {
   labeling: "라벨링",
   other: "기타",
 } as const;
+
+/** Category chip on a mail card; `other` gets none. */
+export const CATEGORY_CHIP_KO = {
+  language: "언어 작업",
+  domain: "전문 분야",
+  labeling: "데이터 라벨링",
+} as const;
+
+/** "영어" row on a mail card. */
+const ENGLISH_NEED_KO = {
+  none: "필요 없음",
+  reading: "읽기 수준",
+  conversational: "일상 회화",
+  business: "유창한 업무 수준",
+  native: "원어민 수준",
+} as const;
+
+const ENGAGEMENT_KO = {
+  freelance: "프리랜서",
+  contract: "기간 계약",
+  part_time: "파트타임",
+  permanent: "정규직",
+} as const;
+
+export type JobFact = { label: string; value: string };
+
+/** Label/value rows on a mail card. Pay is always shown; the rest only when known. */
+export function jobFacts(
+  job: Pick<
+    Job,
+    "pay_min" | "pay_max" | "pay_currency" | "pay_unit" | "hours_per_week_min" | "languages" | "english_level" | "engagement"
+  >,
+): JobFact[] {
+  const facts: JobFact[] = [{ label: "보수", value: formatPay(job) ?? "원문에서 확인" }];
+  if (job.hours_per_week_min) facts.push({ label: "시간", value: `주 ${job.hours_per_week_min}시간부터` });
+  if (job.languages.length) facts.push({ label: "작업 언어", value: job.languages.map(languageNameKo).join(", ") });
+  if (job.english_level) facts.push({ label: "영어", value: ENGLISH_NEED_KO[job.english_level] });
+  if (job.engagement && job.engagement !== "permanent") facts.push({ label: "형태", value: ENGAGEMENT_KO[job.engagement] });
+  return facts;
+}
 
 export type StatusBadge = { label: string; tone: "open" | "pool" };
 

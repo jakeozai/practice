@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appEnv } from "@/lib/env";
 import { botUserAgent } from "@/lib/sources/http";
@@ -12,12 +12,13 @@ export const maxDuration = 300;
 const COLLECT_BUDGET_MS = 150_000;
 const TOTAL_BUDGET_MS = 285_000;
 
-/** Daily at 19:00 KST (vercel.json): collect postings, then turn new ones into jobs (spec §7, §8). */
+/** Daily around 19:00 KST (vercel.json): collect postings, then turn new ones into jobs (spec §7, §8). */
 export async function GET(request: Request) {
-  if (!isCronRequest(request)) return NextResponse.json({ ok: false }, { status: 401 });
+  await connection(); // request-time only, never prerendered
   const started = Date.now();
-  const { lines, log } = cronLogger();
   const db = createAdminClient();
+  if (!(await isCronRequest(request, db))) return NextResponse.json({ ok: false }, { status: 401 });
+  const { lines, log } = cronLogger();
 
   const collected = await collectSources(db, {
     log,

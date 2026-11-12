@@ -19,6 +19,14 @@ export function koreanMonthDay(isoDate: string): string {
   return `${Number(m[2])}월 ${Number(m[3])}일`;
 }
 
+const WEEKDAYS_KO = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+
+/** "금요일" for a YYYY-MM-DD date (a calendar date, so no time zone is involved). */
+export function koreanWeekday(isoDate: string): string {
+  if (!isIsoDate(isoDate)) throw new Error(`Invalid date: ${isoDate}`);
+  return WEEKDAYS_KO[new Date(`${isoDate}T00:00:00Z`).getUTCDay()];
+}
+
 export function isIsoDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(`${s}T00:00:00Z`);

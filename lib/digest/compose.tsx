@@ -5,9 +5,9 @@
  */
 import { render } from "@react-email/components";
 import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/DailyFive";
-import { formatConditions, statusBadge } from "../jobs/format";
+import { CATEGORY_CHIP_KO, jobFacts, statusBadge } from "../jobs/format";
 import { signLink } from "../links";
-import { koreanMonthDay, seoulDayStartUtc } from "../time";
+import { koreanMonthDay, koreanWeekday, seoulDayStartUtc } from "../time";
 import { BRAND, contactEmail } from "../brand";
 import { unsubscribeHeaders, type OutgoingEmail } from "../email/send";
 import type { Tables } from "../supabase/database.types";
@@ -17,8 +17,13 @@ export type DigestJob = Pick<
   | "id"
   | "company"
   | "title"
+  | "title_ko"
   | "summary_ko"
   | "status"
+  | "category"
+  | "languages"
+  | "english_level"
+  | "engagement"
   | "pay_min"
   | "pay_max"
   | "pay_currency"
@@ -27,7 +32,24 @@ export type DigestJob = Pick<
 >;
 
 export const DIGEST_JOB_COLUMNS =
-  "id, company, title, summary_ko, status, pay_min, pay_max, pay_currency, pay_unit, hours_per_week_min" as const;
+  "id, company, title, title_ko, summary_ko, status, category, languages, english_level, engagement, pay_min, pay_max, pay_currency, pay_unit, hours_per_week_min" as const;
+
+/** One mail card. The posting text never appears, only our Korean summary and structured fields (CLAUDE.md rule 1). */
+export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null): DailyFiveJob {
+  const korean = job.title_ko?.trim() || null;
+  return {
+    id: job.id,
+    headline: korean ?? job.title,
+    company: job.company,
+    originalTitle: korean ? job.title : null,
+    summary: job.summary_ko,
+    badge: statusBadge(job.status),
+    category: job.category && job.category !== "other" ? CATEGORY_CHIP_KO[job.category] : null,
+    facts: jobFacts(job),
+    reason,
+    detailUrl,
+  };
+}
 
 export function digestIdempotencyKey(userId: string, sendDate: string): string {
   return `digest-${userId}-${sendDate}`;
@@ -49,22 +71,20 @@ export async function composeDigestEmail(input: {
 
   const unsubscribeUrl = `${appUrl}/api/email/unsubscribe?t=${signLink({ uid, purpose: "unsub" }, linkSecret, issuedAt)}`;
 
-  const cards: DailyFiveJob[] = jobs.map((job) => ({
-    id: job.id,
-    company: job.company,
-    title: job.title,
-    summary: job.summary_ko,
-    badge: statusBadge(job.status),
-    conditions: formatConditions(job),
-    reason: reasons?.get(job.id) ?? null,
-    detailUrl: `${appUrl}/r/${signLink({ uid, purpose: "click", jobId: job.id }, linkSecret, issuedAt)}`,
-  }));
+  const cards: DailyFiveJob[] = jobs.map((job) =>
+    digestCard(
+      job,
+      `${appUrl}/r/${signLink({ uid, purpose: "click", jobId: job.id }, linkSecret, issuedAt)}`,
+      reasons?.get(job.id) ?? null,
+    ),
+  );
 
   const dateLabel = koreanMonthDay(sendDate);
   const element = (
     <DailyFive
       brand={BRAND.name}
       dateLabel={dateLabel}
+      dayLabel={`${dateLabel} ${koreanWeekday(sendDate)}`}
       jobs={cards}
       recipientEmail={recipient.email}
       logoUrl={`${appUrl}/duck-mail.png`}

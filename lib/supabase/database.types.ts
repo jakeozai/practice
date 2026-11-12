@@ -1,5 +1,5 @@
 /**
- * Hand-written types for supabase/migrations/0001–0005, in the shape that
+ * Hand-written types for supabase/migrations/0001–0007, in the shape that
  * `supabase gen types typescript` produces. Regenerate with the CLI once a
  * Supabase project is linked, and keep this file in sync with migrations.
  */
@@ -70,6 +70,7 @@ export type Database = {
           raw_posting_id: string | null;
           company: string;
           title: string;
+          title_ko: string | null;
           title_normalized: string;
           url: string;
           summary_ko: string[];
@@ -100,6 +101,7 @@ export type Database = {
           raw_posting_id?: string | null;
           company: string;
           title: string;
+          title_ko?: string | null;
           title_normalized: string;
           url: string;
           summary_ko?: string[];
@@ -289,6 +291,10 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      verify_cron_token: {
+        Args: { p_token: string };
+        Returns: boolean;
+      };
       claim_login_link: {
         Args: { p_email_hash: string; p_ip_hash: string | null };
         Returns: string;
