@@ -64,6 +64,14 @@ test("not AI work, or permanent staff hiring → rejected as out of scope", () =
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "part_time" }, sameTitleCount: 1 }).review_state, "approved");
 });
 
+test("not open to Korea residents → rejected (it could never be mailed)", () => {
+  const qatar = buildJob({ raw: { ...raw, location_raw: "Doha, Qatar" }, source: trusted, extraction: { ...extraction, korea_eligible: false }, sameTitleCount: 1 });
+  assert.equal(qatar.korea_eligible, false);
+  assert.equal(qatar.review_state, "rejected");
+  const llmSaysNo = buildJob({ raw: { ...raw, location_raw: "Remote" }, source: trusted, extraction: { ...extraction, korea_eligible: false }, sameTitleCount: 1 });
+  assert.equal(llmSaysNo.review_state, "rejected");
+});
+
 test("anything short of every rule → pending", () => {
   const cases = [
     buildJob({ raw, source: { ...trusted, trusted: false }, extraction, sameTitleCount: 1 }),

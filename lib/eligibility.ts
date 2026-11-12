@@ -17,6 +17,39 @@ const CODE_LIST = /^(?:[A-Z]{2,3}|Remote)(?:\s*[/,]\s*(?:[A-Z]{2,3}|Remote))*$/;
 const COUNTRY_ONLY =
   /united states|\busa?\b|\bus only\b|\buk\b|uk only|united kingdom|england|canada|australia|new zealand|india|philippines|brazil|mexico|argentina|colombia|chile|peru|germany|france|spain|italy|portugal|netherlands|belgium|poland|romania|ukraine|ireland|sweden|norway|denmark|finland|switzerland|austria|czech|hungary|greece|turkey|israel|egypt|south africa|nigeria|kenya|ghana|morocco|japan|china|taiwan|hong kong|singapore|malaysia|indonesia|thailand|vietnam|pakistan|bangladesh|sri lanka|nepal|europe|\bemea\b|latam|north america|\bremote - (?:us|uk|eu)\b|new york|san francisco|london|toronto|tokyo|berlin|paris|warsaw|dublin/i;
 
+/**
+ * Every other country's English name (from ICU, so the list stays complete),
+ * for locations like "Doha, Qatar" or "Yangon, Myanmar (Burma)" that the short
+ * list above misses. Added 2026-11-12: each miss costs an LLM call, and the
+ * free Gateway tier allows 5 a minute.
+ */
+const COUNTRY_NAMES: RegExp = (() => {
+  const names = new Set<string>();
+  const display = new Intl.DisplayNames(["en"], { type: "region" });
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (const a of letters)
+    for (const b of letters) {
+      const code = a + b;
+      if (code === "KR" || code === "KP") continue;
+      let name: string | undefined;
+      try {
+        name = display.of(code);
+      } catch {
+        continue;
+      }
+      if (!name || name === code || /unknown/i.test(name)) continue;
+      // "Myanmar (Burma)" → also "Myanmar"; "Hong Kong SAR China" → also "Hong Kong".
+      for (const n of [name, name.replace(/\s*\(.*\)$/, ""), name.replace(/\s+SAR\s+China$/, "")]) {
+        if (n.length >= 4 && !/korea/i.test(n)) names.add(n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      }
+    }
+  return new RegExp(`\\b(?:${[...names].join("|")})\\b`, "i");
+})();
+
+/** "City, ST" with a US state or DC code: "Palo Alto, CA", "Southaven, MS; Memphis, TN". */
+const US_STATE =
+  /,\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/;
+
 /** "North Korea" (also in some all-countries lists) must not count as Korea. */
 const NORTH_KOREA = /north korea|democratic people'?s republic of korea|\bdprk\b|korea,? (?:dem\.?|democratic) people'?s rep(?:ublic|\.)?/gi;
 
@@ -25,7 +58,7 @@ export function koreaEligibleFromLocation(location: string | null | undefined): 
   if (!text) return null;
   if (CODE_LIST.test(text) && text.replace(/Remote/g, "").trim()) return /\b(?:KR|KOR)\b/.test(text);
   if (YES.test(text)) return true;
-  if (COUNTRY_ONLY.test(text)) return false;
+  if (COUNTRY_ONLY.test(text) || COUNTRY_NAMES.test(text) || US_STATE.test(text)) return false;
   return null;
 }
 

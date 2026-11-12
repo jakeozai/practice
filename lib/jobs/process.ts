@@ -50,7 +50,9 @@ export function buildJob(input: {
 
   // Out of scope: not work that needs AI, or open-ended staff hiring (덕잡 sends short-term work).
   // Credentials and work language are information only; they don't block.
-  const outOfScope = x !== null && (!x.ai_related || x.engagement === "permanent");
+  // Not open to Korea residents (2026-11-12): such a job can never be mailed, so it isn't
+  // worth a reviewer's time either (Phase 1 goal: under 10 minutes of human work a day).
+  const outOfScope = (x !== null && (!x.ai_related || x.engagement === "permanent")) || korea === false;
 
   let review: JobInsert["review_state"] = "pending";
   if (isScamRejected(scam) || outOfScope) review = "rejected";

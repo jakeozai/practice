@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
   // These routes read prompts/*.md at runtime; ship the files with their functions.
   outputFileTracingIncludes: {
     "/onboarding": ["./prompts/profile-extract.md"],
-    "/api/cron/collect": ["./prompts/job-extract.md"],
+    // The routes that call extractJob (it reads the prompt from disk).
+    "/api/cron/process": ["./prompts/job-extract.md"],
+    "/api/cron/llm-check": ["./prompts/job-extract.md"],
   },
   turbopack: {
     rules: {

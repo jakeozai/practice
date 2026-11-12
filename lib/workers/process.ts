@@ -1,16 +1,21 @@
 /**
  * Turn new or changed raw postings into jobs (spec §8).
- * Called by workers/process-postings.ts (CLI) and /api/cron/collect.
+ * Called by workers/process-postings.ts (CLI) and /api/cron/process
+ * (every 10 minutes through Supabase pg_cron, migration 0008).
  *
  * Per posting: keyword + region triage → one LLM extraction (when a model
  * is configured, see lib/llm/client.ts) → rules → upsert jobs by
  * raw_posting_id → raw_postings.processed_hash = body_hash.
  * Without the LLM, or when it fails twice, candidates go to the review queue
- * as `pending` (CLAUDE.md rule 4). Embeddings come in Phase 2.
+ * as `pending` (CLAUDE.md rule 4). When the model service itself is refusing
+ * or down, the rest wait for the next run. LLM calls are paced to the Gateway
+ * rate limit (lib/llm/pace.ts); postings that mention Korea come first
+ * (raw_postings_to_process). Embeddings come in Phase 2.
  */
 import type { ServiceClient } from "../supabase/service";
 import { createAnthropic, fastModelConfig } from "../llm/client";
 import { extractJob, type JobExtract, type MessagesClient } from "../llm/extractJob";
+import { createPacer, llmRequestsPerMinute, pacedClient } from "../llm/pace";
 import { buildJob, triage, type SourceInfo } from "../jobs/process";
 import { normalizeTitle } from "../jobs/format";
 import { REPOST_WINDOW_DAYS } from "../status";
@@ -19,7 +24,7 @@ import { pastDeadline, type RunOptions } from "./run";
 
 export const MAX_PER_RUN = 1000;
 const PAGE = 100;
-/** Parallel LLM calls. Keeps a cron run short without hammering the API. */
+/** Parallel workers. LLM calls are still spaced by the pacer; triage-only postings go fast. */
 const CONCURRENCY = 4;
 /** Don't start a posting this close to the deadline (an LLM call + retry can take a while). */
 const DEADLINE_MARGIN_MS = 45_000;
@@ -60,7 +65,8 @@ export type ProcessStats = {
 export async function processPostings(db: ServiceClient, opts: RunOptions & { limit?: number }): Promise<ProcessStats> {
   const limit = Math.min(MAX_PER_RUN, opts.limit ?? MAX_PER_RUN);
   const llm = await fastModelConfig();
-  const client: MessagesClient | null = llm ? (createAnthropic(llm) as unknown as MessagesClient) : null;
+  const pacer = createPacer(llmRequestsPerMinute());
+  const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, pacer) : null;
   if (!llm) opts.log("No LLM configured (ANTHROPIC_MODEL_FAST + AI Gateway or ANTHROPIC_API_KEY): candidates go to the review queue without summaries.");
 
   const { data: sourceRows, error: sErr } = await db.from("sources").select("id, name, trusted");
@@ -70,6 +76,7 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
   const stats: ProcessStats = { seen: 0, skipKeyword: 0, skipRegion: 0, approved: 0, pending: 0, rejected: 0, keptReviewed: 0, llmCalls: 0, llmFailed: 0, llmUnavailable: 0, errors: 0 };
   /** Set on the first service-level LLM failure: the rest of the run would fail the same way. */
   let llmDown: string | null = null;
+  let outOfTime = false;
   const attempted = new Set<string>();
 
   async function handle(raw: Tables<"raw_postings">) {
@@ -93,6 +100,10 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
       if (llmDown) {
         stats.llmUnavailable++;
         return; // not marked processed: retried next run
+      }
+      if (client && opts.deadline !== undefined && pacer.nextSlotAt() > opts.deadline - DEADLINE_MARGIN_MS) {
+        outOfTime = true; // no LLM slot left in this run; the posting waits for the next one
+        return;
       }
 
       let extraction: JobExtract | null = null;
@@ -129,7 +140,6 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
     }
   }
 
-  let outOfTime = false;
   while (stats.seen < limit && !outOfTime) {
     const { data: batch, error } = await db.rpc("raw_postings_to_process", { p_limit: Math.min(PAGE, limit - stats.seen) });
     if (error) throw new Error(`load postings: ${error.message}`);
