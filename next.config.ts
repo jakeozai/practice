@@ -2,8 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  // Temporary (2026-11-14): lets the image optimizer fetch the Higgsfield renders so they can be saved into public/photos.
-  images: { remotePatterns: [{ protocol: "https", hostname: "d8j0ntlcm91z4.cloudfront.net" }] },
   partialPrefetching: true,
   // These routes read prompts/*.md at runtime; ship the files with their functions.
   outputFileTracingIncludes: {
