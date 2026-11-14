@@ -92,7 +92,7 @@ const FAQ = [
   { q: "이력서 파일은 누가 만들어요?", a: "평소 쓰는 AI가 만들어요. 받은 한글·영문 이력서는 지원할 때 그대로 쓰면 돼요." },
   {
     q: "왜 해외 공고만 보내나요?",
-    a: "AI로 몇 시간 안에 끝내는 원격 단기 일감은 해외 회사와 플랫폼에 훨씬 많아요. 대신 영어로 여기저기 흩어져 있어 찾기 어렵죠. 덕잡은 그중 한국에서 지원할 수 있는 것만 엄선해 한국어로 정리해요. 국내 일감 사이트는 공고를 다른 곳에 옮겨 싣는 걸 허락하지 않는 곳이 많아 지금은 다루지 않아요.",
+    a: "AI로 몇 시간 안에 끝내는 원격 일감은 해외 회사와 플랫폼에 훨씬 많아요. 대신 영어로 여기저기 흩어져 있어 찾기 어렵죠. 덕잡은 그중 한국에서 지원할 수 있는 것만 엄선해 한국어로 정리해요. 국내 일감 사이트는 공고를 다른 곳에 옮겨 싣는 걸 허락하지 않는 곳이 많아 지금은 다루지 않아요.",
   },
   { q: "영어를 잘 못해도 되나요?", a: "영어 지시문을 읽을 정도면 할 수 있는 일감이 많아요. 내 영어 수준에 맞는 일감만 골라 보내고, 지원할 땐 AI가 만든 영문 이력서를 쓰면 돼요." },
 ];
@@ -194,10 +194,10 @@ export default function Home(props: PageProps<"/">) {
         style={{ ...wrap, padding: "clamp(56px, 8vw, 104px) 24px 0", gap: "clamp(40px, 6vw, 72px)", alignItems: "center" }}
       >
         <div>
-          <h1 className="lp-rise" style={{ margin: 0, fontSize: "clamp(34px, 5.2vw, 66px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
+          <h1 className="lp-rise" style={{ margin: 0, fontSize: "clamp(40px, 6.4vw, 88px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
             매일 아침 6시,
             <br />
-            <span style={{ color: accent }}>해외 단기 AI 일감 5개</span>
+            <span style={{ color: accent }}>해외 AI 일감 5개</span>
           </h1>
           <div className="lp-rise" style={delay(240)}>
             <Suspense fallback={<SubscribeForm id="b-hero-email" />}>

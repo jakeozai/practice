@@ -284,7 +284,7 @@ export default function DailyFive(props: DailyFiveProps) {
           <Text style={s.day}>{`${props.dayLabel} · 좋은 아침이에요`}</Text>
           <Text style={s.heading}>{title}</Text>
           <Text style={s.intro}>
-            {props.curation ?? "전 세계 단기 일감 중 한국에서 할 수 있는 것만 골라 한국어로 정리했어요."}
+            {props.curation ?? "전 세계 공고 중 한국에서 할 수 있는 일감만 골라 한국어로 정리했어요."}
           </Text>
 
           {jobs.length > 1 && <DayList jobs={jobs} title={title} iconUrl={props.iconUrl} brand={brand} />}

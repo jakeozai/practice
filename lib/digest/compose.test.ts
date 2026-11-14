@@ -102,9 +102,9 @@ test("card falls back to the original title when there is no Korean one", () => 
 
 test("top line: the day's numbers when they make sense, else the plain intro", async () => {
   const withStats = await composeDigestEmail({ ...input, stats: { newPostings: 120, koreaJobs: 9 } });
-  assert.ok(withStats.text.includes("지난 하루 새로 올라온 공고 120개 중 한국에서 할 수 있는 단기 일감 9개, 그중 1개를 골랐어요."));
+  assert.ok(withStats.text.includes("지난 하루 새로 올라온 공고 120개 중 한국에서 할 수 있는 일감 9개, 그중 1개를 골랐어요."));
   const plain = await composeDigestEmail(input);
-  assert.ok(plain.text.includes("한국에서 할 수 있는 것만 골라"));
+  assert.ok(plain.text.includes("한국에서 할 수 있는 일감만 골라"));
 });
 
 test("personal picks: reason, today's first step and own subject", async () => {

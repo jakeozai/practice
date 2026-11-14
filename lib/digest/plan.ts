@@ -99,5 +99,5 @@ export function curationLine(
     return personal && picked > 0 ? `내 AI가 분석한 프로필에 딱 맞는 일감 ${picked}개${plus}를 골랐어요.` : null;
   }
   const n = (x: number) => x.toLocaleString("ko-KR");
-  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 할 수 있는 단기 일감 ${n(stats.koreaJobs)}개, 그중 ${which}를 골랐어요.`;
+  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 할 수 있는 일감 ${n(stats.koreaJobs)}개, 그중 ${which}를 골랐어요.`;
 }

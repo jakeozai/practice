@@ -86,7 +86,7 @@ test("Phase 1 order: Korean work, then English-only, then other languages; other
 test("curation line: shown only when the numbers make sense", () => {
   assert.equal(
     curationLine({ newPostings: 3020, koreaJobs: 41 }, 3),
-    "지난 하루 새로 올라온 공고 3,020개 중 한국에서 할 수 있는 단기 일감 41개, 그중 3개를 골랐어요.",
+    "지난 하루 새로 올라온 공고 3,020개 중 한국에서 할 수 있는 일감 41개, 그중 3개를 골랐어요.",
   );
   assert.equal(curationLine({ newPostings: 0, koreaJobs: 0 }, 3), null);
   assert.equal(curationLine({ newPostings: 50, koreaJobs: 2 }, 3), null, "older jobs fill the mail: don't claim we picked 3 of 2");
@@ -115,7 +115,7 @@ test("personal picks replace the shared list; an empty pick means no mail, not f
 test("personal curation line names the profile, with or without the day's numbers", () => {
   assert.equal(
     curationLine({ newPostings: 300, koreaJobs: 41 }, 3, true),
-    "지난 하루 새로 올라온 공고 300개 중 한국에서 할 수 있는 단기 일감 41개, 그중 내 AI가 분석한 프로필에 딱 맞는 3개를 골랐어요.",
+    "지난 하루 새로 올라온 공고 300개 중 한국에서 할 수 있는 일감 41개, 그중 내 AI가 분석한 프로필에 딱 맞는 3개를 골랐어요.",
   );
   assert.equal(curationLine(null, 3, true), "내 AI가 분석한 프로필에 딱 맞는 일감 3개를 골랐어요.");
 });
