@@ -21,8 +21,13 @@ import { firstText } from "../llm/client";
 import { isServiceFailure, type MessagesClient } from "../llm/extractJob";
 import { ruleNote, type FitJob, type PickNote, type Ranked } from "./fit";
 
-/** (제안값) How many of the best rule-ranked jobs the model chooses from. */
-export const PICK_POOL = 12;
+/**
+ * (제안값) How many of the best rule-ranked jobs the model chooses from. Kept
+ * small: given 12, the model (2026-11-14 dry run) put a 9th-ranked "founding
+ * engineer" job first over seven better video fits, so the rules decide which
+ * jobs are in play and the model only chooses among the strongest and writes.
+ */
+export const PICK_POOL = 6;
 export const REASON_MAX = 90;
 export const TODAY_MAX = 80;
 export const SUBJECT_MAX = 40;
@@ -179,6 +184,8 @@ export async function choosePicks(
     if (!chosen.some((c) => c.r.job.id === r.job.id)) chosen.push({ r, note: ruleNote(r, profile, now) });
   }
 
+  // Strongest fit first: the profile's field order, as scored by the rules.
+  chosen.sort((a, b) => b.r.score - a.r.score);
   return {
     jobIds: chosen.map((c) => c.r.job.id),
     notes: Object.fromEntries(chosen.map((c) => [c.r.job.id, { ...c.note, score: c.r.score }])),

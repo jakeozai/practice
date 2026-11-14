@@ -102,9 +102,9 @@ test("model picks come first; missing ones are filled from the rule order", asyn
   const r = await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m" });
   assert.equal(r.method, "llm");
   assert.equal(r.jobIds.length, 3);
-  assert.equal(r.jobIds[0], ranked[2].job.id);
-  assert.equal(r.notes[r.jobIds[0]].reason, "썸네일 추천과 맞아요");
-  assert.match(r.notes[r.jobIds[1]].reason, /AI 분석의/); // rule-written
+  assert.ok(r.jobIds.includes(ranked[2].job.id));
+  assert.equal(r.notes[ranked[2].job.id].reason, "썸네일 추천과 맞아요");
+  assert.match(r.notes[ranked[0].job.id].reason, /AI 분석의/); // rule-written fill
   assert.equal(r.subject, "영상 편집 실력으로 할 일감");
 });
 
@@ -122,4 +122,18 @@ test("model failure or no model: rule picks, rule notes, rule subject", async ()
 
   const none = await choosePicks([], profile, { size: 3, now: NOW });
   assert.deepEqual(none.jobIds, []);
+});
+
+test("final order is the rule order even when the model lists a weaker fit first", async () => {
+  const client = fakeClient(
+    JSON.stringify({
+      picks: [
+        { id: "c3", reason_ko: "세 번째", today_ko: "오늘" },
+        { id: "c1", reason_ko: "첫 번째", today_ko: "오늘" },
+      ],
+      subject_ko: "제목",
+    }),
+  );
+  const r = await choosePicks(ranked, profile, { size: 2, now: NOW, client, model: "m" });
+  assert.deepEqual(r.jobIds, [ranked[0].job.id, ranked[2].job.id]);
 });
