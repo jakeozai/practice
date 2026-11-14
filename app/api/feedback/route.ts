@@ -6,8 +6,9 @@ import { FeedbackFormSchema, formToObject, reportText } from "@/lib/feedback";
 
 /**
  * POST from the /feedback confirmation page (never GET: mail links are opened
- * by scanners). "관심 없어요" marks the sent match; "신고" stores a report and
- * takes the job out of future mails until an admin approves it again.
+ * by scanners). Both only concern this subscriber (2026-11-14 user decision):
+ * "관심 없어요" marks the sent match; "신고" stores a report for the admin.
+ * Neither takes the job away from anyone else.
  */
 export async function POST(request: NextRequest) {
   const t = request.nextUrl.searchParams.get("t") ?? "";
@@ -36,8 +37,5 @@ export async function POST(request: NextRequest) {
     console.error("report insert failed", error.message);
     return back("error=server");
   }
-  // Back to the review queue (/admin/review) so no one else gets it meanwhile.
-  const pulled = await db.from("jobs").update({ review_state: "pending" }).eq("id", jobId).eq("review_state", "approved");
-  if (pulled.error) console.error("report: job not pulled", pulled.error.message);
   return back("done=report");
 }

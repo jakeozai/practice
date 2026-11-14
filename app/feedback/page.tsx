@@ -26,7 +26,7 @@ async function Feedback({ searchParams }: { searchParams: PageProps<"/feedback">
     return <Message title="알려줘서 고마워요" body="이 일감은 다시 보내지 않아요. 다음 추천에 참고할게요." />;
   }
   if (params.done === "report") {
-    return <Message title="신고를 받았어요" body="이 일감은 확인할 때까지 다른 분들께도 보내지 않아요. 고마워요." />;
+    return <Message title="신고를 받았어요" body="운영자가 확인할게요. 이 일감은 다시 보내지 않아요. 고마워요." />;
   }
 
   const v = t ? verifyLink(t, "feedback", linkEnv().EMAIL_LINK_SECRET) : null;
@@ -50,7 +50,7 @@ async function Feedback({ searchParams }: { searchParams: PageProps<"/feedback">
           </p>
         )}
         <p className="text-lg font-semibold">이 일감은 관심 없어요</p>
-        <p className="mt-1 text-sm text-zinc-600">같은 일감은 원래 다시 보내지 않아요. 누르면 추천에 참고해요.</p>
+        <p className="mt-1 text-sm text-zinc-600">이 일감은 다시 보내지 않아요. 누르면 내 추천에 참고해요.</p>
         {(params.error === "server" || params.error === "form") && (
           <p className="mt-2 text-sm text-red-600" role="alert">
             처리하지 못했어요. 잠시 후 다시 눌러 주세요.

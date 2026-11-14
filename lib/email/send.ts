@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { Resend } from "resend";
 import { emailEnv } from "../env";
 import { SEND_MAX_ATTEMPTS, SEND_TIMEOUT_MS } from "./constants";
+import { contactEmail } from "../brand";
 
 export type OutgoingEmail = {
   to: string;
@@ -58,7 +59,16 @@ async function sendViaResend(mail: OutgoingEmail, from: string, apiKey: string):
   resendClient ??= new Resend(apiKey);
   const { data, error } = await withTimeout(
     resendClient.emails.send(
-      { from, to: mail.to, subject: mail.subject, html: mail.html, text: mail.text, headers: mail.headers },
+      {
+        from,
+        to: mail.to,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        headers: mail.headers,
+        // The sending address has no inbox; replies go to the public contact.
+        ...(contactEmail() ? { replyTo: contactEmail()! } : {}),
+      },
       { idempotencyKey: mail.idempotencyKey },
     ),
     SEND_TIMEOUT_MS,
