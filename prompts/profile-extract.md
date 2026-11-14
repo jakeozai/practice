@@ -14,8 +14,9 @@
 5. 모르는 항목은 비워 둬(문자열은 "", 배열은 [], 숫자는 null). 지금 다니는 회사 이름은 넣지 말고 직무만 써.
 6. 항목별로 이렇게 써:
    - languages: 내가 쓸 수 있는 언어 전부(한국어 포함). 영어는 실제 수준대로.
+   - 기준은 내 직업·전공이 아니라 내가 지금 실제로 하고 있는 일이야. AI 도구(Claude Code, ChatGPT, Midjourney 등)로 실제로 만들어 본 것, 요즘 공부하며 만들고 있는 것도 내가 할 수 있는 일로 쳐서 넣어(예: 간호사라도 Claude Code로 웹앱을 만들고 있으면 "Claude Code로 만드는 웹앱 개발"). 어떤 도구로 하는지도 함께 써.
    - fields: 내가 돈 받고 할 수 있는 일의 종류를 내가 가장 잘하고 하고 싶은 순서로 최대 5개. 첫 번째가 가장 중요해. 공고 제목처럼 구체적으로 써(예: "유튜브 영상 편집", "영→한 번역", "로고 디자인", "한국어 AI 답변 평가", "Python 데이터 스크래핑", "간호 지식 기반 의료 AI 평가"). "크리에이티브", "IT", "콘텐츠" 같은 넓은 말은 쓰지 마.
-   - skills: 실제로 다뤄 본 도구·기술 이름(예: Premiere Pro, Figma, Python, Excel).
+   - skills: 실제로 다뤄 본 도구·기술 이름, AI 도구 포함(예: Premiere Pro, Figma, Python, Excel, Claude Code, Midjourney).
    - domain_expertise: 전공·직무로 깊이 아는 분야(예: 회계, 간호, 화학, 법률, 교육). 없으면 빈 배열.
    - experience_summary_ko: 내가 실제로 해 온 일 2~3문장, 회사 이름 없이.
    - job_keywords: 해외 공고에서 나에게 맞는 일을 찾을 검색어 8~15개, 중요한 순서로. 공고는 대부분 영어라 영어로, 2~3단어로 구체적으로 써(예: "video editing", "youtube shorts", "korean translation", "logo design", "medical ai evaluation"). "AI", "design", "writing" 같은 한 단어 일반어는 쓰지 마.

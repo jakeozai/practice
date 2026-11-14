@@ -81,6 +81,17 @@ export const SECTION_WEIGHT = {
 export const MIN_RELEVANCE = 2.5;
 /** (제안값) Degree/licence jobs need a match at least this strong, from the fields or expertise. */
 const CREDENTIAL_MIN_WEIGHT = 3;
+/**
+ * AI coding tools in a profile: with them the person builds in the mainstream
+ * languages whether or not the profile names one (2026-11-14 user decision:
+ * what someone does with AI counts — a nurse who builds apps with Claude Code
+ * gets app work).
+ */
+const AI_CODING = /claude\s*code|클로드\s*코드|cursor|커서\s*ai|copilot|코파일럿|windsurf|바이브\s*코딩|vibe\s*cod|lovable|bolt\.new|replit|\bv0\b|ai\s*코딩/i;
+const AI_CODING_LANGUAGES = ["js", "python"];
+/** Craft work: knowing a field (nursing, law) is a plus there, never the reason on its own (a clinic website is web work). */
+const CRAFT_CATEGORIES = new Set(["dev", "design", "video", "motion_3d"]);
+
 /** Joining a company rather than taking a gig: founding roles, equity pay. */
 const EMPLOYMENT_ROLE = /founding\s+(?:engineer|developer|designer|member|team)|co-?founder|공동\s*창업|창립\s*(?:멤버|엔지니어|팀)|\bcto\b|equity[- ](?:only|based)|지분\s*(?:보상|으로)/i;
 
@@ -168,7 +179,7 @@ export function buildSignals(profile: Profile): ProfileSignals {
     tools: toolTokens(profile.skills),
     avoid: new Set(AVOID_RULES.filter((r) => profile.avoid.some((a) => r.avoid.test(a))).map((r) => r.id)),
     performer: PERFORMER_PROFILE.test(everything),
-    code: codeLanguages(everything),
+    code: AI_CODING.test(everything) ? new Set([...codeLanguages(everything), ...AI_CODING_LANGUAGES]) : codeLanguages(everything),
     weeklyHours: profile.weekly_hours,
     minHourlyUsd: profile.min_hourly_usd,
     focus: profile.fields.slice(0, 2),
@@ -258,7 +269,10 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
     }),
     // The profile's own search terms reach work the concept list doesn't name.
     ...sig.keywords.filter((k) => k.re.test(text)).map((k) => k.hit),
-  ].sort((a, b) => b.weight - a.weight);
+  ]
+    // In craft work a specialty only adds to a craft match.
+    .filter((h, _, all) => !(DOMAIN_CONCEPTS.has(h.id) && job.category && CRAFT_CATEGORIES.has(job.category) && !all.some((o) => !DOMAIN_CONCEPTS.has(o.id))))
+    .sort((a, b) => b.weight - a.weight);
   const best = hits[0]?.weight ?? 0;
   const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
   const relevance = best + Math.min(0.35 * rest, 3);

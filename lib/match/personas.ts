@@ -153,6 +153,47 @@ const raw: { id: string; label: string; profile: Record<string, unknown> }[] = [
     },
   },
   {
+    id: "nurse_builder",
+    label: "AI로 웹앱 만드는 간호사",
+    profile: {
+      languages: [
+        { code: "ko", level: "native" },
+        { code: "en", level: "conversational" },
+      ],
+      fields: ["Claude Code로 만드는 웹앱·랜딩 페이지 개발", "간호 지식 기반 의료 AI 답변 평가"],
+      skills: ["Claude Code", "Supabase", "Vercel"],
+      domain_expertise: ["간호학"],
+      experience_summary_ko: "병원 간호사로 일하면서 퇴근 후 Claude Code로 웹앱을 만들며 개발을 공부하고 있어요. 병동 업무용 체크리스트 앱을 직접 만들었어요.",
+      job_keywords: ["web app development", "landing page", "website build", "medical ai evaluation", "healthcare website"],
+      portfolio_ko: ["직접 만든 병동 체크리스트 웹앱"],
+      weekly_hours: 10,
+      preferred_time: "evening",
+      min_hourly_usd: null,
+      avoid: ["얼굴 촬영"],
+      notes_ko: "AI로 만드는 웹앱·랜딩 페이지 일을 먼저 추천. 의료 쪽이면 더 좋아요.",
+    },
+  },
+  {
+    id: "ai_motion",
+    label: "Claude Code로 모션그래픽 만드는 사람",
+    profile: {
+      languages: [
+        { code: "ko", level: "native" },
+        { code: "en", level: "reading" },
+      ],
+      fields: ["Claude Code로 만드는 모션그래픽 영상", "AI 영상 편집"],
+      skills: ["Claude Code", "Remotion", "CapCut"],
+      experience_summary_ko: "디자인 전공은 아니지만 Claude Code와 Remotion으로 코드 기반 모션그래픽과 설명 애니메이션을 만들어 왔어요.",
+      job_keywords: ["motion graphics", "animated explainer", "kinetic typography", "remotion", "text animation"],
+      portfolio_ko: ["Remotion으로 만든 설명 애니메이션 3편"],
+      weekly_hours: 15,
+      preferred_time: "night",
+      min_hourly_usd: null,
+      avoid: [],
+      notes_ko: "모션그래픽·설명 애니메이션 일을 먼저 추천.",
+    },
+  },
+  {
     id: "accountant",
     label: "회계사(금융 AI 평가)",
     profile: {

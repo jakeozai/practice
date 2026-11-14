@@ -49,6 +49,8 @@ const JOBS: FitJob[] = [
   job("sign", "British Sign Language AI Trainer", { title_ko: "영국 수화(BSL) AI 트레이너", category: "language", pay_unit: "hour", pay_max: 30 }),
   job("founding", "Founding Engineer for an AI agent builder platform", { category: "dev", summary_ko: ["Python 자동화 경험자"] }),
   job("cad", "Mechanical part 3D CAD modeling", { category: "motion_3d" }),
+  job("clinic_site", "Next.js landing page for a dental clinic", { category: "dev", summary_ko: ["치과 병원 랜딩 페이지"] }),
+  job("motion", "Motion graphics explainer animation (30 seconds)", { category: "motion_3d", summary_ko: ["30초 설명 애니메이션"] }),
 ];
 
 /** Nobody gets these: other languages, joining a company, a craft nobody has. */
@@ -58,7 +60,9 @@ const expectations: Record<string, { gets: string[]; never: string[] }> = {
   translator: { gets: ["loc", "ko_eval"], never: ["video", "logo", "scrape", "nurse", "chem", "acct", "render"] },
   designer: { gets: ["logo", "banner"], never: ["video", "loc", "scrape", "render", "nurse"] },
   python_dev: { gets: ["scrape"], never: ["java", "video", "logo", "loc"] },
-  nurse: { gets: ["nurse"], never: ["chem", "acct", "video", "logo"] },
+  nurse: { gets: ["nurse"], never: ["chem", "acct", "video", "logo", "clinic_site"] },
+  nurse_builder: { gets: ["clinic_site", "nurse"], never: ["video", "logo", "chem", "acct", "java"] },
+  ai_motion: { gets: ["motion"], never: ["logo", "render", "loc", "nurse", "acct"] },
   ko_ai_worker: { gets: ["ko_eval", "annot"], never: ["chem", "nurse", "acct", "video", "logo"] },
   copywriter: { gets: ["blog"], never: ["logo", "render", "nurse", "chem"] },
   "3d_artist": { gets: ["render"], never: ["video", "logo", "loc", "acct"] },
