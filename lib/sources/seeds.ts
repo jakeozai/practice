@@ -9,8 +9,9 @@
  * and every rule passes (spec §8 step 5).
  */
 import type { FetchableKind } from "./types";
+import type { AggregatorKind } from "./aggregators";
 
-export type SeedSource = { name: string; kind: FetchableKind | "page" | "freelancer"; endpoint: string; trusted: boolean };
+export type SeedSource = { name: string; kind: FetchableKind | "page" | "freelancer" | AggregatorKind; endpoint: string; trusted: boolean };
 
 export const SEED_SOURCES: SeedSource[] = [
   // Boards that currently carry Korea-eligible AI gigs
@@ -36,4 +37,8 @@ export const SEED_SOURCES: SeedSource[] = [
   { name: "OneForma", kind: "page", endpoint: "www.oneforma.com", trusted: true },
   // Scope C (2026-11-14): short-term gigs of every kind on a freelance marketplace (preset in lib/sources/freelancer.ts)
   { name: "Freelancer.com (단기 의뢰)", kind: "freelancer", endpoint: "gigs", trusted: true },
+  // 2026-11-14 supply check: boards that name the hiring company (0016)
+  { name: "Jobicy (원격 계약·파트타임)", kind: "jobicy", endpoint: "south-korea", trusted: true },
+  { name: "Himalayas (원격 계약·파트타임)", kind: "himalayas", endpoint: "KR", trusted: true },
+  { name: "Superside", kind: "lever", endpoint: "superside", trusted: true },
 ];

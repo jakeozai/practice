@@ -49,8 +49,8 @@ async function dryRun(filter: string | undefined) {
   console.log(`${"source".padEnd(34)} ${"postings".padStart(8)} ${"keyword".padStart(8)} ${"korea=yes".padStart(9)} ${"unknown".padStart(8)}`);
   for (const s of sources) {
     try {
-      if (s.kind === "freelancer") {
-        console.log(`${s.name.padEnd(34)} (searches the Freelancer.com API; run without --dry-run)`);
+      if (s.kind === "freelancer" || s.kind === "jobicy" || s.kind === "himalayas") {
+        console.log(`${s.name.padEnd(34)} (paged API with its own limits; run without --dry-run)`);
         continue;
       }
       const posts = s.kind === "page" ? await samplePages(s.endpoint, ua, lines) : await fetchPostings(s.kind, s.endpoint, ua);
