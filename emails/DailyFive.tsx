@@ -273,6 +273,10 @@ export default function DailyFive(props: DailyFiveProps) {
             <Link href={props.privacyUrl} style={s.footerLink}>
               개인정보 처리방침
             </Link>
+            {"  ·  "}
+            <Link href={`${props.appUrl}/guide`} style={s.footerLink}>
+              해외 일감 이용 안내
+            </Link>
           </Text>
           <Text style={s.footer}>
             {brand}

@@ -7,7 +7,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "../supabase/database.types";
 import { rankForEveryone } from "./plan";
-import { seoulSendTime } from "../time";
+import { seoulDate, seoulSendTime } from "../time";
+import { belowMinimumWage } from "../jobs/min-wage";
 import { ProfileSchema } from "../profile/parse";
 import { buildSignals, rankForProfile } from "../match/fit";
 
@@ -67,7 +68,9 @@ export async function loadCandidatePool(db: Db, limit = CANDIDATE_POOL): Promise
     .order("pay_max", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw new Error(`load candidate jobs: ${error.message}`);
-  return data;
+  // Jobs approved before the rule, or before a new minimum wage took effect, are left out at send time.
+  const today = seoulDate();
+  return data.filter((j) => !belowMinimumWage(j, today));
 }
 
 /**

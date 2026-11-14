@@ -27,6 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             개인정보 처리방침
           </Link>
           <span className="mx-2">·</span>
+          <Link href="/guide" className="font-semibold underline underline-offset-2">
+            해외 일감 이용 안내
+          </Link>
+          <span className="mx-2">·</span>
           <Link href="/account" className="font-semibold underline underline-offset-2">
             내 정보·해지
           </Link>
