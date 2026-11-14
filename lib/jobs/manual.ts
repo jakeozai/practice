@@ -2,6 +2,7 @@
  * Validation for /admin/jobs/new (Phase 0 manual registration).
  * Input is FormData-shaped (all strings); output is a jobs insert.
  */
+import { JOB_CATEGORIES } from "./categories";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { normalizeTitle } from "./format";
@@ -44,7 +45,7 @@ export const ManualJobSchema = z
           .min(1, "한국어 요약을 1~3줄 써 주세요.")
           .max(3, "요약은 3줄까지예요."),
       ),
-    category: optionalEnum(["language", "domain", "labeling", "other"] as const),
+    category: optionalEnum(JOB_CATEGORIES),
     languages: z
       .string()
       .default("")

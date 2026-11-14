@@ -17,6 +17,15 @@ import type { CurationStats } from "./candidates";
 export { DIGEST_JOB_COLUMNS, type DigestJob } from "./candidates";
 import type { DigestJob } from "./candidates";
 
+/** A freelance-marketplace project: you send a quote and compete with other bidders. */
+export function isBiddingGig(url: string): boolean {
+  try {
+    return /(^|\.)freelancer\.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 /** One mail card. The posting text never appears, only our Korean summary and structured fields (CLAUDE.md rule 1). */
 export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null): DailyFiveJob {
   const korean = job.title_ko?.trim() || null;
@@ -28,7 +37,7 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     summary: job.summary_ko,
     badge: statusBadge(job.status),
     category: job.category && job.category !== "other" ? CATEGORY_CHIP_KO[job.category] : null,
-    facts: jobFacts(job),
+    facts: isBiddingGig(job.url) ? [...jobFacts(job), { label: "지원", value: "견적 입찰 (경쟁)" }] : jobFacts(job),
     reason,
     detailUrl,
   };

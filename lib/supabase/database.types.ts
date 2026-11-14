@@ -1,11 +1,14 @@
 /**
- * Hand-written types for supabase/migrations/0001–0010, in the shape that
+ * Hand-written types for supabase/migrations/0001–0011, in the shape that
  * `supabase gen types typescript` produces. Regenerate with the CLI once a
  * Supabase project is linked, and keep this file in sync with migrations.
  */
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 type EnglishLevel = "none" | "reading" | "conversational" | "business" | "native";
+
+/** jobs.category (0011: video·design·motion_3d·dev·writing added for scope C). */
+export type JobCategory = "language" | "domain" | "labeling" | "video" | "design" | "motion_3d" | "dev" | "writing" | "other";
 
 export type Database = {
   public: {
@@ -14,7 +17,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual" | "freelancer";
           endpoint: string | null;
           trusted: boolean;
           active: boolean;
@@ -25,7 +28,7 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
-          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual";
+          kind: "greenhouse" | "lever" | "ashby" | "recruitee" | "page" | "manual" | "freelancer";
           endpoint?: string | null;
           trusted?: boolean;
           active?: boolean;
@@ -76,7 +79,7 @@ export type Database = {
           title_normalized: string;
           url: string;
           summary_ko: string[];
-          category: "language" | "domain" | "labeling" | "other" | null;
+          category: JobCategory | null;
           languages: string[];
           requires_credential: boolean;
           korea_eligible: boolean | null;
@@ -107,7 +110,7 @@ export type Database = {
           title_normalized: string;
           url: string;
           summary_ko?: string[];
-          category?: "language" | "domain" | "labeling" | "other" | null;
+          category?: JobCategory | null;
           languages?: string[];
           requires_credential?: boolean;
           korea_eligible?: boolean | null;

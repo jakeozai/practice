@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { SCAM_SIGNALS } from "../scam";
+import { JOB_CATEGORIES } from "../jobs/categories";
 
 /** permanent = open-ended staff hiring, which 덕잡 doesn't send (short-term work only). */
 export const ENGAGEMENTS = ["freelance", "contract", "part_time", "permanent"] as const;
@@ -26,7 +27,7 @@ const JobExtractWire = z.object({
   company: z.string(),
   title: z.string(),
   title_ko: z.string(),
-  category: z.enum(["language", "domain", "labeling", "other"]),
+  category: z.enum(JOB_CATEGORIES),
   languages: z.array(z.string()),
   location_raw: z.string().nullable(),
   korea_eligible: z.boolean().nullable(),
@@ -39,6 +40,9 @@ const JobExtractWire = z.object({
   english_level: z.enum(["none", "reading", "conversational", "business", "native"]).nullable(),
   is_talent_pool: z.boolean(),
   ai_related: z.boolean(),
+  /** Scope C (2026-11-14): gigs that forbid AI are rejected; everything else short-term is in. */
+  ai_prohibited: z.boolean(),
+  adult_content: z.boolean(),
   engagement: z.enum(ENGAGEMENTS),
   scam_signals: z.array(z.enum(SCAM_SIGNALS)),
   summary_ko: z.array(z.string()),

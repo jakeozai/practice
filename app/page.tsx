@@ -33,10 +33,10 @@ export default function Home(props: PageProps<"/">) {
         <h1 className="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-5xl">
           매일 아침 6시,
           <br />
-          AI 일감 3개를
+          단기 일감 3개를
           <br className="sm:hidden" /> 물어다 드려요
         </h1>
-        <p className="text-lg text-muted">전 세계 AI 단기 일감 중 나에게 맞는 것만, 한국어 요약으로.</p>
+        <p className="text-lg text-muted">영상·디자인·개발·AI 작업까지, 전 세계 단기 일감 중 나에게 맞는 것만 한국어로.</p>
         <Suspense fallback={<div className="h-28" />}>
           <LoginSection searchParams={props.searchParams} />
         </Suspense>

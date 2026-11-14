@@ -74,6 +74,10 @@ test("keyword filter looks at title and body", () => {
   assert.equal(matchesJobKeywords("AI 영상 편집 프리랜서", ""), true);
   assert.equal(matchesJobKeywords("데이터 라벨링 재택 알바", ""), true);
   assert.equal(matchesJobKeywords("Video editor", "Create clips with generative tools."), true);
+  // Scope C: creative and freelance work without any AI word
+  assert.equal(matchesJobKeywords("2D Animator", ""), true);
+  assert.equal(matchesJobKeywords("Photographer Specialist - Freelance Project", ""), true);
+  assert.equal(matchesJobKeywords("Senior Photoshop Retoucher", ""), true);
 });
 
 test("work language is display-only", async () => {

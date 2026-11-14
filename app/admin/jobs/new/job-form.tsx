@@ -83,6 +83,11 @@ export function JobForm(props: {
             <option value="language">언어 (평가·번역·전사)</option>
             <option value="domain">전문 분야 평가</option>
             <option value="labeling">라벨링·데이터 수집</option>
+            <option value="video">영상 편집·제작</option>
+            <option value="design">디자인·사진</option>
+            <option value="motion_3d">3D·모션</option>
+            <option value="dev">개발·자동화</option>
+            <option value="writing">글쓰기</option>
             <option value="other">기타</option>
           </select>,
         )}

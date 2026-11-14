@@ -1,9 +1,9 @@
 /**
- * First-pass keyword filter before any LLM call (spec §8 step 1).
- * Scope (2026-11-07): any short-term work that needs AI, from any country or
- * site, so the spec's AI-training list (제안값) is extended with general AI
- * terms and Korean terms for Korean sites. The LLM then decides
- * ai_related / engagement.
+ * First-pass keyword filter before any LLM call (spec §8 step 1), for hiring
+ * boards that list staff jobs too. Scope C (2026-11-14): any short-term gig
+ * where AI may be used, so creative and freelance terms joined the AI-work
+ * list (제안값). The LLM then decides engagement / ai_prohibited.
+ * Sources that already searched for gigs (Freelancer.com) skip this filter.
  */
 export const JOB_KEYWORDS = [
   // spec §8 list
@@ -29,6 +29,33 @@ export const JOB_KEYWORDS = [
   "prompt",
   "chatgpt",
   "chatbot",
+  // Short-term and creative work (scope C)
+  "freelance",
+  "contract",
+  "part-time",
+  "part time",
+  "video editor",
+  "video editing",
+  "video production",
+  "motion design",
+  "motion graphics",
+  "animator",
+  "animation",
+  "3d artist",
+  "3d model",
+  "illustrat",
+  "photoshop",
+  "photo editing",
+  "retouch",
+  "graphic design",
+  "thumbnail",
+  "voice actor",
+  "voice over",
+  "subtitl",
+  "caption",
+  "copywriter",
+  "content writer",
+  "translator",
   // Korean sites
   "인공지능",
   "생성형",

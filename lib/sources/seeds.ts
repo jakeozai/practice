@@ -10,7 +10,7 @@
  */
 import type { FetchableKind } from "./types";
 
-export type SeedSource = { name: string; kind: FetchableKind | "page"; endpoint: string; trusted: boolean };
+export type SeedSource = { name: string; kind: FetchableKind | "page" | "freelancer"; endpoint: string; trusted: boolean };
 
 export const SEED_SOURCES: SeedSource[] = [
   // Boards that currently carry Korea-eligible AI gigs
@@ -34,4 +34,6 @@ export const SEED_SOURCES: SeedSource[] = [
   { name: "Mercor (work listings)", kind: "page", endpoint: "work.mercor.com", trusted: true },
   { name: "OpenTrain AI", kind: "page", endpoint: "www.opentrain.ai", trusted: false },
   { name: "OneForma", kind: "page", endpoint: "www.oneforma.com", trusted: true },
+  // Scope C (2026-11-14): short-term gigs of every kind on a freelance marketplace (preset in lib/sources/freelancer.ts)
+  { name: "Freelancer.com (단기 의뢰)", kind: "freelancer", endpoint: "gigs", trusted: true },
 ];

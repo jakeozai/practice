@@ -34,7 +34,7 @@ export default function LoginLink({ confirmUrl, logoUrl, brand }: LoginLinkProps
         <Container style={s.container}>
           <Img src={logoUrl} width="44" height="44" alt={brand} />
           <Text style={s.title}>{brand} 시작하기</Text>
-          <Text style={s.text}>아래 버튼을 누르면 로그인되고, 매일 아침 6시에 AI 일감 메일을 받아요.</Text>
+          <Text style={s.text}>아래 버튼을 누르면 로그인되고, 매일 아침 6시에 일감 메일을 받아요.</Text>
           <Button href={confirmUrl} style={s.button}>
             시작하기
           </Button>

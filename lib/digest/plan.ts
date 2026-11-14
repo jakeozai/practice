@@ -82,5 +82,5 @@ export function rankForEveryone<T extends { languages: string[] }>(jobs: T[]): T
 export function curationLine(stats: { newPostings: number; koreaJobs: number } | null | undefined, picked: number): string | null {
   if (!stats || picked <= 0 || stats.newPostings <= 0 || stats.koreaJobs < picked) return null;
   const n = (x: number) => x.toLocaleString("ko-KR");
-  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 지원할 수 있는 AI 일감 ${n(stats.koreaJobs)}개, 그중 ${picked}개를 골랐어요.`;
+  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 할 수 있는 단기 일감 ${n(stats.koreaJobs)}개, 그중 ${picked}개를 골랐어요.`;
 }

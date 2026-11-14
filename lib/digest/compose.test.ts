@@ -37,7 +37,7 @@ const input = {
 test("subject, card content and unsubscribe headers", async () => {
   const mail = await composeDigestEmail(input);
   assert.equal(mail.to, "a@example.com");
-  assert.equal(mail.subject, "오늘의 AI 일감 1개 · 11월 8일");
+  assert.equal(mail.subject, "오늘의 일감 1개 · 11월 8일");
   assert.equal(mail.idempotencyKey, `digest-${UID}-2026-11-08`);
   assert.match(mail.headers["List-Unsubscribe"], /^<https:\/\/aijob5\.example\/api\/email\/unsubscribe\?t=[\w-]+\.[\w-]+>$/);
   assert.equal(mail.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
@@ -91,7 +91,7 @@ test("card falls back to the original title when there is no Korean one", () => 
 
 test("top line: the day's numbers when they make sense, else the plain intro", async () => {
   const withStats = await composeDigestEmail({ ...input, stats: { newPostings: 120, koreaJobs: 9 } });
-  assert.ok(withStats.text.includes("지난 하루 새로 올라온 공고 120개 중 한국에서 지원할 수 있는 AI 일감 9개, 그중 1개를 골랐어요."));
+  assert.ok(withStats.text.includes("지난 하루 새로 올라온 공고 120개 중 한국에서 할 수 있는 단기 일감 9개, 그중 1개를 골랐어요."));
   const plain = await composeDigestEmail(input);
-  assert.ok(plain.text.includes("한국에서 지원할 수 있는 단기 일감만 골라"));
+  assert.ok(plain.text.includes("한국에서 할 수 있는 것만 골라"));
 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { boardCompany, buildJob, decideCompany, triage } from "./process";
+import { boardCompany, buildJob, decideCompany, forbidsAi, triage } from "./process";
 import { extractJob, isServiceFailure, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
 
 const raw = {
@@ -30,6 +30,8 @@ const extraction: JobExtract = {
   ai_related: true,
   engagement: "freelance",
   scam_signals: [],
+  ai_prohibited: false,
+  adult_content: false,
   summary_ko: ["AI가 만든 한국어 결과물을 평가하는 일", "한국어 원어민, 영어 B2 이상", "시간당 10달러, 주 10시간 이상"],
 };
 
@@ -58,8 +60,8 @@ test("credentials and work language don't block approval", () => {
   assert.equal(expert.requires_credential, true, "kept as information");
 });
 
-test("not AI work, or permanent staff hiring → rejected as out of scope", () => {
-  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, ai_related: false }, sameTitleCount: 1 }).review_state, "rejected");
+test("permanent staff hiring → rejected as out of scope (scope C: work without AI is in)", () => {
+  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, ai_related: false }, sameTitleCount: 1 }).review_state, "approved");
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "permanent" }, sameTitleCount: 1 }).review_state, "rejected");
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "part_time" }, sameTitleCount: 1 }).review_state, "approved");
 });
@@ -177,4 +179,30 @@ test("company: a hiring-system board's owner; on page sources the LLM's answer u
   assert.equal(decideCompany(opentrain, "Acme Labs"), "Acme Labs");
   assert.equal(decideCompany(opentrain, "n/a"), "OpenTrain AI");
   assert.equal(decideCompany(opentrain, null), "OpenTrain AI");
+});
+
+test("scope C: short-term work without AI is in; AI-forbidding and adult work are out", () => {
+  const editing = buildJob({ raw, source: trusted, extraction: { ...extraction, ai_related: false, category: "video" }, sameTitleCount: 1 });
+  assert.equal(editing.review_state, "approved", "no AI needed is fine");
+  assert.equal(editing.category, "video");
+  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, ai_prohibited: true }, sameTitleCount: 1 }).review_state, "rejected");
+  assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, adult_content: true }, sameTitleCount: 1 }).review_state, "rejected");
+  const saysNoAi = buildJob({ raw: { ...raw, body: "Hand-drawn only. No AI please." }, source: trusted, extraction, sameTitleCount: 1 });
+  assert.equal(saysNoAi.review_state, "rejected", "the text rule catches what the LLM missed");
+});
+
+test("forbidsAi: plain bans only, not AI work itself", () => {
+  for (const t of ["No AI.", "Please do not use AI tools", "AI-generated images will be rejected", "AI generated art is not accepted", "Must be 100% human-made", "AI use is strictly prohibited", "AI 사용 금지", "AI 생성물 불가"]) {
+    assert.equal(forbidsAi(t), true, t);
+  }
+  for (const t of ["Create AI-generated images for ads", "AI video editor needed", "Using AI tools is fine", "maintain the site"]) {
+    assert.equal(forbidsAi(t), false, t);
+  }
+});
+
+test("triage: preselected marketplace gigs skip the keyword pass, not the region rule", () => {
+  const gig = { ...raw, title: "Mascot for a bakery", body: "Draw a cute loris mascot.", location_raw: "Worldwide (Freelancer.com, remote bidding)" };
+  assert.equal(triage(gig), "skip_keyword");
+  assert.equal(triage(gig, { preselected: true }), "candidate");
+  assert.equal(triage({ ...gig, location_raw: "United States" }, { preselected: true }), "skip_region");
 });

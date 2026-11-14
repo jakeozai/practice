@@ -16,6 +16,11 @@ export const CATEGORY_LABELS_KO = {
   language: "언어",
   domain: "전문 분야",
   labeling: "라벨링",
+  video: "영상",
+  design: "디자인",
+  motion_3d: "3D·모션",
+  dev: "개발·자동화",
+  writing: "글쓰기",
   other: "기타",
 } as const;
 
@@ -24,6 +29,11 @@ export const CATEGORY_CHIP_KO = {
   language: "언어 작업",
   domain: "전문 분야",
   labeling: "데이터 라벨링",
+  video: "영상 편집·제작",
+  design: "디자인·사진",
+  motion_3d: "3D·모션",
+  dev: "개발·자동화",
+  writing: "글쓰기",
 } as const;
 
 /** "영어" row on a mail card. */

@@ -81,7 +81,8 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
 
   async function handle(raw: Tables<"raw_postings">) {
     try {
-      const decision = triage(raw);
+      const source = sources.get(raw.source_id) ?? { name: "Unknown", trusted: false, kind: "page" };
+      const decision = triage(raw, { preselected: source.kind === "freelancer" });
       if (decision !== "candidate") {
         stats[decision === "skip_keyword" ? "skipKeyword" : "skipRegion"]++;
         await markProcessed(db, raw);
@@ -122,13 +123,14 @@ export async function processPostings(db: ServiceClient, opts: RunOptions & { li
         }
       }
 
-      const source = sources.get(raw.source_id) ?? { name: "Unknown", trusted: false, kind: "page" };
       const company = decideCompany(source, extraction?.company);
       const job = buildJob({
         raw,
         source,
         extraction,
-        sameTitleCount: await sameTitleCount(db, company, extraction?.title || raw.title || "", raw.id),
+        // A marketplace lists many similar one-off gigs ("Logo design"); that isn't a repost.
+        sameTitleCount:
+          source.kind === "freelancer" ? 1 : await sameTitleCount(db, company, extraction?.title || raw.title || "", raw.id),
       });
       const { error: upErr } = await db.from("jobs").upsert(job, { onConflict: "raw_posting_id" });
       if (upErr) throw new Error(`upsert job: ${upErr.message}`);

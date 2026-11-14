@@ -6,6 +6,11 @@
  * postings that disappeared get missing_count + 1 and close at 2 → on
  * failure fail_count + 1, mail the admins at 3 in a row.
  *
+ * `freelancer` sources (lib/sources/freelancer.ts) run a preset of searches on
+ * the Freelancer.com API. Its terms allow data only as a cache refreshed
+ * within 24 hours, so projects that drop out of the listing are deleted
+ * (with their jobs) instead of being closed.
+ *
  * `page` sources (lib/sources/pages.ts) are read from the site's sitemap;
  * only pages not stored yet are fetched, ≥1 s apart, robots.txt checked.
  * When the deadline nears, page fetching stops and the rest waits for the
@@ -16,6 +21,7 @@ import { adminEmails } from "../env";
 import { fetchJson, fetchText, SourceFetchError } from "../sources/http";
 import { PAGE_FETCH_CAP, PAGE_FETCH_INTERVAL_MS, PAGE_SITES, listJobUrls, loadRobots, parseJobPage } from "../sources/pages";
 import { parseSource, sourceUrl } from "../sources/adapters";
+import { FREELANCER_PRESETS, freelancerUrl, parseFreelancer, selectProjects, toPosting } from "../sources/freelancer";
 import { isFetchableKind, type FetchableKind, type SourcePosting } from "../sources/types";
 import { nextMissing, planSync, type ExistingRaw } from "../sources/sync";
 import { bodyHash } from "../sources/text";
@@ -31,7 +37,37 @@ const PAUSE_BETWEEN_SOURCES_MS = 1000;
 /** Stop fetching pages this long before the deadline (the bookkeeping after it needs time). */
 const PAGE_DEADLINE_MARGIN_MS = 20_000;
 
-export type CollectSource = { id: string; name: string; kind: FetchableKind | "page"; endpoint: string; fail_count: number };
+export type CollectSource = { id: string; name: string; kind: FetchableKind | "page" | "freelancer"; endpoint: string; fail_count: number };
+
+/** Pause between Freelancer.com searches (one run makes ~40 requests). */
+const FREELANCER_QUERY_INTERVAL_MS = 1000;
+
+async function fetchFreelancer(endpoint: string, userAgent: string, log: RunOptions["log"]): Promise<SourcePosting[]> {
+  const preset = FREELANCER_PRESETS[endpoint];
+  if (!preset) throw new Error(`Unknown Freelancer preset: ${endpoint}`);
+  const now = new Date();
+  const lists = [];
+  for (const query of preset.queries) {
+    // One failed search fails the source: a partial listing would delete projects that are still open.
+    lists.push(parseFreelancer(await fetchJson(freelancerUrl(query, preset, now), { userAgent })));
+    await sleep(FREELANCER_QUERY_INTERVAL_MS);
+  }
+  const { kept, skipped } = selectProjects(lists, preset.maxPerRun);
+  const why = Object.entries(skipped).map(([k, v]) => `${k} ${v}`).join(", ");
+  log(`    Freelancer.com: ${preset.queries.length} searches → ${kept.length} kept${why ? ` (left out: ${why})` : ""}`);
+  return kept.map(toPosting);
+}
+
+/** Delete postings and their jobs (Freelancer.com data may only be kept as a fresh cache). */
+async function purgeRaw(db: ServiceClient, rawIds: string[]): Promise<number> {
+  for (const ids of chunks(rawIds, BATCH)) {
+    const { error: jErr } = await db.from("jobs").delete().in("raw_posting_id", ids);
+    if (jErr) throw new Error(`purge jobs: ${jErr.message}`);
+    const { error: rErr } = await db.from("raw_postings").delete().in("id", ids);
+    if (rErr) throw new Error(`purge raw_postings: ${rErr.message}`);
+  }
+  return rawIds.length;
+}
 
 export async function fetchPostings(kind: FetchableKind, endpoint: string, userAgent: string): Promise<SourcePosting[]> {
   return parseSource(kind, await fetchJson(sourceUrl(kind, endpoint), { userAgent }));
@@ -153,7 +189,10 @@ async function collectOne(db: ServiceClient, source: CollectSource, userAgent: s
       await db.from("sources").update({ fail_count: 0, last_fetched_at: now }).eq("id", source.id);
       return true;
     }
-    posts = await fetchPostings(source.kind, source.endpoint, userAgent);
+    posts =
+      source.kind === "freelancer"
+        ? await fetchFreelancer(source.endpoint, userAgent, opts.log)
+        : await fetchPostings(source.kind, source.endpoint, userAgent);
   } catch (e) {
     const failCount = source.fail_count + 1;
     const message = e instanceof SourceFetchError || e instanceof Error ? e.message : String(e);
@@ -172,11 +211,12 @@ async function collectOne(db: ServiceClient, source: CollectSource, userAgent: s
     if (error) throw new Error(`upsert raw_postings: ${error.message}`);
   }
   await markSeen(db, plan.seenRawIds, now);
-  const closed = await markMissing(db, plan.missingRawIds);
+  const cacheOnly = source.kind === "freelancer";
+  const closed = cacheOnly ? await purgeRaw(db, plan.missingRawIds) : await markMissing(db, plan.missingRawIds);
   await db.from("sources").update({ fail_count: 0, last_fetched_at: now }).eq("id", source.id);
 
   opts.log(
-    `  ✔ ${source.name}: ${posts.length} postings, ${plan.newCount} new, ${plan.upserts.length - plan.newCount} changed, ${plan.missingRawIds.length} gone (${closed} jobs closed)`,
+    `  ✔ ${source.name}: ${posts.length} postings, ${plan.newCount} new, ${plan.upserts.length - plan.newCount} changed, ${plan.missingRawIds.length} gone (${closed} ${cacheOnly ? "deleted" : "jobs closed"})`,
   );
   return true;
 }
@@ -194,6 +234,10 @@ export async function collectSources(
   for (const s of data) {
     if (opts.only && s.name !== opts.only && s.endpoint !== opts.only) continue;
     if (s.kind === "manual") continue;
+    if (s.kind === "freelancer" && s.endpoint && FREELANCER_PRESETS[s.endpoint]) {
+      sources.push({ ...s, kind: "freelancer", endpoint: s.endpoint });
+      continue;
+    }
     if (s.kind === "page" && s.endpoint && PAGE_SITES[s.endpoint]) {
       sources.push({ ...s, kind: "page", endpoint: s.endpoint });
       continue;

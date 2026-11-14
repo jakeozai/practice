@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.tagline}`,
-  description: "이메일만 넣으면, 전 세계 AI 단기 일감 중 나에게 맞는 3개를 매일 아침 한국어로 보내드려요.",
+  description: "이메일만 넣으면, 영상·디자인·개발·AI 작업까지 전 세계 단기 일감 중 나에게 맞는 3개를 매일 아침 한국어로 보내드려요.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

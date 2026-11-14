@@ -49,6 +49,10 @@ async function dryRun(filter: string | undefined) {
   console.log(`${"source".padEnd(34)} ${"postings".padStart(8)} ${"keyword".padStart(8)} ${"korea=yes".padStart(9)} ${"unknown".padStart(8)}`);
   for (const s of sources) {
     try {
+      if (s.kind === "freelancer") {
+        console.log(`${s.name.padEnd(34)} (searches the Freelancer.com API; run without --dry-run)`);
+        continue;
+      }
       const posts = s.kind === "page" ? await samplePages(s.endpoint, ua, lines) : await fetchPostings(s.kind, s.endpoint, ua);
       const kw = posts.filter((p) => matchesJobKeywords(p.title, p.body));
       const yes = kw.filter((p) => koreaEligibleFromLocation(p.location_raw) === true);

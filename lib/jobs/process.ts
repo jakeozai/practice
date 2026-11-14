@@ -22,6 +22,18 @@ export type RawForProcessing = {
 
 export type SourceInfo = { name: string; trusted: boolean; kind: string };
 
+/**
+ * Safety net for ai_prohibited when the LLM misses it or isn't available: plain
+ * statements that AI may not be used. Kept narrow; "AI-generated images" alone
+ * (often the job itself) doesn't count.
+ */
+const NO_AI =
+  /\bno\s+ai\b|\bnot?\s+(?:use|using)\s+(?:any\s+)?ai\b|\bwithout\s+(?:using\s+)?ai\b|\bai[- ](?:generated|made)\s+(?:\w+\s+){0,3}(?:is|are|will\s+be)\s+(?:not\s+(?:accepted|allowed|permitted)|rejected)|\b100%\s+human[- ]made\b|\bai\s+(?:use\s+)?(?:is\s+)?(?:strictly\s+)?(?:prohibited|forbidden|not\s+allowed)\b|ai\s*사용\s*(?:금지|불가)|ai\s*(?:생성물|작업물)\s*(?:불가|금지)/i;
+
+export function forbidsAi(text: string): boolean {
+  return NO_AI.test(text);
+}
+
 /** "Invisible (Freelance AI Trainer)" → "Invisible": source names carry admin notes in parentheses. */
 export function boardCompany(sourceName: string): string {
   return sourceName.replace(/\s*\(.*\)\s*$/, "").trim() || sourceName;
@@ -48,8 +60,12 @@ export function decideCompany(source: SourceInfo, llmCompany: string | null | un
  * - location rule says a Korea resident can't apply → skip (the rule would
  *   override any LLM answer anyway, so the call would be wasted)
  */
-export function triage(raw: RawForProcessing): "skip_keyword" | "skip_region" | "candidate" {
-  if (!matchesJobKeywords(raw.title ?? "", raw.body ?? "")) return "skip_keyword";
+/**
+ * `preselected`: the source already searched for gigs (Freelancer.com presets),
+ * so the keyword pass would only drop good ones like "Cute Cartoon Illustrator".
+ */
+export function triage(raw: RawForProcessing, opts: { preselected?: boolean } = {}): "skip_keyword" | "skip_region" | "candidate" {
+  if (!opts.preselected && !matchesJobKeywords(raw.title ?? "", raw.body ?? "")) return "skip_keyword";
   if (koreaEligibleFromLocation(raw.location_raw) === false) return "skip_region";
   return "candidate";
 }
@@ -68,11 +84,14 @@ export function buildJob(input: {
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;
 
-  // Out of scope: not work that needs AI, or open-ended staff hiring (덕잡 sends short-term work).
-  // Credentials and work language are information only; they don't block.
+  // Out of scope (scope C, 2026-11-14): open-ended staff hiring, work that forbids AI, adult work.
+  // Short-term work of any kind is in, AI or not; credentials and work language are information only.
   // Not open to Korea residents (2026-11-12): such a job can never be mailed, so it isn't
   // worth a reviewer's time either (Phase 1 goal: under 10 minutes of human work a day).
-  const outOfScope = (x !== null && (!x.ai_related || x.engagement === "permanent")) || korea === false;
+  const outOfScope =
+    (x !== null && (x.ai_prohibited || x.adult_content || x.engagement === "permanent")) ||
+    forbidsAi(`${raw.title ?? ""}\n${raw.body ?? ""}`) ||
+    korea === false;
 
   let review: JobInsert["review_state"] = "pending";
   if (isScamRejected(scam) || outOfScope) review = "rejected";
