@@ -27,3 +27,27 @@
 - Xperteez 같은 중개업체 재게시 공고는 실제 구인자가 다를 수 있다(시행령 제28조 취지상 검토).
 - Himalayas `pubDate`는 마지막 수정일이라 신선도가 과대 추정된다.
 - Welo·TransPerfect 공고가 Himalayas에도 나온다 → 같은 공고는 직접 수집처(ATS) 우선.
+
+## 반영 (같은 날 밤)
+
+- Jobicy(geo=south-korea, 하루 1회), Himalayas(country=KR, 계약·파트타임·임시, `HIMALAYAS_API_KEY` 있을 때만), Superside(Lever) 추가(0016, `lib/sources/aggregators.ts`).
+- 이미 직접 수집하는 회사(Welo, TransPerfect, Invisible 등)의 재게시는 건너뛴다. 목록을 다 못 읽은 실행에서는 공고를 닫지 않는다.
+- 회사명은 공고에 적힌 회사, 메일 카드에 "출처: Jobicy/Himalayas" 표시, 제목의 "U.S. Based"는 미국 거주자 한정으로 본다.
+
+## Himalayas 확인 메일 초안 (hi@himalayas.app)
+
+Subject: Using the Himalayas Jobs API in a daily email digest
+
+Hi Himalayas team,
+
+I run duckjob (https://www.duckjob.app), a free service that emails subscribers in Korea a short list of remote contract and part-time jobs each morning. I'd like to include jobs from your public Jobs API.
+
+How we would use it:
+- We call /jobs/api/search once a day with a free API key (country=KR; Contractor, Part Time, Temporary).
+- Each job appears only in our own email to a subscriber, as a short Korean summary with the company name, a "Source: Himalayas" credit, and an apply button that goes to the applicationLink you provide.
+- We don't republish jobs on another site, don't add JobPosting structured data, and drop jobs once they expire or leave your listing.
+
+Does sending jobs in our own email digest count as use within "your own website or app" under your API terms? If anything should change (wording of the credit, a link format), we're happy to follow it.
+
+Thank you,
+duckjob
