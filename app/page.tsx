@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { LoginForm } from "./login-form";
 
 const ERRORS: Record<string, string> = {
@@ -52,6 +53,18 @@ export default function Home(props: PageProps<"/">) {
           </li>
         ))}
       </ol>
+
+      <section className="card space-y-1.5 text-sm">
+        <p className="font-bold">무료예요. 해지도 한 번이면 끝나요</p>
+        <p className="text-muted">
+          받은 메일 맨 아래 <strong className="text-[var(--ink)]">[메일 그만 받기]</strong>를 누르면 바로 멈춰요. 이메일과 분석
+          결과까지 모두 지우려면{" "}
+          <Link href="/account" className="font-semibold underline underline-offset-2">
+            내 정보
+          </Link>
+          에서 탈퇴하세요.
+        </p>
+      </section>
     </div>
   );
 }

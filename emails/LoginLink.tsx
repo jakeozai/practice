@@ -39,6 +39,7 @@ export default function LoginLink({ confirmUrl, logoUrl, brand }: LoginLinkProps
             시작하기
           </Button>
           <Text style={s.small}>링크는 1시간 동안, 한 번만 쓸 수 있어요. 직접 요청하지 않았다면 이 메일은 무시하세요.</Text>
+          <Text style={s.small}>무료이고, 그만 받고 싶으면 일감 메일 맨 아래 [메일 그만 받기] 한 번이면 해지돼요.</Text>
         </Container>
       </Body>
     </Html>

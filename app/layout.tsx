@@ -27,6 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             개인정보 처리방침
           </Link>
           <span className="mx-2">·</span>
+          <Link href="/account" className="font-semibold underline underline-offset-2">
+            내 정보·해지
+          </Link>
+          <span className="mx-2">·</span>
           {BRAND.name}은 공고 요약과 원문 링크만 보내요. 지원은 원문에서 직접 해요.
         </footer>
       </body>

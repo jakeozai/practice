@@ -233,6 +233,10 @@ export default function DailyFive(props: DailyFiveProps) {
               메일 그만 받기
             </Link>
             {"  ·  "}
+            <Link href={`${props.appUrl}/account`} style={s.footerLink}>
+              탈퇴(정보 삭제)
+            </Link>
+            {"  ·  "}
             <Link href={props.privacyUrl} style={s.footerLink}>
               개인정보 처리방침
             </Link>
