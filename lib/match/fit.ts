@@ -8,7 +8,7 @@
  * Hard rules (a job is out):
  *  - a work language the person doesn't have, or English two levels above theirs
  *  - something on their `avoid` list (AVOID_RULES), or performer work they never mention
- *  - more weekly hours than they have, or an hourly rate under their minimum
+ *  - full-time work (lib/jobs/process.ts isFullTime), more weekly hours than they have, or an hourly rate under their minimum
  *  - text saying it's for residents of another country ("미국 거주자만", "(US Only)")
  *  - a degree/licence requirement outside the person's own fields
  *  - software work in a programming language the profile doesn't show
@@ -22,6 +22,7 @@
 import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
 import { residentsOnlyElsewhere } from "../eligibility";
 import { isBiddingGig } from "../jobs/format";
+import { isFullTime } from "../jobs/process";
 import { AVOID_RULES, CODE_CONCEPTS, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, TITLE_CRAFTS, USD_PER_UNIT, codeLanguages, toolTokens, type Concept } from "./concepts";
 
 type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
@@ -165,6 +166,9 @@ export type Fit =
 export function personalLimits(job: FitJob, sig: ProfileSignals): { ok: false; why: string } | { ok: true; penalty: number } {
   const text = jobText(job);
   if (residentsOnlyElsewhere([job.title, job.title_ko, ...job.summary_ko])) return { ok: false, why: "region" };
+
+  // Short-term only: never full-time, however many hours the person has (regular or bundled work is fine).
+  if (isFullTime(text, job.hours_per_week_min)) return { ok: false, why: "fulltime" };
 
   const foreign = job.languages.filter((l) => !sig.langs.has(l));
   if (foreign.length) return { ok: false, why: `language:${foreign.join(",")}` };

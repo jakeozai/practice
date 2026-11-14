@@ -34,6 +34,23 @@ export function forbidsAi(text: string): boolean {
   return NO_AI.test(text);
 }
 
+/**
+ * Full-time work is out of scope (2026-11-14 user decision: any length or
+ * rhythm of work is fine — a regular weekly edit, a bundle of 10–15 videos —
+ * as long as it isn't full-time). A minimum of this many hours a week counts
+ * as full-time. (제안값)
+ */
+export const FULL_TIME_HOURS = 30;
+/** The posting says the role itself is full-time; "our full-time team" doesn't count. */
+const FULL_TIME =
+  /\bfull[- ]?time\s+(?:\w+\s+)?(?:position|role|job|contract|employment|employee|commitment|hours|availability|schedule|engagement|basis|hire|opportunity)|\b(?:is|be|work(?:ing)?|available)\s+(?:a\s+)?full[- ]?time\b|\bfull[- ]?time\s*\(\s*40|\b40\+?\s*(?:hours?|hrs?)\s*(?:\/|per|a|each)\s*(?:week|wk)\b|풀타임\s*(?:근무|계약|포지션|채용|상근)?|전일제|정규직|주\s*40\s*시간|주\s*5일\s*(?:근무|출근)/i;
+const PART_TIME_TOO = /part[- ]?time|파트\s*타임|flexible\s*(?:hours|schedule)|유연\s*근무|own\s*(?:hours|schedule|pace)|not\s+(?:a\s+)?full[- ]?time|full[- ]?time\s+or\s+part|or\s+full[- ]?time/i;
+
+export function isFullTime(text: string, hoursPerWeekMin: number | null | undefined): boolean {
+  if (hoursPerWeekMin != null && hoursPerWeekMin >= FULL_TIME_HOURS) return true;
+  return FULL_TIME.test(text) && !PART_TIME_TOO.test(text);
+}
+
 /** "Invisible (Freelance AI Trainer)" → "Invisible": source names carry admin notes in parentheses. */
 export function boardCompany(sourceName: string): string {
   return sourceName.replace(/\s*\(.*\)\s*$/, "").trim() || sourceName;
@@ -87,13 +104,14 @@ export function buildJob(input: {
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;
 
-  // Out of scope (scope C, 2026-11-14): open-ended staff hiring, work that forbids AI, adult work.
+  // Out of scope (scope C, 2026-11-14): open-ended staff hiring, full-time roles, work that forbids AI, adult work.
   // Short-term work of any kind is in, AI or not; credentials and work language are information only.
   // Not open to Korea residents (2026-11-12): such a job can never be mailed, so it isn't
   // worth a reviewer's time either (Phase 1 goal: under 10 minutes of human work a day).
   const outOfScope =
     (x !== null && (x.ai_prohibited || x.adult_content || x.engagement === "permanent")) ||
     forbidsAi(`${raw.title ?? ""}\n${raw.body ?? ""}`) ||
+    isFullTime(`${raw.title ?? ""}\n${raw.body ?? ""}`, x?.hours_per_week_min) ||
     korea === false;
 
   let review: JobInsert["review_state"] = "pending";

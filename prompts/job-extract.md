@@ -41,6 +41,7 @@
 - ai_related: AI가 일의 중심이면 true(AI 학습·평가, 라벨링, AI 결과물 검수, 생성형 AI로 이미지·영상·글 만들기, AI 챗봇·자동화 구축). 영상 편집·디자인처럼 AI 없이도 하는 일이면 false. 정보로만 쓴다.
 - ai_prohibited: 공고가 AI 도구 사용을 금지하거나 AI로 만든 결과물을 받지 않는다고 분명히 적었으면 true. 예: "No AI", "AI-generated work will be rejected", "must be 100% human-made", "손으로 직접 그린 작업만". 언급이 없거나 AI를 써도 된다고 하면 false.
 - adult_content: 성인·선정적 콘텐츠를 만들거나 다루는 일이면 true.
+- hours_per_week_min: 원문이 요구하는 주당 최소 시간. 풀타임(full-time)이면 40. 시간이 자유로우면 null.
 - engagement: 건별·프리랜서면 freelance, 기간이 정해진 계약직이면 contract, 아르바이트·파트타임이면 part_time, 기간 없는 정규직 채용이면 permanent.
 - scam_signals: 선입금·보증금 요구(upfront_payment), 메신저로만 연락(messenger_only), 개인 계좌 송금(personal_account), 비현실적 수익 약속(unrealistic_pay)이 보이면 넣는다.
 - summary_ko: 한국어 3줄, 각 60자 이내. 원문 문장을 번역하지 말고 무슨 일인지, 지원 조건(필요한 언어·수준, 기술, 지역), 보수·시간을 새 문장으로 쓴다.

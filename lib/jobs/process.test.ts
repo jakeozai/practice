@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { boardCompany, buildJob, decideCompany, forbidsAi, triage } from "./process";
+import { boardCompany, buildJob, decideCompany, forbidsAi, isFullTime, triage } from "./process";
 import { extractJob, isServiceFailure, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
 
 const raw = {
@@ -205,4 +205,30 @@ test("triage: preselected marketplace gigs skip the keyword pass, not the region
   assert.equal(triage(gig), "skip_keyword");
   assert.equal(triage(gig, { preselected: true }), "candidate");
   assert.equal(triage({ ...gig, location_raw: "United States" }, { preselected: true }), "skip_region");
+});
+
+test("short-term only: full-time roles are out; regular, bundled or part-time work stays", () => {
+  for (const t of [
+    "This is a full-time position, Monday to Friday",
+    "Full-time contract (40 hrs/week) for 6 months",
+    "Must be available full-time",
+    "Commitment: 40 hours per week",
+    "풀타임 근무 가능자",
+    "정규직 채용",
+  ]) {
+    assert.equal(isFullTime(t, null), true, t);
+  }
+  for (const t of [
+    "Weekly YouTube edits, ongoing for the right editor",
+    "Bundle of 12 Shorts, more batches later",
+    "Join our full-time editors as a freelancer",
+    "Part-time or full-time, flexible hours",
+    "10-20 hours per week, flexible schedule",
+  ]) {
+    assert.equal(isFullTime(t, null), false, t);
+  }
+  assert.equal(isFullTime("Korean data specialist", 40), true, "a 40-hour minimum is full-time");
+  assert.equal(isFullTime("Korean data specialist", 20), false);
+  const fullTime = buildJob({ raw: { ...raw, body: "This is a full-time role (40 hours per week)." }, source: trusted, extraction, sameTitleCount: 1 });
+  assert.equal(fullTime.review_state, "rejected");
 });
