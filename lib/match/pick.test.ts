@@ -137,3 +137,22 @@ test("final order is the rule order even when the model lists a weaker fit first
   const r = await choosePicks(ranked, profile, { size: 2, now: NOW, client, model: "m" });
   assert.deepEqual(r.jobIds, [ranked[0].job.id, ranked[2].job.id]);
 });
+
+test("a first step that names a sum is dropped; long text is cut at a word boundary", () => {
+  const long = "사내방송 편집하던 Premiere Pro 실력 그대로 쓰는 쇼츠 열 개 편집이고 자막과 썸네일까지 함께 맡는 작업이라 지금 바로 시작하기 좋아요 영어 다큐 채널 운영 경험도 그대로 쓸 수 있는 일이에요";
+  const text = JSON.stringify({
+    picks: [
+      { id: "c1", reason_ko: "이유", today_ko: "오늘 저녁 1시간: 12500~37500 INR 견적 입찰해요" },
+      { id: "c2", reason_ko: long, today_ko: "오늘 30분: 편집본 링크 붙여 입찰해요" },
+    ],
+    subject_ko: "제목",
+  });
+  const p = parsePick(text, 3, 3)!;
+  assert.deepEqual(
+    p.picks.map((x) => x.index),
+    [1],
+  );
+  const reason = p.picks[0].reason;
+  assert.ok(reason.length <= 90 && reason.endsWith("…"));
+  assert.ok(long.startsWith(reason.slice(0, -1)) && long[reason.length - 1] === " ", "cut where a word ends");
+});

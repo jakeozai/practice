@@ -102,10 +102,17 @@ export function pickMessage(profile: Profile, pool: Ranked<PickJob>[], now: Date
   return `<profile>\n${JSON.stringify(profileForModel(profile), null, 1)}\n</profile>\n\n<candidates>\n${lines.join("\n\n")}\n</candidates>`;
 }
 
+/** Collapse spaces; past `max`, cut at the last word boundary so a mail never shows half a word. */
 function trimTo(s: string, max: number): string {
   const t = s.replace(/\s+/g, " ").trim();
-  return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[,\s]+$/, "")}…`;
 }
+
+/** Money in a "today" line is either repeated from the card or wrong (2026-11-14: one job's budget copied onto another). */
+const MONEY = /\$\s?\d|\d[\d,.]*\s?(?:USD|INR|EUR|GBP|AUD|CAD|NZD|달러|원|루피|유로)|(?:USD|INR|EUR|GBP|AUD|CAD|NZD)\s?\d/i;
 
 export type ParsedPick = { picks: { index: number; reason: string; today: string }[]; subject: string | null };
 
@@ -128,7 +135,8 @@ export function parsePick(text: string, poolSize: number, size: number): ParsedP
     if (index < 0 || index >= poolSize || seen.has(index)) continue;
     const reason = trimTo(p.reason_ko, REASON_MAX);
     const today = trimTo(p.today_ko, TODAY_MAX);
-    if (!reason || !today) continue;
+    // A pick whose first step names a sum is dropped; the rule order fills its place.
+    if (!reason || !today || MONEY.test(today)) continue;
     seen.add(index);
     picks.push({ index, reason, today });
     if (picks.length === size) break;
