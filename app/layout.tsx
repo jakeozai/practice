@@ -21,7 +21,7 @@ const jetbrains = localFont({
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.tagline}`,
-  description: "그동안 익힌 AI 실력에 딱 맞는 단기 일감 5개를, 매일 아침 6시 메일로 보내드려요. 무료 · 언제든 해지.",
+  description: "매일 아침 6시, 단기 AI 일감 5개를 메일로 보내드려요. 무료 · 언제든 해지.",
 };
 
 export const viewport: Viewport = {

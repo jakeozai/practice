@@ -30,6 +30,20 @@ const wrap: CSSProperties = { maxWidth: 1240, margin: "0 auto", boxSizing: "bord
 const delay = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
 /** "06:00" with a blinking colon. */
+/** The duckjob wordmark in place of the word 덕잡, sized to the surrounding heading. */
+function InlineWordmark() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- static SVG wordmark
+    <img
+      src="/brand/duckjob-wordmark-ondark.svg"
+      alt="덕잡"
+      width={349}
+      height={101}
+      style={{ display: "inline-block", height: "0.86em", width: "auto", verticalAlign: "-0.17em", marginRight: "0.06em" }}
+    />
+  );
+}
+
 function Clock() {
   return (
     <>
@@ -168,21 +182,12 @@ export default function Home(props: PageProps<"/">) {
         style={{ ...wrap, padding: "clamp(56px, 8vw, 104px) 24px 0", gap: "clamp(40px, 6vw, 72px)", alignItems: "center" }}
       >
         <div>
-          <p className="lp-rise" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 600, color: "var(--muted)" }}>
-            <span aria-hidden="true" className="lp-live" style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
-            매일 아침 6시
-          </p>
-          <h1 className="lp-rise" style={{ ...delay(120), margin: "20px 0 0", fontSize: "clamp(40px, 6.4vw, 88px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
-            AI 부업으로
+          <h1 className="lp-rise" style={{ margin: 0, fontSize: "clamp(40px, 6.4vw, 88px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
+            매일 아침 6시,
             <br />
-            시작해서,
-            <br />
-            <span style={{ color: accent }}>AI 본업</span>까지
+            <span style={{ color: accent }}>단기 AI 일감 5개</span>
           </h1>
-          <p className="lp-rise" style={{ ...delay(240), margin: "24px 0 0", maxWidth: 520, fontSize: "clamp(17px, 1.6vw, 20px)", lineHeight: 1.65, color: "var(--ink-3)" }}>
-            그동안 익힌 AI 실력에 딱 맞는 단기 일감 5개를, 매일 아침 6시 메일로 보내드려요.
-          </p>
-          <div className="lp-rise" style={delay(360)}>
+          <div className="lp-rise" style={delay(240)}>
             <Suspense fallback={<SubscribeForm id="b-hero-email" />}>
               <SubscribeSlot id="b-hero-email" searchParams={props.searchParams} />
             </Suspense>
@@ -314,7 +319,7 @@ export default function Home(props: PageProps<"/">) {
         >
           이력서는 내 AI가 쓰고,
           <br />
-          공고는 덕잡이 골라요
+          공고는 <InlineWordmark />이 골라요
         </h2>
 
         <div style={{ maxWidth: 760, margin: "56px auto 0", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -448,15 +453,7 @@ export default function Home(props: PageProps<"/">) {
       {/* PROMISES */}
       <section style={{ ...wrap, padding: "clamp(104px, 13vw, 160px) 24px 0" }}>
         <h2 data-reveal style={{ margin: 0, fontSize: "clamp(32px, 4.4vw, 56px)", fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.04em" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG wordmark */}
-          <img
-            src="/brand/duckjob-wordmark-ondark.svg"
-            alt="덕잡"
-            width={349}
-            height={101}
-            style={{ display: "inline-block", height: "0.86em", width: "auto", verticalAlign: "-0.17em", marginRight: "0.06em" }}
-          />
-          은 이렇게 운영해요
+          <InlineWordmark />은 이렇게 운영해요
         </h2>
         <div className="lp-plist" style={{ marginTop: 48, borderTop: "1px solid var(--line-2)" }}>
           {PROMISES.map((p, i) => (
@@ -511,7 +508,8 @@ export default function Home(props: PageProps<"/">) {
         </p>
         <h2 data-reveal style={{ ...delay(120), margin: "28px 0 0", fontSize: "clamp(32px, 4.8vw, 60px)", fontWeight: 800, lineHeight: 1.15, letterSpacing: "-0.04em" }}>
           내일 아침 6시,
-          <br />첫 일감 5개
+          <br />
+          나의 첫 AI 일감이 도착해요
         </h2>
         <Suspense fallback={<SubscribeForm id="b-cta-email" center />}>
           <SubscribeSlot id="b-cta-email" center searchParams={props.searchParams} />
