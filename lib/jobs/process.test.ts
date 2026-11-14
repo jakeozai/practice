@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { boardCompany, buildJob, decideCompany, forbidsAi, isFullTime, triage } from "./process";
+import { boardCompany, buildJob, decideCompany, forbidsAi, isFullTime, luresOffPlatform, triage } from "./process";
 import { extractJob, isServiceFailure, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
 
 const raw = {
@@ -77,7 +77,8 @@ test("not open to Korea residents → rejected (it could never be mailed)", () =
 test("anything short of every rule → pending", () => {
   const cases = [
     buildJob({ raw, source: { ...trusted, trusted: false }, extraction, sameTitleCount: 1 }),
-    buildJob({ raw, source: trusted, extraction: { ...extraction, scam_signals: ["messenger_only"] }, sameTitleCount: 1 }),
+    // One weak signal waits for a person; a deposit or messenger lure is rejected outright (see below).
+    buildJob({ raw, source: trusted, extraction: { ...extraction, scam_signals: ["unrealistic_pay"] }, sameTitleCount: 1 }),
     buildJob({ raw: { ...raw, location_raw: "Remote" }, source: trusted, extraction: { ...extraction, korea_eligible: null }, sameTitleCount: 1 }),
   ];
   for (const j of cases) assert.equal(j.review_state, "pending");
@@ -231,4 +232,23 @@ test("short-term only: full-time roles are out; regular, bundled or part-time wo
   assert.equal(isFullTime("Korean data specialist", 20), false);
   const fullTime = buildJob({ raw: { ...raw, body: "This is a full-time role (40 hours per week)." }, source: trusted, extraction, sameTitleCount: 1 });
   assert.equal(fullTime.review_state, "rejected");
+});
+
+test("deposit and messenger lures are never sent", () => {
+  for (const t of ["Contact me on Telegram @hr_team", "텔레그램으로 연락 주세요", "오픈채팅 링크로 오세요", "WhatsApp only", "A small registration fee is required", "교육비 입금 후 시작"]) {
+    assert.equal(luresOffPlatform(t), true, t);
+  }
+  for (const t of [
+    "Bid on Freelancer with your portfolio",
+    "Paid weekly via PayPal",
+    "Edit 10 Shorts for my channel",
+    "Beware of recruitment scams. We never recruit through direct messages on social media or WhatsApp, and never ask candidates to pay money.",
+    "No upfront joining fees for restaurants.",
+    "Localize the WhatsApp Business UI strings",
+  ]) {
+    assert.equal(luresOffPlatform(t), false, t);
+  }
+  assert.equal(luresOffPlatform("Edit videos", ["messenger_only"]), true, "the LLM's signal alone is enough");
+  const lure = buildJob({ raw: { ...raw, body: "Great pay. Message our recruiter on Telegram." }, source: trusted, extraction, sameTitleCount: 1 });
+  assert.equal(lure.review_state, "rejected");
 });

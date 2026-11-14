@@ -51,6 +51,38 @@ export function isFullTime(text: string, hoursPerWeekMin: number | null | undefi
   return FULL_TIME.test(text) && !PART_TIME_TOO.test(text);
 }
 
+/**
+ * Postings that ask for money up front or move the talk to a messenger are
+ * never sent (landing page promise, 2026-11-14: "입금·메신저 유도 공고 제외").
+ * The LLM's scam signals catch most; this catches the plain ones it misses.
+ */
+const MESSENGERS = "telegram|whats\\s*app|wechat|kakao\\s*talk|signal|line";
+/** An invitation to talk on a messenger ("contact me on Telegram", "WhatsApp: +1…", "텔레그램으로 연락"), not a mention of one. */
+const MESSENGER_LURE = new RegExp(
+  `(?:contact|message|text|dm|reach|add|join|chat|talk|connect|apply|send|write)\\s+(?:\\S+\\s+){0,3}?(?:on|via|through|at|in|to)\\s+(?:my\\s+|our\\s+)?(?:${MESSENGERS})\\b` +
+    `|\\b(?:telegram|whats\\s*app|wechat)\\s*(?:only|@|:|\\+?\\d|id\\b|number|group|link|handle)` +
+    `|(?:텔레그램|카톡|카카오\\s*톡|왓츠앱|위챗)\\s*(?:으로|로|방|링크|id|아이디)?\\s*(?:연락|문의|상담|참여|입장|추가)` +
+    `|오픈\\s*채팅\\s*(?:방|링크|으로|로)?`,
+  "gi",
+);
+/** A request for money before the work ("pay a registration fee", "교육비 입금 후"). */
+const UPFRONT_FEE =
+  /(?:pay|send|transfer)\s+(?:a|an|the)?\s*(?:small\s+|one[- ]time\s+|refundable\s+)?(?:registration|joining|training|starter|membership|application|security)?\s*(?:fee|deposit)\b|(?:registration|joining|training|starter|membership|application|security)\s+(?:fee|deposit)\s+(?:of|is|required|needed)|가입비|등록비|교육비|보증금|선입금|입금\s*(?:후|하시면|해야)/gi;
+/** "We never recruit through WhatsApp", "No upfront joining fees", "사칭 주의": a warning, not a lure. */
+const NEGATED = /\b(?:never|not|no|don'?t|doesn'?t|won'?t|without|beware)\b|않|절대|사칭|주의|없(?:어요|습니다|음)/i;
+
+function invites(re: RegExp, text: string): boolean {
+  for (const m of text.matchAll(re)) {
+    const before = text.slice(Math.max(0, m.index - 60), m.index);
+    if (!NEGATED.test(before) && !NEGATED.test(m[0])) return true;
+  }
+  return false;
+}
+
+export function luresOffPlatform(text: string, signals: readonly string[] = []): boolean {
+  return signals.includes("upfront_payment") || signals.includes("messenger_only") || invites(MESSENGER_LURE, text) || invites(UPFRONT_FEE, text);
+}
+
 /** "Invisible (Freelance AI Trainer)" → "Invisible": source names carry admin notes in parentheses. */
 export function boardCompany(sourceName: string): string {
   return sourceName.replace(/\s*\(.*\)\s*$/, "").trim() || sourceName;
@@ -112,6 +144,7 @@ export function buildJob(input: {
     (x !== null && (x.ai_prohibited || x.adult_content || x.engagement === "permanent")) ||
     forbidsAi(`${raw.title ?? ""}\n${raw.body ?? ""}`) ||
     isFullTime(`${raw.title ?? ""}\n${raw.body ?? ""}`, x?.hours_per_week_min) ||
+    luresOffPlatform(`${raw.title ?? ""}\n${raw.body ?? ""}`, x?.scam_signals ?? []) ||
     korea === false;
 
   let review: JobInsert["review_state"] = "pending";

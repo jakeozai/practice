@@ -47,7 +47,7 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
       </details>
 
       {params.error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-error" role="alert">
           {params.error === "confirm" ? "확인 문구를 정확히 적어 주세요." : "처리하지 못했어요. 잠시 후 다시 시도해 주세요."}
         </p>
       )}

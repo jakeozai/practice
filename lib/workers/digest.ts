@@ -25,7 +25,7 @@ import { loadCandidateJobs, loadCurationStats, type DigestJob } from "../digest/
 import { sendEmail } from "../email/send";
 import { SEND_INTERVAL_MS } from "../email/constants";
 import { pastDeadline, sleep, type RunOptions } from "./run";
-import { loadSentJobIds, loadStoredPicks, preparePicks, type StoredPick } from "./picks";
+import { loadSentJobIds, loadStoredPicks, preparePicks, STRETCH_SIZE, type StoredPick } from "./picks";
 
 const PAGE = 1000;
 /** Leave time to record the last send before the function limit. */
@@ -164,7 +164,8 @@ export async function sendDigest(
     jobIds: jobs.map((j) => j.id),
     todayStatus,
     alreadyMatched: await loadMatched(db, pending.map((r) => r.user_id)),
-    maxJobs: DIGEST_SIZE,
+    // Everyone gets five (2026-11-14 page: "하루 5개 공고"); a personal list is 3 fits + 2 AI stretches.
+    maxJobs: DIGEST_SIZE + STRETCH_SIZE,
     perRecipient,
   });
   const summary = summarizePlan(plan);

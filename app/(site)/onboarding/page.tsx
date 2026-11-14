@@ -59,8 +59,8 @@ async function Onboarding() {
 export default function OnboardingPage() {
   return (
     <div className="space-y-6">
-      <p className="text-xs text-zinc-500">AI 답변 원문은 저장하지 않고, 확인한 분석 결과만 저장해요.</p>
-      <Suspense fallback={<p className="text-sm text-zinc-500">불러오는 중…</p>}>
+      <p className="text-xs text-muted">AI 답변 원문은 저장하지 않고, 확인한 분석 결과만 저장해요.</p>
+      <Suspense fallback={<p className="text-sm text-muted">불러오는 중…</p>}>
         <Onboarding />
       </Suspense>
     </div>

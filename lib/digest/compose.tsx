@@ -5,7 +5,8 @@
  */
 import { render } from "@react-email/components";
 import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/DailyFive";
-import { CATEGORY_CHIP_KO, isBiddingGig, jobFacts, statusBadge } from "../jobs/format";
+import { CATEGORY_CHIP_KO, compactPay, isBiddingGig, jobFacts, statusBadge } from "../jobs/format";
+import { mailAssets } from "../../emails/theme";
 import { signLink } from "../links";
 import type { ProfileNudge } from "./nudge";
 import { koreanMonthDay, koreanWeekday, seoulDayStartUtc } from "../time";
@@ -33,6 +34,7 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     badge: statusBadge(job.status),
     category: job.category && job.category !== "other" ? CATEGORY_CHIP_KO[job.category] : null,
     facts: isBiddingGig(job.url) ? [...jobFacts(job), { label: "지원", value: "견적 입찰 (경쟁)" }] : jobFacts(job),
+    pay: compactPay(job),
     reason,
     today,
     stretch,
@@ -91,9 +93,11 @@ export async function composeDigestEmail(input: {
       dateLabel={dateLabel}
       dayLabel={`${dateLabel} ${koreanWeekday(sendDate)}`}
       curation={curationLine(stats, cards.length - stretchCount, personal, stretchCount)}
+      personal={personal}
       jobs={cards}
       recipientEmail={recipient.email}
-      logoUrl={`${appUrl}/duck-mail.png`}
+      logoUrl={mailAssets(appUrl).wordmarkUrl}
+      iconUrl={mailAssets(appUrl).iconUrl}
       appUrl={appUrl}
       profileUrl={`${appUrl}/onboarding`}
       unsubscribeUrl={unsubscribeUrl}

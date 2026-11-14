@@ -1,43 +1,39 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
+const pretendard = localFont({
+  src: "./fonts/pretendard-kr.woff2",
+  weight: "45 930",
+  display: "swap",
+  variable: "--font-pretendard",
+});
+
+const jetbrains = localFont({
+  src: [
+    { path: "./fonts/jetbrains-mono-latin-400-normal.woff2", weight: "400" },
+    { path: "./fonts/jetbrains-mono-latin-600-normal.woff2", weight: "600" },
+  ],
+  display: "swap",
+  variable: "--font-jetbrains",
+});
+
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.tagline}`,
-  description: "이메일만 넣으면, 영상·디자인·개발·AI 작업까지 전 세계 단기 일감 중 나에게 맞는 3개를 매일 아침 한국어로 보내드려요.",
+  description: "그동안 익힌 AI 실력에 딱 맞는 단기 일감 5개를, 매일 아침 6시 메일로 보내드려요. 무료 · 언제든 해지.",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#0D0D0C",
+  colorScheme: "dark",
+};
+
+/** Fonts and colors only: the landing page draws its own frame, the other pages use app/(site)/layout.tsx. */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className="h-full antialiased">
-      <body className="flex min-h-full flex-col font-sans">
-        <header>
-          <div className="mx-auto flex max-w-2xl items-center px-5 py-4">
-            <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-              {/* eslint-disable-next-line @next/next/no-img-element -- small static SVG logo */}
-              <img src="/duck.svg" alt="" width={26} height={30} />
-              {BRAND.name}
-            </Link>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-8">{children}</main>
-        <footer className="py-8 text-center text-xs text-muted">
-          <Link href="/privacy" className="font-semibold underline underline-offset-2">
-            개인정보 처리방침
-          </Link>
-          <span className="mx-2">·</span>
-          <Link href="/guide" className="font-semibold underline underline-offset-2">
-            해외 일감 이용 안내
-          </Link>
-          <span className="mx-2">·</span>
-          <Link href="/account" className="font-semibold underline underline-offset-2">
-            내 정보·해지
-          </Link>
-          <span className="mx-2">·</span>
-          {BRAND.name}은 공고 요약과 원문 링크만 보내요. 지원은 원문에서 직접 해요.
-        </footer>
-      </body>
+    <html lang="ko" className={`${pretendard.variable} ${jetbrains.variable} h-full`}>
+      <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );
 }

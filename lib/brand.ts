@@ -1,7 +1,7 @@
 /** Service name and public contact, in one place (spec §16: name still provisional). */
 export const BRAND = {
   name: "덕잡",
-  tagline: "단기 일감, 매일 아침 3개",
+  tagline: "매일 아침 6시, AI 일감 5개",
 } as const;
 
 /**

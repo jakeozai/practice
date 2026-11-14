@@ -104,6 +104,15 @@ export function formatPay(job: Pick<Job, "pay_min" | "pay_max" | "pay_currency" 
   return job.pay_unit ? `${UNIT_PREFIX[job.pay_unit]} ${money}` : money;
 }
 
+const UNIT_SUFFIX = { hour: "/시간", task: "/건", project: "", month: "/월" } as const;
+
+/** "$250~750", "€12~18/시간": the pay at the right of a mail's list of the day's jobs. */
+export function compactPay(job: Pick<Job, "pay_min" | "pay_max" | "pay_currency" | "pay_unit">): string | null {
+  const money = formatPay({ ...job, pay_unit: null });
+  if (!money) return null;
+  return job.pay_unit ? `${money}${UNIT_SUFFIX[job.pay_unit]}` : money;
+}
+
 /** "시간당 $30~35 · 주 15시간~" — the conditions line on a mail card. */
 export function formatConditions(
   job: Pick<Job, "pay_min" | "pay_max" | "pay_currency" | "pay_unit" | "hours_per_week_min">,

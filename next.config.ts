@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   // These routes read prompts/*.md at runtime; ship the files with their functions.
   outputFileTracingIncludes: {
     "/onboarding": ["./prompts/profile-extract.md"],
+    // The confirmation mail (sent from the landing page's form) carries the prompt.
+    "/": ["./prompts/profile-extract.md"],
     // The routes that call extractJob (it reads the prompt from disk).
     // process also prepares the morning picks (digest-pick.md), as do digest and picks.
     "/api/cron/process": ["./prompts/job-extract.md", "./prompts/digest-pick.md"],

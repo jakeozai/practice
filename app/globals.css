@@ -1,63 +1,149 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR",
-    "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",
+    "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* 덕잡: warm paper background, brown ink, one orange accent. The duck stays small. */
+/*
+ * 덕잡 B안 "새벽 대화형" (2026-11-14 design): near-black dawn, warm paper
+ * white text, one orange accent (#FF6B3D) that always carries #111 text.
+ */
 :root {
-  --bg: #f6efe4;
-  --card: #fffdf8;
-  --ink: #3a2218;
-  --muted: #7a6658;
-  --line: #e8dccb;
-  --accent: #e9762b;
-  --mustard: #ee9f36;
+  color-scheme: dark;
+  --bg: #0d0d0c;
+  --surface: #1a1a18;
+  --surface-2: #2e2e2b;
+  --surface-3: #242422;
+  --surface-4: #141413;
+  --line: #23231f;
+  --line-2: #2e2e2b;
+  --chip-line: #4a4945;
+  --ink: #f4f3ef;
+  --ink-2: #d9d7d1;
+  --ink-3: #c9c7c1;
+  --muted: #a8a6a0;
+  --placeholder: #8e8c86;
+  --accent: #ff6b3d;
+  --on-accent: #111111;
+  --error: #ff9b80;
+  /* The light "mail" card on the dark page. */
+  --paper: #f4f3ef;
+  --paper-ink: #111111;
+  --paper-muted: #5e5c57;
+  --paper-line: #e2e0da;
+  /* Old name kept for components that still read it. */
+  --card: var(--surface);
 }
 
 body {
   background: var(--bg);
   color: var(--ink);
   word-break: keep-all;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+a {
+  text-underline-offset: 4px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder);
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border bg-[var(--card)] p-6;
-    border-color: var(--line);
+    @apply rounded-[20px] p-6;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line-2);
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-base font-bold text-white transition disabled:opacity-50;
-    background: var(--ink);
+    @apply inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-full px-6 py-3 text-base font-extrabold transition disabled:cursor-default disabled:opacity-50;
+    background: var(--accent);
+    color: var(--on-accent);
   }
-  .btn-primary:hover {
-    background: #2a1810;
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-full border px-6 py-3 text-base font-semibold;
-    border-color: var(--line);
-    background: var(--card);
+    @apply inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-full px-6 py-3 text-base font-semibold transition;
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .btn-secondary:hover {
+    filter: brightness(1.12);
   }
   .link-muted {
     @apply text-sm underline underline-offset-2;
     color: var(--muted);
   }
   .field {
-    @apply w-full rounded-full border bg-white px-5 py-3 text-base outline-none;
-    border-color: var(--line);
+    @apply w-full rounded-full px-5 py-3 text-base outline-none;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--line-2);
   }
   .field:focus {
-    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink-3);
   }
   .field-box {
-    @apply w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none;
-    border-color: var(--line);
+    @apply w-full rounded-xl px-3 py-2 text-sm outline-none;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--line-2);
   }
   .field-box:focus {
-    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink-3);
   }
   .text-muted {
     color: var(--muted);
+  }
+  .text-error {
+    color: var(--error);
+  }
+  .alert-error {
+    @apply rounded-2xl px-4 py-3 text-sm font-bold;
+    background: rgba(255, 107, 61, 0.12);
+    color: var(--error);
+  }
+  .mono {
+    font-family: var(--font-mono);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Operator pages keep a light, dense look (zinc utilities on white). */
+  .theme-light {
+    color-scheme: light;
+    --ink: #18181b;
+    --muted: #71717a;
+    --line: #e4e4e7;
+    --line-2: #e4e4e7;
+    --surface: #ffffff;
+    --card: #ffffff;
+    background: #fafafa;
+    color: #18181b;
   }
 }

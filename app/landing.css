@@ -1,0 +1,103 @@
+/* Landing page (B안 "새벽 대화형", 2026-11-14 design): the layout rules inline styles can't express. */
+
+.lp {
+  /* The design sets line-height where it matters and leaves the browser default elsewhere. */
+  line-height: normal;
+  width: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  word-break: keep-all;
+  overflow-x: clip;
+}
+.lp a {
+  color: var(--ink);
+}
+.lp-btn {
+  transition: filter 0.15s ease-out;
+}
+.lp-btn:hover {
+  filter: brightness(1.08);
+}
+.lp-navl {
+  display: flex;
+}
+.lp .lp-navl a {
+  text-decoration: none;
+  color: var(--ink-2);
+}
+.lp .lp-navl a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+.lp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+.lp-circles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.lp-track {
+  display: inline-flex;
+  animation: lp-marquee 50s linear infinite;
+}
+@keyframes lp-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-track {
+    animation: none;
+  }
+}
+.lp-plist > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: baseline;
+}
+.lp details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.lp details > summary::-webkit-details-marker {
+  display: none;
+}
+.lp details[open] .lp-chev {
+  transform: rotate(45deg);
+}
+.lp-chev {
+  transition: transform 0.2s ease-out;
+}
+
+@media (max-width: 960px) {
+  .lp-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lp-circles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lp-plist > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .lp-navl {
+    display: none;
+  }
+  .lp-bubble {
+    max-width: 88% !important;
+  }
+  .lp-pillform {
+    border-radius: 24px !important;
+  }
+  .lp-pillform button {
+    flex: 1 1 100% !important;
+  }
+  .lp-clock {
+    margin-bottom: 12px !important;
+  }
+}

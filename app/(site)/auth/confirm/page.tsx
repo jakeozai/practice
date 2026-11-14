@@ -32,7 +32,7 @@ export default function ConfirmPage(props: PageProps<"/auth/confirm">) {
   return (
     <div className="mx-auto max-w-sm space-y-6 pt-10 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element -- small static SVG logo */}
-      <img src="/duck.svg" alt="" width={72} height={83} className="mx-auto" />
+      <img src="/brand/duckjob-appicon.svg" alt="" width={64} height={64} className="mx-auto" />
       <h1 className="text-2xl font-bold tracking-tight">{BRAND.name}에 오신 걸 환영해요</h1>
       <Suspense fallback={<div className="h-12" />}>
         <ConfirmForm searchParams={props.searchParams} />

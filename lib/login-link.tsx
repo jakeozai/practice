@@ -12,6 +12,8 @@ import { render } from "@react-email/components";
 import type { ServiceClient } from "./supabase/service";
 import LoginLink, { loginLinkSubject } from "../emails/LoginLink";
 import { BRAND } from "./brand";
+import { mailAssets } from "../emails/theme";
+import { profilePromptText } from "./profile/prompt-text";
 import type { OutgoingEmail } from "./email/send";
 
 export type ThrottleVerdict = "ok" | "too_soon" | "too_many";
@@ -57,7 +59,15 @@ export function confirmUrl(appUrl: string, token: LoginToken, next: string): str
 }
 
 export async function composeLoginEmail(input: { email: string; url: string; appUrl: string; idempotencyKey: string }): Promise<OutgoingEmail> {
-  const element = <LoginLink confirmUrl={input.url} logoUrl={`${input.appUrl}/duck-mail.png`} brand={BRAND.name} />;
+  const element = (
+    <LoginLink
+      confirmUrl={input.url}
+      logoUrl={mailAssets(input.appUrl).wordmarkUrl}
+      brand={BRAND.name}
+      prompt={profilePromptText()}
+      pasteUrl={`${input.appUrl}/onboarding`}
+    />
+  );
   return {
     to: input.email,
     subject: loginLinkSubject(BRAND.name),
