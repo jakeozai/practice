@@ -1,25 +1,27 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { deleteAccount, setDigest } from "./actions";
+import { deleteAccount, setDigest, signOutHere } from "./actions";
+import { AccountAccess } from "./access";
 
 export const metadata = { title: "내 정보 — 덕잡", robots: { index: false } };
 
 async function Account({ searchParams }: { searchParams: PageProps<"/account">["searchParams"] }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/?next=/account");
   const params = await searchParams;
+  const user = await getCurrentUser();
+  // Not signed in on this device: email → code, right here (2026-11-14 user decision).
+  if (!user) return <AccountAccess next={typeof params.next === "string" ? params.next : undefined} />;
+
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("digest_status").eq("user_id", user.id).maybeSingle();
+  const { data } = await supabase.from("profiles").select("digest_status, profile_json").eq("user_id", user.id).maybeSingle();
   const active = data?.digest_status === "active";
 
   return (
     <div className="space-y-4">
       <div className="card">
         <p className="text-sm text-muted">{user.email}</p>
-        <p className="mt-1 text-lg font-bold">{active ? "매일 아침 메일을 받고 있어요" : "메일을 받지 않고 있어요"}</p>
+        <p className="mt-1 text-lg font-bold">{active ? "매일 아침 6시에 일감 메일을 받고 있어요" : "메일을 받지 않고 있어요"}</p>
         {data?.digest_status !== "bounced" && (
           <form action={setDigest} className="mt-4">
             <input type="hidden" name="on" value={active ? "0" : "1"} />
@@ -28,11 +30,16 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
             </button>
           </form>
         )}
-        <p className="mt-4 text-sm">
-          <Link href="/onboarding" className="link-muted">
-            분석 결과 보기·고치기
-          </Link>
+      </div>
+
+      <div className="card">
+        <p className="text-lg font-bold">내 AI 분석 결과</p>
+        <p className="mt-1 text-sm text-muted">
+          {data?.profile_json ? "덕잡은 이 분석대로 일감을 골라요. 내용을 고치거나 AI에게 다시 분석받을 수 있어요." : "아직 분석 결과가 없어요. 1분이면 나에게 맞는 일감만 받을 수 있어요."}
         </p>
+        <Link href="/onboarding" className="btn-primary mt-4">
+          {data?.profile_json ? "분석 결과 보기·고치기" : "AI로 1분 분석하기"}
+        </Link>
       </div>
 
       <details className="card">
@@ -45,6 +52,12 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
           </button>
         </form>
       </details>
+
+      <form action={signOutHere}>
+        <button type="submit" className="link-muted">
+          이 기기에서 로그아웃
+        </button>
+      </form>
 
       {params.error && (
         <p className="text-sm text-error" role="alert">

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile/store";
-import { safeNextPath } from "@/lib/auth";
+import { getCurrentUser, safeNextPath } from "@/lib/auth";
 
 const Input = z.object({
   token_hash: z.string().min(10).max(200),
@@ -19,7 +19,8 @@ export async function confirmLogin(formData: FormData) {
     type: formData.get("type"),
     next: formData.get("next") ?? undefined,
   });
-  if (!parsed.success) redirect("/?error=auth");
+  if (!parsed.success) redirect("/auth/confirm?error=invalid");
+  const next = safeNextPath(parsed.data.next);
 
   const supabase = await createClient();
   // "email" accepts both kinds of token generateLoginToken can mail: a magic link for a confirmed
@@ -27,8 +28,10 @@ export async function confirmLogin(formData: FormData) {
   const { data, error } = await supabase.auth.verifyOtp({ token_hash: parsed.data.token_hash, type: "email" });
   const user = data?.user;
   if (error || !user?.email) {
+    // A second click on an already used link: if this browser is signed in, just go on.
+    if (await getCurrentUser()) redirect(next);
     console.error(`verifyOtp failed: ${error?.code ?? "no user"}`);
-    redirect("/?error=auth");
+    redirect(`/auth/confirm?error=expired&next=${encodeURIComponent(next)}`);
   }
 
   try {
@@ -36,5 +39,5 @@ export async function confirmLogin(formData: FormData) {
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);
   }
-  redirect(safeNextPath(parsed.data.next));
+  redirect(next);
 }

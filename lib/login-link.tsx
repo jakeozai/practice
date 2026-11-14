@@ -11,9 +11,9 @@ import { createHmac, randomBytes } from "node:crypto";
 import { render } from "@react-email/components";
 import type { ServiceClient } from "./supabase/service";
 import LoginLink, { loginLinkSubject } from "../emails/LoginLink";
+import AccountCode, { accountCodeSubject } from "../emails/AccountCode";
 import { BRAND } from "./brand";
 import { mailAssets } from "../emails/theme";
-import { profilePromptText } from "./profile/prompt-text";
 import type { OutgoingEmail } from "./email/send";
 
 export type ThrottleVerdict = "ok" | "too_soon" | "too_many";
@@ -66,13 +66,38 @@ export async function composeLoginEmail(input: { email: string; url: string; app
       banners={{ dawn: mailAssets(input.appUrl).dawnUrl, golden: mailAssets(input.appUrl).goldenUrl, blueHour: mailAssets(input.appUrl).blueHourUrl }}
       fontUrl={mailAssets(input.appUrl).fontUrl}
       brand={BRAND.name}
-      prompt={profilePromptText()}
-      pasteUrl={`${input.appUrl}/onboarding`}
     />
   );
   return {
     to: input.email,
     subject: loginLinkSubject(BRAND.name),
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    headers: {},
+    idempotencyKey: input.idempotencyKey,
+  };
+}
+
+/**
+ * Six-digit code for 내 정보 on any device (2026-11-14): typed into the page,
+ * so nothing has to be clicked in the mail. Only for an existing subscriber —
+ * no account is created here; null when there is none (the page answers the
+ * same either way, so it can't be used to test addresses).
+ */
+export async function generateAccountCode(db: ServiceClient, email: string): Promise<string | null> {
+  const { data: profile, error } = await db.from("profiles").select("user_id").eq("email", email).maybeSingle();
+  if (error) throw new Error(`load profile: ${error.message}`);
+  if (!profile) return null;
+  const magic = await db.auth.admin.generateLink({ type: "magiclink", email });
+  if (magic.error) throw new Error(`generateLink failed: ${magic.error.code ?? magic.error.message}`);
+  return magic.data.properties?.email_otp ?? null;
+}
+
+export async function composeAccountCodeEmail(input: { email: string; code: string; appUrl: string; idempotencyKey: string }): Promise<OutgoingEmail> {
+  const element = <AccountCode code={input.code} logoUrl={mailAssets(input.appUrl).wordmarkUrl} fontUrl={mailAssets(input.appUrl).fontUrl} brand={BRAND.name} />;
+  return {
+    to: input.email,
+    subject: accountCodeSubject(BRAND.name, input.code),
     html: await render(element),
     text: await render(element, { plainText: true }),
     headers: {},

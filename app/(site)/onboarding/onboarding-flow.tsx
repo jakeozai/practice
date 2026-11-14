@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import {
   ENGLISH_LEVEL_OPTIONS,
@@ -9,16 +9,19 @@ import {
   toDraft,
   type ProfileDraft,
 } from "@/lib/profile/draft";
-import { AI_ASSISTANTS, assistantUrl, type AiAssistant } from "@/lib/profile/prefill";
+import { AI_ASSISTANTS, assistantUrl } from "@/lib/profile/prefill";
+import { EXAMPLE_JOBS } from "@/lib/examples";
 
 /**
- * The user never writes their own profile: their AI analyzes them, they confirm.
- * analyze → (AI opens in a new tab) → return → confirm → done; edit is optional.
+ * The user never writes their own profile: their AI analyzes them, they
+ * confirm (2026-11-14 flow): 1/3 copy the prompt → 2/3 paste it into their
+ * own AI (an empty chat; nothing pre-filled, so no injection warning) → 3/3
+ * paste the AI's answer back → confirm → done, with a five-job example mail.
  */
-type Step = "analyze" | "return" | "confirm" | "edit" | "done" | "skipped";
+type Step = "copy" | "ai" | "paste" | "confirm" | "edit" | "done" | "skipped";
 
-/** One job of the next mail, for the preview on the done screen. */
-export type PreviewJob = { id: string; headline: string; company: string; line: string | null; pay: string | null; url: string };
+/** A row of the example mail on the done screen (/api/profile/example). */
+type ExampleJob = { id: string; headline: string; meta: string; pay: string | null; stretch: boolean };
 
 const input = "field-box";
 const primary = "btn-primary";
@@ -29,32 +32,21 @@ export function OnboardingFlow(props: {
   email: string;
   prompt: string;
   saved: Profile | null;
-  preview: PreviewJob[];
   /** "내일 아침 6시" */
   nextMail: string;
 }) {
-  const [step, setStep] = useState<Step>(props.saved ? "confirm" : "analyze");
+  const [step, setStep] = useState<Step>(props.saved ? "confirm" : "copy");
   const [profile, setProfile] = useState<Profile | null>(props.saved);
   const [isSaved, setIsSaved] = useState(Boolean(props.saved));
-  const [assistant, setAssistant] = useState<AiAssistant | null>(null);
+  const skip = () => setStep("skipped");
 
-  if (step === "analyze") {
+  if (step === "copy") return <CopyStep prompt={props.prompt} onNext={() => setStep("ai")} onSkip={skip} />;
+  if (step === "ai") return <AiStep prompt={props.prompt} onBack={() => setStep("copy")} onNext={() => setStep("paste")} onSkip={skip} />;
+  if (step === "paste") {
     return (
-      <AnalyzeStep
-        prompt={props.prompt}
-        onOpened={(a) => {
-          setAssistant(a);
-          setStep("return");
-        }}
-        onSkip={() => setStep("skipped")}
-      />
-    );
-  }
-  if (step === "return") {
-    return (
-      <ReturnStep
-        assistant={assistant}
-        onBack={() => setStep("analyze")}
+      <PasteStep
+        onBack={() => setStep("ai")}
+        onSkip={skip}
         onParsed={(p) => {
           setProfile(p);
           setIsSaved(false);
@@ -89,96 +81,160 @@ export function OnboardingFlow(props: {
       />
     );
   }
+  const analyzed = step !== "skipped";
   return (
     <section className="space-y-6">
       <div className="card">
-        <p className="text-lg font-bold">{step === "skipped" ? "구독 완료!" : "확인 완료!"}</p>
-        <p className="mt-1 text-sm text-muted">
-          매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 {step === "skipped" ? "일감 5개를" : "딱 맞는 일감 3개와 AI로 도전해 볼 일감 2개를"} 보내드려요.
+        <p className="text-sm font-semibold text-[var(--accent)]">{analyzed ? "준비 끝" : "구독 완료"}</p>
+        <h2 className="mt-1 text-2xl font-extrabold tracking-tight">{props.nextMail}, 첫 일감 5개가 가요</h2>
+        <p className="mt-2 text-sm text-muted">
+          <strong className="text-[var(--ink)]">{props.email}</strong>로 {analyzed ? "딱 맞는 일감 3개와 AI로 도전해 볼 일감 2개를" : "일감 5개를"} 보내드려요.
         </p>
-        <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받아 업데이트하면 추천이 더 정확해져요. 메일로 알려 드릴게요.</p>
-        <p className="mt-1 text-xs text-muted">그만 받고 싶으면 메일 맨 아래 [메일 그만 받기] 한 번이면 해지돼요.</p>
-        <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(step === "skipped" ? "analyze" : "confirm")}>
-          {step === "skipped" ? "지금 AI로 분석하기" : "분석 결과 다시 보기"}
+        <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받으면 추천이 더 정확해져요. 메일로 알려 드릴게요.</p>
+        <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(analyzed ? "confirm" : "copy")}>
+          {analyzed ? "분석 결과 다시 보기" : "지금 AI로 1분 분석하기"}
         </button>
       </div>
-      {props.preview.length > 0 && <NextMailPreview jobs={props.preview} when={props.nextMail} />}
+      <ExampleMail when={props.nextMail} personal={analyzed} />
     </section>
   );
 }
 
-// ── done: what the next mail carries ─────────────────────────────────────
-function NextMailPreview(props: { jobs: PreviewJob[]; when: string }) {
+// ── progress ─────────────────────────────────────────────────────────────
+function Steps({ at }: { at: 1 | 2 | 3 }) {
   return (
-    <div>
-      <p className="text-sm font-bold">{props.when}에 이런 일감이 와요</p>
-      <ul className="mt-3 space-y-2">
-        {props.jobs.map((j) => (
-          <li key={j.id}>
-            <a
-              href={j.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-2xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]"
-            >
-              <p className="font-bold leading-snug">{j.headline}</p>
-              <p className="mt-0.5 text-xs text-muted">
-                {j.company}
-                {j.pay ? ` · ${j.pay}` : ""}
-              </p>
-              {j.line && <p className="mt-1.5 text-sm leading-relaxed">{j.line}</p>}
-            </a>
-          </li>
+    <div aria-label={`3단계 중 ${at}단계`}>
+      <div className="flex gap-1.5" aria-hidden="true">
+        {[1, 2, 3].map((n) => (
+          <span key={n} className="h-1.5 flex-1 rounded-full" style={{ background: n <= at ? "var(--accent)" : "var(--surface-2)" }} />
         ))}
-      </ul>
+      </div>
+      <p className="mono mt-3 text-xs text-[var(--accent)]">{`0${at} / 03`}</p>
     </div>
   );
 }
 
-// ── 1. pick an AI ────────────────────────────────────────────────────────
-function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void; onSkip: () => void }) {
-
-  function open(a: AiAssistant) {
-    // Open first, synchronously in the click, so popup blockers allow it.
-    window.open(assistantUrl(a.id, props.prompt), "_blank", "noopener,noreferrer");
-    navigator.clipboard?.writeText(props.prompt).catch(() => {});
-    props.onOpened(a);
-  }
-
+function StepCard(props: { at: 1 | 2 | 3; title: string; children: React.ReactNode; onBack?: () => void; onSkip: () => void }) {
   return (
-    <section className="space-y-5">
-      <div className="card">
-        <p className="text-sm font-semibold text-[var(--accent)]">구독 완료</p>
-        <h2 className="mt-1 text-2xl font-extrabold tracking-tight">평소 쓰는 AI로 1분 분석</h2>
-        <p className="mt-2 text-sm text-muted">AI가 나를 분석하고, 지원할 때 쓸 영어 이력서 PDF도 만들어 줘요. 덕잡에는 분석 결과만 가져와요.</p>
-        <p className="mt-2 text-sm text-muted">
-          더 넣고 싶은 내용이 있으면 AI에게 직접 말해서 넣어 달라고 하세요. 예: &ldquo;영상 편집 3년 했고 애프터이펙트도 써. 이것도
-          넣어서 다시 만들어 줘&rdquo;
-        </p>
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          {AI_ASSISTANTS.map((a) => (
-            <button key={a.id} type="button" className={primary} onClick={() => open(a)}>
-              {a.label}
-            </button>
-          ))}
-        </div>
+    <section className="space-y-4">
+      <div className="card space-y-5">
+        <Steps at={props.at} />
+        <h2 className="text-2xl font-extrabold leading-snug tracking-tight">{props.title}</h2>
+        {props.children}
       </div>
-      <button type="button" className={link} onClick={props.onSkip}>
-        나중에 할게요
-      </button>
+      <div className="flex flex-wrap gap-5">
+        {props.onBack && (
+          <button type="button" className={link} onClick={props.onBack}>
+            ← 이전 단계
+          </button>
+        )}
+        <button type="button" className={link} onClick={props.onSkip}>
+          나중에 할게요 (분석 없이 일감 5개 받기)
+        </button>
+      </div>
     </section>
   );
 }
 
-// ── 2. bring the answer back ─────────────────────────────────────────────
-function ReturnStep(props: { assistant: AiAssistant | null; onBack: () => void; onParsed: (p: Profile) => void }) {
+/** Copies the prompt; when the browser won't, selects it so the person can copy it themselves. */
+function useCopy(text: string) {
+  const [copied, setCopied] = useState(false);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const [manual, setManual] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      return true;
+    } catch {
+      setManual(true);
+      setTimeout(() => {
+        box.current?.focus();
+        box.current?.select();
+      }, 0);
+      return false;
+    }
+  }
+  return { copied, copy, box, manual };
+}
+
+// ── 1/3 copy the prompt ──────────────────────────────────────────────────
+function CopyStep(props: { prompt: string; onNext: () => void; onSkip: () => void }) {
+  const { copied, copy, box, manual } = useCopy(props.prompt);
+  return (
+    <StepCard at={1} title="프롬프트를 복사해 주세요" onSkip={props.onSkip}>
+      <p className="text-sm text-muted">평소 쓰는 AI가 이 프롬프트로 나를 분석해서 덕잡 프로필, 내 스펙 요약, 한글·영문 이력서를 만들어 줘요.</p>
+      <button
+        type="button"
+        className={`${primary} w-full text-lg`}
+        onClick={async () => {
+          if (await copy()) setTimeout(props.onNext, 700);
+        }}
+      >
+        {copied ? "복사됨 ✓" : "프롬프트 복사하기"}
+      </button>
+      {manual && <p className="text-sm text-[var(--error)]">자동 복사가 막혀 있어요. 아래 글이 선택돼 있으니 길게 누르거나 Ctrl+C로 복사해 주세요.</p>}
+      <details open={manual} className="rounded-2xl bg-[var(--surface-4)] p-4">
+        <summary className="cursor-pointer text-sm font-semibold">프롬프트 내용 보기</summary>
+        <textarea ref={box} readOnly value={props.prompt} rows={10} className={`${input} mt-3 text-xs leading-relaxed`} aria-label="AI에 붙여넣을 프롬프트" />
+      </details>
+      {(copied || manual) && (
+        <button type="button" className={`${secondary} w-full`} onClick={props.onNext}>
+          복사했어요, 다음 →
+        </button>
+      )}
+    </StepCard>
+  );
+}
+
+// ── 2/3 paste it into your own AI ────────────────────────────────────────
+function AiStep(props: { prompt: string; onBack: () => void; onNext: () => void; onSkip: () => void }) {
+  const { copied, copy } = useCopy(props.prompt);
+  return (
+    <StepCard at={2} title="평소 쓰는 AI에 붙여넣고 보내 주세요" onBack={props.onBack} onSkip={props.onSkip}>
+      <ol className="space-y-2 text-sm leading-relaxed text-[var(--ink-3)]">
+        <li>
+          <strong className="text-[var(--ink)]">1.</strong> 아래에서 평소 쓰는 AI를 열어요. 새 창에 빈 대화가 열려요.
+        </li>
+        <li>
+          <strong className="text-[var(--ink)]">2.</strong> 입력칸에 붙여넣고 보내요. (PC는 Ctrl+V·⌘V, 휴대폰은 입력칸을 길게 눌러 붙여넣기)
+        </li>
+        <li>
+          <strong className="text-[var(--ink)]">3.</strong> 답이 다 나오면 코드 블록 오른쪽 위의 <strong className="text-[var(--ink)]">복사</strong> 버튼을 눌러요.
+        </li>
+      </ol>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {AI_ASSISTANTS.map((a) => (
+          <a key={a.id} href={assistantUrl(a.id)} target="_blank" rel="noopener noreferrer" className={primary}>
+            {a.label} 열기
+          </a>
+        ))}
+      </div>
+      <p className="text-xs text-muted">
+        다른 AI도 괜찮아요. 프롬프트를 다시 복사하려면{" "}
+        <button type="button" className="underline" onClick={() => void copy()}>
+          {copied ? "복사됨 ✓" : "여기"}
+        </button>
+        를 눌러요.
+      </p>
+      <button type="button" className={`${secondary} w-full`} onClick={props.onNext}>
+        AI 답을 복사했어요, 다음 →
+      </button>
+    </StepCard>
+  );
+}
+
+// ── 3/3 paste the answer back ────────────────────────────────────────────
+function PasteStep(props: { onBack: () => void; onSkip: () => void; onParsed: (p: Profile) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [showPaste, setShowPaste] = useState(false);
   const pasteRef = useRef<HTMLTextAreaElement>(null);
 
   async function parse(text: string) {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      setError("AI 답을 붙여넣어 주세요.");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -203,56 +259,111 @@ function ReturnStep(props: { assistant: AiAssistant | null; onBack: () => void; 
 
   async function fromClipboard() {
     try {
-      await parse(await navigator.clipboard.readText());
+      const text = await navigator.clipboard.readText();
+      if (pasteRef.current) pasteRef.current.value = text;
+      await parse(text);
     } catch {
-      // Clipboard reading isn't allowed in this browser: fall back to pasting.
-      setShowPaste(true);
-      setTimeout(() => pasteRef.current?.focus(), 0);
+      setError("자동으로 가져오지 못했어요. 아래 칸에 직접 붙여넣어 주세요.");
+      pasteRef.current?.focus();
     }
   }
 
-  const name = props.assistant?.label ?? "AI";
   return (
-    <section className="space-y-5">
-      <div className="card">
-        <h2 className="text-2xl font-extrabold tracking-tight">{name} 답변을 복사했나요?</h2>
-        <p className="mt-2 text-sm text-muted">
-          {name} 창에 입력창이 비어 있으면 붙여넣기(⌘V / Ctrl+V)로 보내고, 답변 속 코드 블록의 복사 버튼을 누른 뒤 돌아오세요.
-        </p>
-        <button type="button" className={`${primary} mt-5 w-full sm:w-auto`} disabled={pending} onClick={fromClipboard}>
-          {pending ? "읽는 중…" : "분석 결과 불러오기"}
-        </button>
-        {!showPaste && (
-          <button type="button" className={`${link} ml-0 mt-3 block sm:ml-4 sm:inline`} onClick={() => setShowPaste(true)}>
-            직접 붙여넣을게요
-          </button>
-        )}
-        {showPaste && (
-          <textarea
-            ref={pasteRef}
-            rows={6}
-            aria-label="AI 답변 붙여넣기"
-            placeholder="여기에 AI 답변을 붙여넣으세요 (⌘V / Ctrl+V)"
-            className={`${input} mt-4 font-mono text-xs`}
-            onPaste={(e) => {
-              const text = e.clipboardData.getData("text");
-              if (text) {
-                e.preventDefault();
-                void parse(text);
-              }
-            }}
-          />
-        )}
-        {error && (
-          <p className="mt-4 alert-error" role="alert">
-            {error}
-          </p>
-        )}
-      </div>
-      <button type="button" className={link} onClick={props.onBack}>
-        다른 AI로 할게요
+    <StepCard at={3} title="AI 답을 여기에 붙여넣어 주세요" onBack={props.onBack} onSkip={props.onSkip}>
+      <button type="button" className={`${primary} w-full text-lg`} disabled={pending} onClick={fromClipboard}>
+        {pending ? "읽는 중…" : "복사한 답 불러오기"}
       </button>
-    </section>
+      <textarea
+        ref={pasteRef}
+        rows={6}
+        aria-label="AI 답 붙여넣기"
+        placeholder="또는 여기에 붙여넣기 (Ctrl+V · ⌘V · 길게 눌러 붙여넣기)"
+        className={`${input} font-mono text-xs`}
+        onPaste={(e) => {
+          const text = e.clipboardData.getData("text");
+          if (text) {
+            e.preventDefault();
+            if (pasteRef.current) pasteRef.current.value = text;
+            void parse(text);
+          }
+        }}
+      />
+      <button type="button" className={`${secondary} w-full`} disabled={pending} onClick={() => void parse(pasteRef.current?.value ?? "")}>
+        붙여넣은 답 확인하기
+      </button>
+      {error && (
+        <p className="alert-error" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="text-xs text-muted">🔒 붙여넣은 내용은 공고를 고르는 데만 쓰고, 원문은 저장하지 않아요.</p>
+    </StepCard>
+  );
+}
+
+// ── done: an example of the next mail ────────────────────────────────────
+function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
+  const [jobs, setJobs] = useState<ExampleJob[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/profile/example")
+      .then((r) => r.json())
+      .then((d) => live && setJobs(Array.isArray(d.jobs) ? d.jobs : []))
+      .catch(() => live && setJobs([]));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Five rows always: this person's candidates first, then the landing page's examples.
+  const rows = [
+    ...(jobs ?? []).map((j) => ({ key: j.id, title: j.headline, meta: j.meta, pay: j.pay ?? "원문 확인" })),
+    ...EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay })),
+  ].slice(0, 5);
+
+  return (
+    <div>
+      <p className="text-sm font-bold">{when}, 이런 메일이 가요</p>
+      <article
+        aria-label="예시 메일"
+        className="mt-3 rounded-[26px] px-5 pb-2 pt-[18px]"
+        style={{ background: "var(--paper)", color: "var(--paper-ink)", boxShadow: "0 30px 60px -20px rgba(0,0,0,.6)" }}
+      >
+        <div className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG icon */}
+          <img src="/brand/duckjob-appicon.svg" alt="" width={32} height={32} className="block h-8 w-8" />
+          <p className="text-sm font-bold">duckjob</p>
+          <p className="ml-auto text-[13px]" style={{ color: "var(--paper-muted)" }}>
+            예시 · 오전 6:00
+          </p>
+        </div>
+        <p className="mb-1 mt-3.5 text-lg font-extrabold tracking-tight">{personal ? "오늘의 맞춤 일감 5개" : "오늘의 일감 5개"}</p>
+        {jobs === null ? (
+          <p className="py-6 text-center text-sm" style={{ color: "var(--paper-muted)" }}>
+            고르는 중…
+          </p>
+        ) : (
+          <ul>
+            {rows.map((r, i) => (
+              <li
+                key={r.key}
+                className="flex items-baseline justify-between gap-3 py-2.5"
+                style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--paper-line)" : undefined }}
+              >
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold">{r.title}</span>
+                  <span className="mt-0.5 block text-[13px]" style={{ color: "var(--paper-muted)" }}>
+                    {r.meta}
+                  </span>
+                </span>
+                <span className="whitespace-nowrap text-[15px] font-extrabold">{r.pay}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+      <p className="mt-2 text-xs text-muted">예시예요. 실제 메일은 매일 새벽 새로 올라온 공고에서 다시 골라요.</p>
+    </div>
   );
 }
 

@@ -33,10 +33,14 @@ test("prompt also asks for a spec summary and Korean and English resumes, withou
   assert.match(prompt, /이력서 쪽에는 코드 블록을 쓰지 마/);
 });
 
-test("assistant URLs: prefill carries the whole prompt where supported", () => {
+test("assistant buttons open an empty chat: no prompt in the link, so no injection warning", () => {
   for (const a of AI_ASSISTANTS) {
-    const url = new URL(assistantUrl(a.id, prompt));
-    if (a.prefills) assert.equal(url.searchParams.get("q"), prompt, a.label);
-    else assert.equal(url.search, "", a.label);
+    const url = new URL(assistantUrl(a.id));
+    assert.equal(url.search, "", a.label);
+    assert.ok(!url.href.includes("AIJOB5"), a.label);
   }
+});
+
+test("the prompt stays short enough to read", () => {
+  assert.ok(prompt.length < 3200, `prompt is ${prompt.length} characters`);
 });

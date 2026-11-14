@@ -34,8 +34,9 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   if (!data?.claims && PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
+    // Sign in right on 내 정보 (email → code), then come back here.
     const login = request.nextUrl.clone();
-    login.pathname = "/";
+    login.pathname = "/account";
     login.search = "";
     login.searchParams.set("next", path);
     return NextResponse.redirect(login);

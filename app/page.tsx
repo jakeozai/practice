@@ -5,6 +5,7 @@ import { contactEmail } from "@/lib/brand";
 import { SubscribeForm } from "./subscribe-form";
 import { Reveal } from "./reveal";
 import { ScrollBackdrop } from "./scroll-backdrop";
+import { EXAMPLE_JOBS } from "@/lib/examples";
 import "./landing.css";
 
 /**
@@ -53,13 +54,7 @@ function Clock() {
 }
 const accent = "var(--accent)";
 
-const EXAMPLE_JOBS = [
-  { title: "상세페이지 카피 5종", meta: "AI로 약 2시간 · 국내", pay: "15만 원" },
-  { title: "영어 인터뷰 한국어 자막", meta: "AI로 약 1.5시간 · 해외", pay: "$90" },
-  { title: "설문 800건 분류·요약", meta: "AI로 약 3시간 · 국내", pay: "20만 원" },
-  { title: "블로그 원고 4편", meta: "AI로 약 2시간 · 국내", pay: "12만 원" },
-  { title: "상품 썸네일 10장", meta: "AI로 약 1시간 · 국내", pay: "8만 원" },
-];
+// The example mail's rows live in lib/examples.ts (the onboarding finish screen shows them too).
 
 const CIRCLES = [
   { src: "/photos/after-work.jpg", w: 1100, h: 1100, alt: "퇴근 후 스탠드 불빛 아래 책상에서 노트북으로 일하는 30대 남성", pos: "48% 50%", caption: "퇴근 후 1시간" },
@@ -154,24 +149,29 @@ export default function Home(props: PageProps<"/">) {
             <a href="#journey">부업에서 본업까지</a>
             <a href="#faq">자주 묻는 질문</a>
           </div>
-          <a
-            href="#subscribe"
-            className="lp-btn"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              minHeight: 44,
-              padding: "0 20px",
-              borderRadius: 999,
-              background: accent,
-              color: "var(--on-accent)",
-              fontSize: 15,
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            무료 구독
-          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Link href="/account" className="lp-navlink" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 12px", fontSize: 15, fontWeight: 600 }}>
+              내 정보
+            </Link>
+            <a
+              href="#subscribe"
+              className="lp-btn"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: 44,
+                padding: "0 20px",
+                borderRadius: 999,
+                background: accent,
+                color: "var(--on-accent)",
+                fontSize: 15,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              무료 구독
+            </a>
+          </div>
         </nav>
       </div>
 
@@ -344,7 +344,7 @@ export default function Home(props: PageProps<"/">) {
               data-reveal="right"
               style={{ margin: 0, maxWidth: "70%", padding: "13px 18px", borderRadius: "22px 22px 6px 22px", background: "var(--surface-2)", fontSize: 16, fontWeight: 600 }}
             >
-              메일 속 프롬프트를 복사해서
+              덕잡이 주는 프롬프트를 복사해서
             </p>
             <div className="lp-bubble" data-reveal="right" style={{ ...delay(140), maxWidth: "70%", padding: "13px 18px", borderRadius: "22px 6px 6px 22px", background: "var(--surface-2)" }}>
               <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>평소 쓰는 AI에 붙여넣고</p>

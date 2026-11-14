@@ -31,7 +31,7 @@ export function SubscribeForm({ id, next, notice, center = false }: { id: string
           textAlign: "left",
         }}
       >
-        <strong>확인 메일을 보냈어요.</strong> 메일 속 프롬프트를 평소 쓰는 AI에 붙여넣어 주세요.
+        <strong>확인 메일을 보냈어요.</strong> 메일의 [구독 확인하기]를 누르면 바로 시작돼요.
       </p>
     );
   }

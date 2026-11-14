@@ -149,8 +149,8 @@ test("search terms and portfolio are kept; template placeholders are dropped", (
       version: 1,
       languages: [{ code: "en", level: "business" }],
       fields: ["영→한 번역"],
-      job_keywords: ["english to korean translation", "game localization", "공고에서 나를 찾을 검색어 8~15개"],
-      portfolio_ko: ["번역 샘플 3종", "지원할 때 보여줄 수 있는 내 작업물, 최대 5개"],
+      job_keywords: ["english to korean translation", "game localization", "해외 공고 검색어 8~15개, 영어 2~3단어"],
+      portfolio_ko: ["번역 샘플 3종", "보여줄 수 있는 개인 작업물·채널·앱, 최대 5개"],
       weekly_hours: 10,
     })}\n<<END_AIJOB5_PROFILE>>`,
   );

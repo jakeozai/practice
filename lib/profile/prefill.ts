@@ -1,26 +1,23 @@
 /**
- * "Analyze with my AI" buttons. Clicking one copies the prompt to the
- * clipboard AND opens the assistant, so the flow works whether or not the
- * site honours a prefill parameter:
- * - ChatGPT `?q=` prefills the message (third-party reports, 2026)
- * - Claude `/new?q=` was reported to stop working in Oct 2025; harmless if ignored
- * - Gemini has no prefill parameter; the user pastes
+ * "Open my AI" buttons. They open an empty chat in a new tab and the person
+ * pastes the prompt they copied themselves (2026-11-14): a prompt that
+ * arrives pre-filled through a link makes Claude show a warning about
+ * malicious content, which scares people off, and no site can turn it off.
  */
-export type AiAssistant = { id: "chatgpt" | "claude" | "gemini"; label: string; prefills: boolean };
+export type AiAssistant = { id: "chatgpt" | "claude" | "gemini"; label: string };
 
 export const AI_ASSISTANTS: AiAssistant[] = [
-  { id: "chatgpt", label: "ChatGPT", prefills: true },
-  { id: "claude", label: "Claude", prefills: true },
-  { id: "gemini", label: "Gemini", prefills: false },
+  { id: "chatgpt", label: "ChatGPT" },
+  { id: "claude", label: "Claude" },
+  { id: "gemini", label: "Gemini" },
 ];
 
-export function assistantUrl(id: AiAssistant["id"], prompt: string): string {
-  const q = encodeURIComponent(prompt);
+export function assistantUrl(id: AiAssistant["id"]): string {
   switch (id) {
     case "chatgpt":
-      return `https://chatgpt.com/?q=${q}`;
+      return "https://chatgpt.com/";
     case "claude":
-      return `https://claude.ai/new?q=${q}`;
+      return "https://claude.ai/new";
     case "gemini":
       return "https://gemini.google.com/app";
   }

@@ -11,6 +11,8 @@ import { seoulDate, seoulSendTime } from "../time";
 import { belowMinimumWage } from "../jobs/min-wage";
 import { ProfileSchema } from "../profile/parse";
 import { buildSignals, rankForProfile } from "../match/fit";
+import { rankStretch, stretchPool } from "../match/stretch";
+import { CATEGORY_CHIP_KO, compactPay } from "../jobs/format";
 
 export type Db = SupabaseClient<Database>;
 
@@ -124,4 +126,40 @@ export async function loadCurationStats(db: Db, sendDate: string): Promise<Curat
   ]);
   if (raw.error || jobs.error) throw new Error(`curation stats: ${(raw.error ?? jobs.error)!.message}`);
   return { newPostings: raw.count ?? 0, koreaJobs: jobs.count ?? 0 };
+}
+
+/** A row of the "이런 메일이 가요" example on the onboarding finish screen. */
+export type ExampleJob = { id: string; headline: string; meta: string; pay: string | null; stretch: boolean };
+
+/**
+ * Five jobs shaped like this person's next mail, for the finish screen: with
+ * a profile, the three best fits and two AI stretches by the rules (the
+ * morning mail's model picks from the same lists); without one, the shared
+ * order. Shown as an example — the 06:00 mail is picked again at 05:30.
+ */
+export async function exampleMailJobs(db: Db, userId: string): Promise<ExampleJob[]> {
+  const [jobs, sent, prof] = await Promise.all([
+    loadCandidatePool(db),
+    db.from("matches").select("job_id").eq("user_id", userId),
+    db.from("profiles").select("profile_json").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (sent.error) throw new Error(`load matches: ${sent.error.message}`);
+  const seen = new Set(sent.data.map((m) => m.job_id));
+  const fresh = jobs.filter((j) => !seen.has(j.id));
+  const row = (j: DigestJob, stretch: boolean): ExampleJob => ({
+    id: j.id,
+    headline: j.title_ko?.trim() || j.title,
+    meta: [stretch ? "AI로 도전" : null, j.category && j.category !== "other" ? CATEGORY_CHIP_KO[j.category] : null, j.company].filter(Boolean).join(" · "),
+    pay: compactPay(j),
+    stretch,
+  });
+
+  const profile = prof.data?.profile_json ? ProfileSchema.safeParse(prof.data.profile_json) : null;
+  if (!profile?.success) return rankForEveryone(fresh).slice(0, 5).map((j) => row(j, false));
+  const signals = buildSignals(profile.data);
+  const now = new Date();
+  const ranked = rankForProfile(fresh, signals, now);
+  // The model's candidate list is the top six fits (lib/match/pick.ts PICK_POOL); stretches come from outside it.
+  const stretch = stretchPool(rankStretch(fresh, signals, now, new Set(ranked.slice(0, 6).map((r) => r.job.id))), 6).slice(0, 2);
+  return [...ranked.slice(0, 3).map((r) => row(r.job, false)), ...stretch.map((r) => row(r.job, true))];
 }
