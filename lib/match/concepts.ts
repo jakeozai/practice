@@ -57,8 +57,8 @@ export const CONCEPTS: Concept[] = [
     label: "교육 콘텐츠",
     categories: ["video", "writing"],
     profile: /교육|이러닝|e-?learning|마이크로\s*러닝|micro-?learning|강의|사내\s*방송|튜토리얼|tutorial/i,
-    // Teaching material to build (courses, training videos), not articles that explain things.
-    job: /e-?learning|이러닝|교육\s*(?:영상|콘텐츠|과정)|\bcourses?\b|강의|training\s*(?:videos?|modules?)|(?:tutorial|explainer|instructional)\s*videos?|튜토리얼\s*영상|\blms\b|micro-?learning/i,
+    // Teaching material as video or content to produce; designing a curriculum or writing articles isn't it.
+    job: /(?:e-?learning|이러닝|교육|\bcourses?\b|강의|training|tutorial|튜토리얼|explainer|instructional|lesson|\blms\b|micro-?learning|마이크로\s*러닝).{0,40}(?:\bvideos?\b|영상|animation|애니메이션|콘텐츠\s*제작)|(?:\bvideos?\b|영상).{0,40}(?:e-?learning|이러닝|교육|\bcourses?\b|강의|training|tutorial|튜토리얼|lesson|micro-?learning)/i,
   },
   {
     id: "corporate_video",
@@ -265,6 +265,33 @@ export const USD_PER_UNIT: Record<string, number> = {
   NOK: 0.093,
   DKK: 0.145,
 };
+
+/** Concepts about writing software: they only count when the job's language is one the person uses. */
+export const CODE_CONCEPTS = new Set(["web_fullstack", "ai_eval_code", "automation_ai", "data_scraping"]);
+
+/**
+ * Programming languages, so a Java or Kotlin trainer job doesn't reach a
+ * Next.js/TypeScript person through "AI coding evaluation". Frameworks imply
+ * their language (Next.js → JavaScript/TypeScript).
+ */
+export const CODE_LANGUAGES: { id: string; re: RegExp }[] = [
+  { id: "js", re: /javascript|typescript|\bjs\b|\bts\b|node\.?js|next\.?js|\breact\b|\bvue\b|svelte|angular|supabase|vercel|prisma|express\.?js|타입스크립트|자바스크립트/i },
+  { id: "python", re: /python|파이썬|django|flask|fastapi|pandas|pytorch/i },
+  { id: "java", re: /\bjava\b(?!\s*script)|spring\s*boot|자바(?!스크립트)/i },
+  { id: "kotlin", re: /kotlin|코틀린/i },
+  { id: "csharp", re: /c#|\.net\b|asp\.net/i },
+  { id: "cpp", re: /c\+\+|\bcpp\b/i },
+  { id: "go", re: /\bgolang\b|\bgo\s+(?:developer|engineer|language)/i },
+  { id: "rust", re: /\brust\b/i },
+  { id: "php", re: /\bphp\b|laravel|wordpress|woocommerce|워드프레스/i },
+  { id: "ruby", re: /\bruby\b|\brails\b/i },
+  { id: "swift", re: /\bswift\b|swiftui/i },
+  { id: "scala", re: /\bscala\b/i },
+];
+
+export function codeLanguages(text: string): Set<string> {
+  return new Set(CODE_LANGUAGES.filter((l) => l.re.test(text)).map((l) => l.id));
+}
 
 /** Tool names in `skills` worth looking for verbatim in a job ("Premiere", "Supabase"). */
 const GENERIC_TOOL_WORDS = new Set([

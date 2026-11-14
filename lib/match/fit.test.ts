@@ -144,3 +144,21 @@ test("currency conversion for pay checks", () => {
   assert.equal(toUsd(100, "XXX"), null);
   assert.equal(toUsd(null, "USD"), null);
 });
+
+test("software work only in a language the profile uses", () => {
+  const java = job({ title: "Java Coding Specialist - Freelance AI Trainer", summary_ko: ["Java 코드 평가"], category: "dev" });
+  const jsts = job({ title: "AI coding evaluator (JavaScript/TypeScript)", category: "dev" });
+  const wordpress = job({ title: "WordPress website fixes", summary_ko: ["워드프레스 웹사이트 수정"], category: "dev" });
+  assert.ok(sig.code.has("js"), "Next.js in skills implies JavaScript/TypeScript");
+  assert.equal((assessJob(java, sig, NOW) as { why: string }).why, "unrelated");
+  assert.equal((assessJob(wordpress, sig, NOW) as { why: string }).why, "unrelated");
+  assert.ok(assessJob(jsts, sig, NOW).ok);
+});
+
+test("education means video or content to produce, not course design or articles", () => {
+  const courseDesign = job({ title: "Design 40-Hour AI Safety Course", summary_ko: ["교육 과정 설계", "그래픽 디자인 필요"], category: "design" });
+  const trainingVideos = job({ title: "Edit 5 training videos for our e-learning course", category: "video" });
+  assert.equal((assessJob(courseDesign, sig, NOW) as { why: string }).why, "unrelated");
+  const fit = assessJob(trainingVideos, sig, NOW);
+  assert.ok(fit.ok && fit.hits.some((h) => h.id === "edu_content"));
+});

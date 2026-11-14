@@ -10,6 +10,7 @@
  *  - something on their `avoid` list (AVOID_RULES), or performer work they never mention
  *  - more weekly hours than they have, or an hourly rate under their minimum
  *  - a degree/licence requirement without a strong field match
+ *  - software work in a programming language the profile doesn't show
  *  - nothing in common with what they do (no concept from their profile)
  *
  * Score: profile concepts the job matches, weighted by where the AI wrote them
@@ -18,7 +19,7 @@
  */
 import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
 import { isBiddingGig } from "../jobs/format";
-import { AVOID_RULES, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, USD_PER_UNIT, toolTokens, type Concept } from "./concepts";
+import { AVOID_RULES, CODE_CONCEPTS, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, USD_PER_UNIT, codeLanguages, toolTokens, type Concept } from "./concepts";
 
 type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
 
@@ -69,6 +70,8 @@ export type ProfileSignals = {
   tools: string[];
   avoid: Set<string>;
   performer: boolean;
+  /** Programming languages the profile shows (CODE_LANGUAGES ids). */
+  code: Set<string>;
   weeklyHours: number | null;
   minHourlyUsd: number | null;
   /** The profile's first fields, for the mail's intro line. */
@@ -121,6 +124,7 @@ export function buildSignals(profile: Profile): ProfileSignals {
     tools: toolTokens(profile.skills),
     avoid: new Set(AVOID_RULES.filter((r) => profile.avoid.some((a) => r.avoid.test(a))).map((r) => r.id)),
     performer: PERFORMER_PROFILE.test(everything),
+    code: codeLanguages(everything),
     weeklyHours: profile.weekly_hours,
     minHourlyUsd: profile.min_hourly_usd,
     focus: profile.fields.slice(0, 2),
@@ -173,9 +177,13 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
     return { ok: false, why: `pay:${Math.round(payUsd)}` };
   }
 
+  // Software work counts only in a language the person uses (no Java trainer jobs for a Next.js developer).
+  const jobCode = codeLanguages(text);
+  const codeFits = jobCode.size === 0 || [...jobCode].some((l) => sig.code.has(l));
   const hits = CONCEPTS.flatMap((c: Concept) => {
     const h = sig.concepts.get(c.id);
-    return h && c.job.test(text) ? [h] : [];
+    if (!h || !c.job.test(text)) return [];
+    return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [h];
   }).sort((a, b) => b.weight - a.weight);
   const best = hits[0]?.weight ?? 0;
   const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
