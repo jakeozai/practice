@@ -32,6 +32,11 @@ export const REASON_MAX = 90;
 export const TODAY_MAX = 80;
 export const SUBJECT_MAX = 40;
 const PICK_ATTEMPTS = 2;
+/**
+ * Room for the answer after any reasoning the model does first: Gemini 2.5
+ * Flash thinks before answering and ran out of a 1,500-token cap (2026-11-14).
+ */
+export const PICK_MAX_TOKENS = 8000;
 
 export type PickJob = FitJob & { company: string; engagement?: string | null };
 
@@ -178,13 +183,17 @@ export async function choosePicks(
       try {
         const message = await opts.client!.messages.create({
           model,
-          max_tokens: 1500,
+          max_tokens: PICK_MAX_TOKENS,
           system: digestPickPrompt(),
           messages: [{ role: "user", content: pickMessage(profile, pool, now) }],
           output_config: { format: zodOutputFormat(PickWire) },
         });
-        parsed = parsePick(firstText(message), pool.length, opts.size);
-        if (!parsed) opts.log?.(`    ! pick (${model}): invalid model output (attempt ${attempt})`);
+        const text = firstText(message);
+        parsed = parsePick(text, pool.length, opts.size);
+        if (!parsed) {
+          const stop = (message as { stop_reason?: string }).stop_reason ?? "?";
+          opts.log?.(`    ! pick (${model}): invalid model output (attempt ${attempt}, stop ${stop}, ${text.length} chars): ${text.slice(0, 160)}`);
+        }
       } catch (e) {
         opts.log?.(`    ! pick (${model}): ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`);
         if (isServiceFailure(e)) break; // the SDK already retried; the next model or the rules take over
