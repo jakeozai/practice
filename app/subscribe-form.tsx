@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { requestMagicLink, type MagicLinkState } from "./actions";
 
@@ -131,13 +130,6 @@ export function SubscribeForm({ id, next, notice, center = false }: { id: string
         </p>
       )}
       <p style={{ margin: center ? "14px 0 0" : "14px 0 0 8px", fontSize: 14, color: "var(--muted)" }}>무료 · 하루 5개 공고 · 언제든 해지</p>
-      <p style={{ margin: center ? "8px auto 0" : "8px 0 0 8px", maxWidth: 520, fontSize: 12, lineHeight: 1.6, color: "var(--placeholder)" }}>
-        메일을 보내려고 이메일 주소를 처리해요(
-        <Link href="/privacy" style={{ color: "inherit", textDecoration: "underline" }}>
-          개인정보 처리방침
-        </Link>
-        ). 만 14세 미만은 가입할 수 없어요.
-      </p>
     </div>
   );
 }

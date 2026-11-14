@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import type { JobFact, StatusBadge } from "../lib/jobs/format";
 import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
-import { mailColor, mailFont, mailMono } from "./theme";
+import { mailColor, mailFont } from "./theme";
 
 export type DailyFiveJob = {
   id: string;
@@ -79,8 +79,8 @@ const s = {
     wordBreak: "keep-all" as const,
   },
   container: { maxWidth: 560, padding: "0 16px" },
-  clock: { fontFamily: mailMono, fontSize: 13, color: mailColor.accent, margin: 0, textAlign: "right" as const },
-  day: { fontFamily: mailMono, fontSize: 13, color: mailColor.muted, margin: "30px 0 8px" },
+  clock: { fontSize: 13, fontWeight: 700, color: mailColor.accent, margin: 0, textAlign: "right" as const },
+  day: { fontSize: 13, color: mailColor.muted, margin: "30px 0 8px" },
   heading: { fontSize: 30, fontWeight: 800, lineHeight: "38px", letterSpacing: "-0.03em", margin: "0 0 10px", color: mailColor.ink },
   intro: { fontSize: 15, lineHeight: "24px", color: mailColor.inkSoft, margin: "0 0 24px" },
 
@@ -131,7 +131,7 @@ const s = {
   buttonNote: { fontSize: 12, lineHeight: "18px", color: mailColor.paperMuted, textAlign: "center" as const, margin: "10px 0 0" },
   smallLink: { fontSize: 12, color: mailColor.paperMuted, textDecoration: "underline" },
 
-  sectionLabel: { fontFamily: mailMono, fontSize: 13, color: mailColor.accent, margin: "34px 0 6px" },
+  sectionLabel: { fontSize: 13, fontWeight: 700, color: mailColor.accent, margin: "34px 0 6px" },
   sectionHeading: { fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: mailColor.ink, margin: "0 0 4px" },
   sectionIntro: { fontSize: 14, lineHeight: "22px", color: mailColor.muted, margin: "0 0 16px" },
 
@@ -266,7 +266,7 @@ export default function DailyFive(props: DailyFiveProps) {
                   <Img src={props.logoUrl} width="100" height="29" alt={brand} style={{ display: "block" }} />
                 </td>
                 <td style={{ verticalAlign: "middle" }}>
-                  <Text style={s.clock}>● 06:00 KST</Text>
+                  <Text style={s.clock}>● 매일 아침 6시</Text>
                 </td>
               </tr>
             </tbody>

@@ -19,7 +19,7 @@ export function loginLinkSubject(brand: string): string {
 const s = {
   body: { backgroundColor: mailColor.page, margin: 0, padding: "24px 0 40px", fontFamily: mailFont, color: mailColor.ink, wordBreak: "keep-all" as const },
   container: { maxWidth: 560, padding: "0 16px" },
-  clock: { fontFamily: mailMono, fontSize: 13, color: mailColor.accent, margin: 0, textAlign: "right" as const },
+  clock: { fontSize: 13, fontWeight: 700, color: mailColor.accent, margin: 0, textAlign: "right" as const },
   heading: { fontSize: 28, fontWeight: 800, lineHeight: "36px", letterSpacing: "-0.03em", color: mailColor.ink, margin: "30px 0 10px" },
   intro: { fontSize: 15, lineHeight: "24px", color: mailColor.inkSoft, margin: "0 0 24px" },
   step: { backgroundColor: mailColor.surface, borderRadius: 22, padding: "18px 20px", margin: "0 0 12px" },
@@ -79,7 +79,7 @@ export default function LoginLink({ confirmUrl, logoUrl, brand, prompt, pasteUrl
                   <Img src={logoUrl} width="100" height="29" alt={brand} style={{ display: "block" }} />
                 </td>
                 <td style={{ verticalAlign: "middle" }}>
-                  <Text style={s.clock}>● 매일 06:00 KST</Text>
+                  <Text style={s.clock}>● 매일 아침 6시</Text>
                 </td>
               </tr>
             </tbody>

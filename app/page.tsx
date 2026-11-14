@@ -4,6 +4,7 @@ import Link from "next/link";
 import { contactEmail } from "@/lib/brand";
 import { SubscribeForm } from "./subscribe-form";
 import { Reveal } from "./reveal";
+import { ScrollBackdrop } from "./scroll-backdrop";
 import "./landing.css";
 
 /**
@@ -123,6 +124,7 @@ export default function Home(props: PageProps<"/">) {
   const contact = contactEmail();
   return (
     <div className="lp">
+      <ScrollBackdrop />
       {/* NAV */}
       <div className="lp-nav" style={{ position: "sticky", top: 0, zIndex: 20, background: "var(--bg)", borderBottom: "1px solid var(--line)" }}>
         <nav
@@ -166,9 +168,9 @@ export default function Home(props: PageProps<"/">) {
         style={{ ...wrap, padding: "clamp(56px, 8vw, 104px) 24px 0", gap: "clamp(40px, 6vw, 72px)", alignItems: "center" }}
       >
         <div>
-          <p className="mono lp-rise" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--muted)" }}>
+          <p className="lp-rise" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 600, color: "var(--muted)" }}>
             <span aria-hidden="true" className="lp-live" style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
-            매일 06:00 KST
+            매일 아침 6시
           </p>
           <h1 className="lp-rise" style={{ ...delay(120), margin: "20px 0 0", fontSize: "clamp(40px, 6.4vw, 88px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
             AI 부업으로
@@ -280,7 +282,7 @@ export default function Home(props: PageProps<"/">) {
           whiteSpace: "nowrap",
         }}
       >
-        <div className="lp-track mono" style={{ fontSize: "clamp(16px, 1.6vw, 20px)", color: "var(--ink-3)" }}>
+        <div className="lp-track" style={{ fontSize: "clamp(16px, 1.6vw, 20px)", fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink-3)" }}>
           {[0, 1].map((copy) => (
             <span key={copy} style={{ display: "inline-flex", alignItems: "center", gap: 28, paddingRight: 28 }}>
               {MARQUEE.map((w) => (
@@ -444,9 +446,15 @@ export default function Home(props: PageProps<"/">) {
       {/* PROMISES */}
       <section style={{ ...wrap, padding: "clamp(104px, 13vw, 160px) 24px 0" }}>
         <h2 data-reveal style={{ margin: 0, fontSize: "clamp(32px, 4.4vw, 56px)", fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.04em" }}>
-          덕잡은 처음부터
-          <br />
-          이렇게 운영해요
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG wordmark */}
+          <img
+            src="/brand/duckjob-wordmark-ondark.svg"
+            alt="덕잡"
+            width={349}
+            height={101}
+            style={{ display: "inline-block", height: "0.86em", width: "auto", verticalAlign: "-0.17em", marginRight: "0.06em" }}
+          />
+          은 이렇게 운영해요
         </h2>
         <div className="lp-plist" style={{ marginTop: 48, borderTop: "1px solid var(--line-2)" }}>
           {PROMISES.map((p, i) => (
@@ -528,7 +536,7 @@ export default function Home(props: PageProps<"/">) {
           <img src="/brand/duckjob-wordmark-ondark.svg" alt="duckjob" width={76} height={22} style={{ display: "block", width: 76, height: 22 }} />· 매일 아침 6시, AI 일감 5개
         </p>
         <p style={{ margin: 0 }}>
-          {contact ? `문의 ${contact} · ` : ""}이미지 Higgsfield AI 생성 · © 2026 duckjob
+          {contact ? `문의 ${contact} · ` : ""}© 2026 duckjob
         </p>
         <p style={{ margin: 0, flexBasis: "100%", fontSize: 13 }}>
           <Link href="/privacy" style={{ color: "var(--muted)", textDecoration: "underline" }}>
