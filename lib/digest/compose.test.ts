@@ -142,6 +142,7 @@ test("profile reminder box: none by default, one wording per case", async () => 
   const missing = await composeDigestEmail({ ...input, nudge: "missing" });
   assert.match(missing.html, /1분 분석하기/);
   const stale = await composeDigestEmail({ ...input, nudge: "stale" });
-  assert.match(stale.html, /분석한 지 30일이 지났어요/);
+  assert.match(stale.html, /분석한 지 2주가 지났어요/);
+  assert.match(stale.html, /AI에게 직접 말해서/);
   assert.match(stale.html, /\/onboarding/);
 });

@@ -9,14 +9,13 @@ import {
   toDraft,
   type ProfileDraft,
 } from "@/lib/profile/draft";
-import { QUICK_FIELD_CHOICES, QUICK_MAX_FIELDS, quickProfile, type QuickAnswers } from "@/lib/profile/quick";
 import { AI_ASSISTANTS, assistantUrl, type AiAssistant } from "@/lib/profile/prefill";
 
 /**
  * The user never writes their own profile: their AI analyzes them, they confirm.
  * analyze → (AI opens in a new tab) → return → confirm → done; edit is optional.
  */
-type Step = "analyze" | "return" | "confirm" | "edit" | "quick" | "done" | "skipped";
+type Step = "analyze" | "return" | "confirm" | "edit" | "done" | "skipped";
 
 /** One job of the next mail, for the preview on the done screen. */
 export type PreviewJob = { id: string; headline: string; company: string; line: string | null; pay: string | null; url: string };
@@ -48,7 +47,6 @@ export function OnboardingFlow(props: {
           setStep("return");
         }}
         onSkip={() => setStep("skipped")}
-        onQuick={() => setStep("quick")}
       />
     );
   }
@@ -78,18 +76,6 @@ export function OnboardingFlow(props: {
       />
     );
   }
-  if (step === "quick") {
-    return (
-      <QuickForm
-        onCancel={() => setStep("analyze")}
-        onSaved={(p) => {
-          setProfile(p);
-          setIsSaved(true);
-          setStep("done");
-        }}
-      />
-    );
-  }
   if (step === "edit" && profile) {
     return (
       <EditForm
@@ -110,6 +96,7 @@ export function OnboardingFlow(props: {
         <p className="mt-1 text-sm text-muted">
           매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 일감 3개를 보내드려요.
         </p>
+        <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받아 업데이트하면 추천이 더 정확해져요. 메일로 알려 드릴게요.</p>
         <p className="mt-1 text-xs text-muted">그만 받고 싶으면 메일 맨 아래 [메일 그만 받기] 한 번이면 해지돼요.</p>
         <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(step === "skipped" ? "analyze" : "confirm")}>
           {step === "skipped" ? "지금 AI로 분석하기" : "분석 결과 다시 보기"}
@@ -149,7 +136,7 @@ function NextMailPreview(props: { jobs: PreviewJob[]; when: string }) {
 }
 
 // ── 1. pick an AI ────────────────────────────────────────────────────────
-function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void; onSkip: () => void; onQuick: () => void }) {
+function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void; onSkip: () => void }) {
 
   function open(a: AiAssistant) {
     // Open first, synchronously in the click, so popup blockers allow it.
@@ -164,6 +151,10 @@ function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void
         <p className="text-sm font-semibold text-[var(--accent)]">구독 완료</p>
         <h2 className="mt-1 text-2xl font-extrabold tracking-tight">평소 쓰는 AI로 1분 분석</h2>
         <p className="mt-2 text-sm text-muted">AI가 나를 분석하고, 지원할 때 쓸 영어 이력서 PDF도 만들어 줘요. 덕잡에는 분석 결과만 가져와요.</p>
+        <p className="mt-2 text-sm text-muted">
+          더 넣고 싶은 내용이 있으면 AI에게 직접 말해서 넣어 달라고 하세요. 예: &ldquo;영상 편집 3년 했고 애프터이펙트도 써. 이것도
+          넣어서 다시 만들어 줘&rdquo;
+        </p>
         <div className="mt-5 grid gap-2 sm:grid-cols-3">
           {AI_ASSISTANTS.map((a) => (
             <button key={a.id} type="button" className={primary} onClick={() => open(a)}>
@@ -172,14 +163,9 @@ function AnalyzeStep(props: { prompt: string; onOpened: (a: AiAssistant) => void
           ))}
         </div>
       </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        <button type="button" className={link} onClick={props.onQuick}>
-          AI 없이 질문 5개로 할게요
-        </button>
-        <button type="button" className={link} onClick={props.onSkip}>
-          나중에 할게요
-        </button>
-      </div>
+      <button type="button" className={link} onClick={props.onSkip}>
+        나중에 할게요
+      </button>
     </section>
   );
 }
@@ -504,147 +490,6 @@ function EditForm(props: { base: Profile; onCancel: () => void; onSaved: (p: Pro
         </button>
         <button type="button" className={link} onClick={props.onCancel}>
           취소
-        </button>
-      </div>
-    </section>
-  );
-}
-
-// ── five questions instead of an AI ──────────────────────────────────────
-function QuickForm(props: { onCancel: () => void; onSaved: (p: Profile) => void }) {
-  const [a, setA] = useState<QuickAnswers>({ fields: [], skills: "", englishLevel: "", weeklyHours: "", minHourlyUsd: "" });
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const set = <K extends keyof QuickAnswers>(key: K, value: QuickAnswers[K]) => setA((d) => ({ ...d, [key]: value }));
-
-  function toggle(field: string) {
-    setA((d) => {
-      if (d.fields.includes(field)) return { ...d, fields: d.fields.filter((f) => f !== field) };
-      if (d.fields.length >= QUICK_MAX_FIELDS) return d;
-      return { ...d, fields: [...d.fields, field] };
-    });
-  }
-
-  async function save() {
-    if (a.fields.length === 0) {
-      setError("1번에서 하나 이상 골라 주세요.");
-      return;
-    }
-    setPending(true);
-    setError(null);
-    const raw = quickProfile(a);
-    try {
-      const res = await fetch("/api/profile/save", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profile: raw, source: "form" }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.message ?? "저장하지 못했어요.");
-        return;
-      }
-      props.onSaved(ProfileSchema.parse(raw));
-    } catch {
-      setError("네트워크 오류예요. 다시 시도해 주세요.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <section className="card space-y-6">
-      <div>
-        <h2 className="text-lg font-bold">질문 5개면 끝나요</h2>
-        <p className="mt-1 text-sm text-muted">모르는 건 비워 두세요. 나중에 언제든 고칠 수 있어요.</p>
-      </div>
-
-      <fieldset>
-        <legend className="text-sm font-semibold">1. 하고 싶은 일을 골라 주세요 (먼저 고른 게 우선, {QUICK_MAX_FIELDS}개까지)</legend>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {QUICK_FIELD_CHOICES.map((f) => {
-            const at = a.fields.indexOf(f);
-            return (
-              <button
-                key={f}
-                type="button"
-                aria-pressed={at >= 0}
-                onClick={() => toggle(f)}
-                className={`rounded-full border px-3 py-1.5 text-sm ${
-                  at >= 0 ? "border-[var(--ink)] bg-[var(--ink)] text-white" : "border-[var(--line)] bg-[var(--card)]"
-                }`}
-              >
-                {at >= 0 ? `${at + 1}. ` : ""}
-                {f}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="2. 쓸 줄 아는 프로그램·기술 (쉼표로 구분)" htmlFor="q-skills" wide>
-          <input
-            id="q-skills"
-            value={a.skills}
-            onChange={(e) => set("skills", e.target.value)}
-            placeholder="예: 프리미어, 포토샵, 캡컷"
-            className={input}
-          />
-        </Field>
-        <Field label="3. 영어는 어느 정도 해요?" htmlFor="q-english">
-          <select
-            id="q-english"
-            value={a.englishLevel}
-            onChange={(e) => set("englishLevel", e.target.value as QuickAnswers["englishLevel"])}
-            className={input}
-          >
-            <option value="">모름</option>
-            {ENGLISH_LEVEL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="4. 일주일에 몇 시간 할 수 있어요?" htmlFor="q-hours">
-          <input
-            id="q-hours"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={80}
-            value={a.weeklyHours}
-            onChange={(e) => set("weeklyHours", e.target.value)}
-            className={input}
-          />
-        </Field>
-        <Field label="5. 시간당 최소 얼마면 할래요? (달러)" htmlFor="q-pay">
-          <input
-            id="q-pay"
-            type="number"
-            inputMode="decimal"
-            min={1}
-            max={500}
-            value={a.minHourlyUsd}
-            onChange={(e) => set("minHourlyUsd", e.target.value)}
-            placeholder="예: 10"
-            className={input}
-          />
-        </Field>
-      </div>
-
-      {error && (
-        <p className="text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="flex flex-wrap gap-3">
-        <button type="button" className={primary} onClick={save} disabled={pending}>
-          {pending ? "저장하는 중…" : "저장하기"}
-        </button>
-        <button type="button" className={secondary} onClick={props.onCancel} disabled={pending}>
-          AI로 분석할게요
         </button>
       </div>
     </section>

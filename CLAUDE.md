@@ -32,6 +32,11 @@
 - 선택(`lib/match/pick.ts`, `prompts/digest-pick.md`): 모델이 규칙 상위 6개에서 3개를 고르고 이유·오늘 할 일·제목을 쓴다. 최종 순서는 규칙 점수 순. 모델은 `ANTHROPIC_MODEL_PICK`(google/gemini-2.5-flash, 쓸 수 없으면 `ANTHROPIC_MODEL_FAST`로 자동 전환). 오늘 할 일에 금액·회사 내부 자료 첨부를 쓰지 않는다. 결과는 `digest_picks`(0012)에 저장해 같은 날 재실행에도 같은 메일이 나간다.
 - 일정: 05:30~05:50 KST 처리 실행이 먼저 picks를 만들고(`/api/cron/process`), 06:00 발송이 빠진 사람만 채운다. 점검은 `select private.call_app_cron('/api/cron/picks')`(다음 발송분 dry run, 저장 안 함, 0014).
 
+## 하지 않기로 한 것 (2026-11-14 사용자 결정)
+- 5문항 대체 폼(AI 없이 질문에 답해 프로필 만들기): 만들었다가 없앴다. 프로필은 사용자의 AI 분석으로만 받는다. 더 넣고 싶은 내용은 사용자가 AI와 대화해 넣는다(분석 프롬프트 규칙 4).
+- 받은 일감·지원 현황 기록 화면: 만들었다가 없앴다.
+- 프로필 갱신 안내는 2주마다(명세의 30일 대신), 별도 메일 없이 아침 메일 안의 상자로(`lib/digest/nudge.ts`).
+
 ## 반드시 지킬 규칙
 1. 공고 원문(`raw_postings.body`)은 화면·메일·API 응답에 절대 노출하지 않는다. 노출은 `jobs.summary_ko`와 원문 `url`만.
 2. 사용자가 붙여넣은 AI 답변 원문은 저장하지 않는다. `parseProfileText` 결과만 `profiles`에 저장한다.

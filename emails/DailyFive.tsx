@@ -41,7 +41,7 @@ export type DailyFiveProps = {
   profileUrl: string;
   unsubscribeUrl: string;
   privacyUrl: string;
-  /** Profile reminder box (lib/digest/nudge.ts): no analysis yet, or 30 days since the last one. */
+  /** Profile reminder box (lib/digest/nudge.ts): no analysis yet, or two weeks since the last one. */
   profileNudge?: "missing" | "stale" | null;
   /** Public contact (privacy policy §14); omitted until the service domain exists. */
   contactEmail: string | null;
@@ -232,12 +232,12 @@ export default function DailyFive(props: DailyFiveProps) {
           {props.profileNudge && (
             <Section style={{ ...s.card, padding: "16px 18px" }}>
               <Text style={s.tipTitle}>
-                {props.profileNudge === "missing" ? "내 AI로 1분 분석하면 나에게 맞는 일감만 와요" : "분석한 지 30일이 지났어요"}
+                {props.profileNudge === "missing" ? "내 AI로 1분 분석하면 나에게 맞는 일감만 와요" : "분석한 지 2주가 지났어요"}
               </Text>
               <Text style={{ ...s.tipText, margin: "0 0 10px" }}>
                 {props.profileNudge === "missing"
-                  ? "지금은 모두에게 같은 일감이 가요. 평소 쓰는 AI가 나를 분석하게 하거나, 질문 5개에 답하면 맞춤으로 바뀌어요."
-                  : "그동안 늘어난 경험과 바뀐 상황을 반영하려면 AI에게 다시 분석받아 주세요. 추천이 더 정확해져요."}
+                  ? "지금은 모두에게 같은 일감이 가요. 평소 쓰는 AI가 나를 분석하게 하면 맞춤으로 바뀌어요. 더 넣고 싶은 내용은 AI에게 직접 말해서 넣어 달라고 하면 돼요."
+                  : "AI에게 다시 분석받아 업데이트해 주세요. 그동안 해 본 일이나 더 넣고 싶은 내용은 AI에게 직접 말해서 넣어 달라고 하면 돼요."}
               </Text>
               <Link href={props.profileUrl} style={{ ...s.smallLink, color: mailColor.accent, fontWeight: 700, fontSize: 13 }}>
                 {props.profileNudge === "missing" ? "1분 분석하기 →" : "다시 분석하기 →"}

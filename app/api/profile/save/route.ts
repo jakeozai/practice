@@ -6,11 +6,7 @@ import { ensureProfile } from "@/lib/profile/store";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
-const Body = z.object({
-  profile: z.record(z.string(), z.unknown()),
-  /** "form": the five-question form instead of the user's AI (spec §15 Phase 2). */
-  source: z.enum(["ai_import", "form"]).default("ai_import"),
-});
+const Body = z.object({ profile: z.record(z.string(), z.unknown()) });
 
 /** Re-validates the confirmed profile on the server and saves only the parsed fields. */
 export async function POST(request: Request) {
@@ -34,7 +30,7 @@ export async function POST(request: Request) {
     .update({
       ...columns,
       profile_json: profile_json as unknown as Json,
-      profile_source: body.data.source,
+      profile_source: "ai_import",
       profile_imported_at: now,
       updated_at: now,
     })
