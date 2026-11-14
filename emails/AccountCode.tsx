@@ -52,7 +52,7 @@ export default function AccountCode({ code, logoUrl, brand, fontUrl }: AccountCo
           <Text style={s.code}>{code}</Text>
           <Text style={s.note}>코드는 1시간 동안 한 번만 쓸 수 있어요. 직접 요청하지 않았다면 이 메일은 무시하세요. 누구에게도 알려 주지 마세요.</Text>
           <Hr style={{ borderColor: mailColor.line, margin: "28px 0 16px" }} />
-          <Text style={s.footer}>{brand} · 매일 아침 6시, AI 일감 5개</Text>
+          <Text style={s.footer}>{brand} · 매일 아침 6시, 해외 AI 일감 5개</Text>
         </Container>
       </Body>
     </Html>

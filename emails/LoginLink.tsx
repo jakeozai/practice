@@ -80,7 +80,7 @@ export default function LoginLink({ confirmUrl, logoUrl, brand, banners, fontUrl
           {banners && <Img src={banners.blueHour} width="528" height="200" alt="내일 아침 6시" style={s.strip} />}
           <Hr style={{ borderColor: mailColor.line, margin: "24px 0 16px" }} />
           <Text style={s.footer}>무료이고, 그만 받고 싶으면 일감 메일 맨 아래 [메일 그만 받기] 한 번이면 해지돼요.</Text>
-          <Text style={s.footer}>{brand} · 매일 아침 6시, AI 일감 5개</Text>
+          <Text style={s.footer}>{brand} · 매일 아침 6시, 해외 AI 일감 5개</Text>
         </Container>
       </Body>
     </Html>

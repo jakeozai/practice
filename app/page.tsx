@@ -66,6 +66,14 @@ const CIRCLES = [
 const MARQUEE = ["영상 편집", "번역·자막", "AI 답변 평가", "로고 디자인", "3D 모델링", "모션 그래픽", "웹사이트 제작", "업무 자동화", "데이터 라벨링", "영문 카피"];
 
 const PROMISES: { title: ReactNode; text: string }[] = [
+  {
+    title: (
+      <>
+        매일 수백 개 중 <span style={{ color: accent }}>5개</span>만
+      </>
+    ),
+    text: "전 세계 공고를 살펴 한국에서 지원할 수 있고 최저시급 이상인 일감만 골라 한국어로 정리해요.",
+  },
   { title: "모든 일감에 원문 링크", text: "지원은 원래 플랫폼에서 직접 해요." },
   {
     title: (
@@ -82,7 +90,10 @@ const FAQ = [
   { q: "정말 무료예요?", a: "네, 구독은 무료예요." },
   { q: "회사 다니면서도 할 수 있나요?", a: "AI로 몇 시간 안에 끝나는 일 위주라 퇴근 후나 주말에 하기 좋아요." },
   { q: "이력서 파일은 누가 만들어요?", a: "평소 쓰는 AI가 만들어요. 받은 한글·영문 이력서는 지원할 때 그대로 쓰면 돼요." },
-  { q: "어디 공고인가요?", a: "해외 회사와 플랫폼의 원격 일감이에요. 한국에서 지원할 수 있는 것만 골라 한국어로 요약해 보내요." },
+  {
+    q: "왜 해외 공고만 보내나요?",
+    a: "AI로 몇 시간 안에 끝내는 원격 단기 일감은 해외 회사와 플랫폼에 훨씬 많아요. 대신 영어로 여기저기 흩어져 있어 찾기 어렵죠. 덕잡은 그중 한국에서 지원할 수 있는 것만 엄선해 한국어로 정리해요. 국내 일감 사이트는 공고를 다른 곳에 옮겨 싣는 걸 허락하지 않는 곳이 많아 지금은 다루지 않아요.",
+  },
   { q: "영어를 잘 못해도 되나요?", a: "영어 지시문을 읽을 정도면 할 수 있는 일감이 많아요. 내 영어 수준에 맞는 일감만 골라 보내고, 지원할 땐 AI가 만든 영문 이력서를 쓰면 돼요." },
 ];
 
@@ -183,10 +194,10 @@ export default function Home(props: PageProps<"/">) {
         style={{ ...wrap, padding: "clamp(56px, 8vw, 104px) 24px 0", gap: "clamp(40px, 6vw, 72px)", alignItems: "center" }}
       >
         <div>
-          <h1 className="lp-rise" style={{ margin: 0, fontSize: "clamp(40px, 6.4vw, 88px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
+          <h1 className="lp-rise" style={{ margin: 0, fontSize: "clamp(34px, 5.2vw, 66px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.045em" }}>
             매일 아침 6시,
             <br />
-            <span style={{ color: accent }}>단기 AI 일감 5개</span>
+            <span style={{ color: accent }}>해외 단기 AI 일감 5개</span>
           </h1>
           <div className="lp-rise" style={delay(240)}>
             <Suspense fallback={<SubscribeForm id="b-hero-email" />}>
@@ -218,7 +229,7 @@ export default function Home(props: PageProps<"/">) {
             <div aria-hidden="true" style={{ position: "absolute", left: 28, right: 28, bottom: -24, height: 60, borderRadius: 26, background: "var(--surface-3)" }} />
             <div aria-hidden="true" style={{ position: "absolute", left: 14, right: 14, bottom: -12, height: 60, borderRadius: 26, background: "var(--surface-2)" }} />
             <article
-              aria-label="예시 메일: 오늘의 맞춤 일감 5개"
+              aria-label="예시 메일: 오늘 엄선한 해외 일감 5개"
               className="lp-card"
               style={{ position: "relative", boxSizing: "border-box", padding: "18px 20px 8px", borderRadius: 26, background: "var(--paper)", color: "var(--paper-ink)" }}
             >
@@ -227,7 +238,7 @@ export default function Home(props: PageProps<"/">) {
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>duckjob</p>
                 <p style={{ margin: "0 0 0 auto", fontSize: 13, color: "var(--paper-muted)" }}>예시 · 오전 6:00</p>
               </div>
-              <p style={{ margin: "14px 0 4px", fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>오늘의 맞춤 일감 5개</p>
+              <p style={{ margin: "14px 0 4px", fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>오늘 엄선한 해외 일감 5개</p>
               <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                 {EXAMPLE_JOBS.map((j, i) => (
                   <li
@@ -431,7 +442,7 @@ export default function Home(props: PageProps<"/">) {
               </p>
               <h3 style={{ ...stepTitle, lineHeight: 1.4 }}>
                 매일 아침 6시,
-                <br />내 이력서에 맞춘 공고 5개
+                <br />내 이력서에 맞춘 해외 공고 5개
               </h3>
             </div>
           </DuckBubble>
@@ -534,7 +545,7 @@ export default function Home(props: PageProps<"/">) {
       >
         <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- static SVG wordmark */}
-          <img src="/brand/duckjob-wordmark-ondark.svg" alt="duckjob" width={76} height={22} style={{ display: "block", width: 76, height: 22 }} />· 매일 아침 6시, AI 일감 5개
+          <img src="/brand/duckjob-wordmark-ondark.svg" alt="duckjob" width={76} height={22} style={{ display: "block", width: 76, height: 22 }} />· 매일 아침 6시, 해외 AI 일감 5개
         </p>
         <p style={{ margin: 0 }}>
           {contact ? `문의 ${contact} · ` : ""}© 2026 duckjob

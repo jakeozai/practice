@@ -129,7 +129,7 @@ export function SubscribeForm({ id, next, notice, center = false }: { id: string
           {error}
         </p>
       )}
-      <p style={{ margin: center ? "14px 0 0" : "14px 0 0 8px", fontSize: 14, color: "var(--muted)" }}>무료 · 하루 5개 공고 · 언제든 해지</p>
+      <p style={{ margin: center ? "14px 0 0" : "14px 0 0 8px", fontSize: 14, color: "var(--muted)" }}>무료 · 매일 엄선한 해외 공고 5개 · 언제든 해지</p>
     </div>
   );
 }
