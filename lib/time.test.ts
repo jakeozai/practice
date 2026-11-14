@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { seoulDate, koreanMonthDay, koreanWeekday, isIsoDate, seoulDayStartUtc } from "./time";
+import { seoulDate, koreanMonthDay, koreanWeekday, isIsoDate, seoulDayStartUtc, nextSendDate } from "./time";
 
 test("seoulDate uses KST, not UTC", () => {
   // 21:00 UTC on Nov 7 = 06:00 KST on Nov 8 (the digest send time)
@@ -28,4 +28,10 @@ test("isIsoDate", () => {
 
 test("seoulDayStartUtc", () => {
   assert.equal(seoulDayStartUtc("2026-11-08").toISOString(), "2026-11-07T15:00:00.000Z");
+});
+
+test("next send date: today before 06:00 KST, tomorrow after", () => {
+  assert.equal(nextSendDate(new Date("2026-11-14T20:59:00Z")), "2026-11-15"); // 05:59 KST on the 15th
+  assert.equal(nextSendDate(new Date("2026-11-14T21:00:00Z")), "2026-11-16"); // 06:00 KST on the 15th
+  assert.equal(nextSendDate(new Date("2026-11-14T04:00:00Z")), "2026-11-15"); // 13:00 KST on the 14th
 });

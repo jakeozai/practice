@@ -45,3 +45,10 @@ export function seoulSendTime(isoDate: string): Date {
 export function seoulDayStartUtc(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00+09:00`);
 }
+
+/** The send date of the next 06:00 KST mail: today before 06:00 KST, tomorrow after. */
+export function nextSendDate(at: Date = new Date()): string {
+  const today = seoulDate(at);
+  if (at.getTime() < seoulSendTime(today).getTime()) return today;
+  return seoulDate(new Date(seoulSendTime(today).getTime() + 24 * 60 * 60 * 1000));
+}

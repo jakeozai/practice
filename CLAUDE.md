@@ -29,7 +29,7 @@
 - 프로필이 있는 구독자에게는 **그 사람의 AI 분석을 철저히 따른 3개**만 보낸다. 종류를 섞지 않는다. 맞는 게 없으면 그날은 보내지 않고(공용 목록으로 채우지 않음) 기록만 남긴다.
 - 규칙(`lib/match/fit.ts`, 사전 `lib/match/concepts.ts`): 작업 언어·영어 수준·피하고 싶은 일·가용 시간·최저 시급·자격 요건으로 제외 → fields 순서·AI 추천(notes_ko)·전문 분야·기술·경력 순 가중치로 점수.
 - 선택(`lib/match/pick.ts`, `prompts/digest-pick.md`): 모델이 상위 12개에서 3개를 고르고 이유·오늘 할 일·제목을 쓴다. 결과는 `digest_picks`(0012)에 저장해 같은 날 재실행에도 같은 메일이 나간다.
-- 일정: 05:30~05:50 KST 처리 실행이 먼저 picks를 만들고(`/api/cron/process`), 06:00 발송이 빠진 사람만 채운다. 점검은 `/api/cron/picks?dry=1&user=…`.
+- 일정: 05:30~05:50 KST 처리 실행이 먼저 picks를 만들고(`/api/cron/process`), 06:00 발송이 빠진 사람만 채운다. 점검은 `select private.call_app_cron('/api/cron/picks')`(다음 발송분 dry run, 저장 안 함, 0014).
 
 ## 반드시 지킬 규칙
 1. 공고 원문(`raw_postings.body`)은 화면·메일·API 응답에 절대 노출하지 않는다. 노출은 `jobs.summary_ko`와 원문 `url`만.
