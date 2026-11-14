@@ -146,3 +146,9 @@ test("profile reminder box: none by default, one wording per case", async () => 
   assert.match(stale.html, /AI에게 직접 말해서/);
   assert.match(stale.html, /\/onboarding/);
 });
+
+test("boards that ask for credit get a 출처 line", () => {
+  const card = digestCard({ ...job, url: "https://jobicy.com/jobs/1-motion-designer" }, "https://x/r/t");
+  assert.ok(card.facts.some((f) => f.label === "출처" && f.value === "Jobicy"));
+  assert.ok(!digestCard(job, "https://x/r/t").facts.some((f) => f.label === "출처"));
+});

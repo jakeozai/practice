@@ -252,3 +252,9 @@ test("deposit and messenger lures are never sent", () => {
   const lure = buildJob({ raw: { ...raw, body: "Great pay. Message our recruiter on Telegram." }, source: trusted, extraction, sameTitleCount: 1 });
   assert.equal(lure.review_state, "rejected");
 });
+
+test("aggregators: the company named in the posting, not the board", () => {
+  const jobicy = { name: "Jobicy (원격 계약·파트타임)", trusted: true, kind: "jobicy" };
+  assert.equal(decideCompany(jobicy, "Something else", "Company: Acme Studio\nType: Contract\n\nMake videos."), "Acme Studio");
+  assert.equal(decideCompany(jobicy, "Acme", "no company line"), "Acme", "falls back to the extraction");
+});

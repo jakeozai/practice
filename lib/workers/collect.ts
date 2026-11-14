@@ -22,7 +22,22 @@ import { fetchJson, fetchText, SourceFetchError } from "../sources/http";
 import { PAGE_FETCH_CAP, PAGE_FETCH_INTERVAL_MS, PAGE_SITES, listJobUrls, loadRobots, parseJobPage } from "../sources/pages";
 import { parseSource, sourceUrl } from "../sources/adapters";
 import { FREELANCER_PRESETS, freelancerUrl, parseFreelancer, selectProjects, toPosting } from "../sources/freelancer";
-import { isFetchableKind, type FetchableKind, type SourcePosting } from "../sources/types";
+import { SLUG_PATTERN, isFetchableKind, type FetchableKind, type SourcePosting } from "../sources/types";
+import {
+  HIMALAYAS_INTERVAL_MS,
+  HIMALAYAS_MAX_PAGES,
+  HIMALAYAS_TYPES,
+  coveredCompanyKeys,
+  himalayasListing,
+  himalayasUrl,
+  isAggregatorKind,
+  jobicyListing,
+  jobicyUrl,
+  parseHimalayas,
+  parseJobicy,
+  type AggregatorKind,
+  type Listing,
+} from "../sources/aggregators";
 import { nextMissing, planSync, type ExistingRaw } from "../sources/sync";
 import { bodyHash } from "../sources/text";
 import { sendEmail } from "../email/send";
@@ -37,7 +52,15 @@ const PAUSE_BETWEEN_SOURCES_MS = 1000;
 /** Stop fetching pages this long before the deadline (the bookkeeping after it needs time). */
 const PAGE_DEADLINE_MARGIN_MS = 20_000;
 
-export type CollectSource = { id: string; name: string; kind: FetchableKind | "page" | "freelancer"; endpoint: string; fail_count: number };
+export type CollectSource = {
+  id: string;
+  name: string;
+  kind: FetchableKind | "page" | "freelancer" | AggregatorKind;
+  endpoint: string;
+  fail_count: number;
+  /** Aggregators only: companies we collect from their own boards, skipped there. */
+  covered?: Set<string>;
+};
 
 /** Pause between Freelancer.com searches (one run makes ~40 requests). */
 const FREELANCER_QUERY_INTERVAL_MS = 1000;
@@ -56,6 +79,37 @@ async function fetchFreelancer(endpoint: string, userAgent: string, log: RunOpti
   const why = Object.entries(skipped).map(([k, v]) => `${k} ${v}`).join(", ");
   log(`    Freelancer.com: ${preset.queries.length} searches → ${kept.length} kept${why ? ` (left out: ${why})` : ""}`);
   return kept.map(toPosting);
+}
+
+/** Jobicy: one call a day (their terms allow at most one an hour). */
+async function fetchJobicy(endpoint: string, userAgent: string, covered: Set<string>): Promise<Listing> {
+  return jobicyListing(parseJobicy(await fetchJson(jobicyUrl(endpoint), { userAgent })), covered);
+}
+
+/**
+ * Himalayas: contract, part-time and temporary jobs open to `endpoint` (a country code), page by page.
+ * Null without HIMALAYAS_API_KEY: the keyless rate limit stops the walk after a page or two, and a
+ * partial listing can't tell which jobs closed.
+ */
+async function fetchHimalayas(endpoint: string, userAgent: string, covered: Set<string>, log: RunOptions["log"]): Promise<Listing | null> {
+  const key = process.env.HIMALAYAS_API_KEY?.trim();
+  if (!key) return null;
+  const headers = { authorization: `Bearer ${key}` };
+  const pages = [];
+  let complete = true;
+  for (const type of HIMALAYAS_TYPES) {
+    let page = 1;
+    for (; page <= HIMALAYAS_MAX_PAGES; page++) {
+      const jobs = parseHimalayas(await fetchJson(himalayasUrl(endpoint, type, page), { userAgent, headers }));
+      await sleep(HIMALAYAS_INTERVAL_MS);
+      if (jobs.length === 0) break;
+      pages.push(jobs);
+    }
+    if (page > HIMALAYAS_MAX_PAGES) complete = false;
+  }
+  const listing = himalayasListing(pages, covered, complete, new Date());
+  log(`    Himalayas: ${pages.length} pages → ${listing.posts.length} kept${complete ? "" : " (more pages than the cap: nothing closed this run)"}`);
+  return listing;
 }
 
 /** Delete postings and their jobs (Freelancer.com data may only be kept as a fresh cache). */
@@ -183,16 +237,32 @@ async function collectPageSource(db: ServiceClient, source: CollectSource, userA
 async function collectOne(db: ServiceClient, source: CollectSource, userAgent: string, opts: RunOptions): Promise<boolean> {
   const now = new Date().toISOString();
   let posts: SourcePosting[];
+  /** A partial listing can't say which postings disappeared, so nothing is closed. */
+  let partial = false;
   try {
     if (source.kind === "page") {
       await collectPageSource(db, source, userAgent, now, opts);
       await db.from("sources").update({ fail_count: 0, last_fetched_at: now }).eq("id", source.id);
       return true;
     }
-    posts =
-      source.kind === "freelancer"
-        ? await fetchFreelancer(source.endpoint, userAgent, opts.log)
-        : await fetchPostings(source.kind, source.endpoint, userAgent);
+    if (isAggregatorKind(source.kind)) {
+      const covered = source.covered ?? new Set<string>();
+      const listing =
+        source.kind === "jobicy"
+          ? await fetchJobicy(source.endpoint, userAgent, covered)
+          : await fetchHimalayas(source.endpoint, userAgent, covered, opts.log);
+      if (!listing) {
+        opts.log(`  - ${source.name}: waiting for HIMALAYAS_API_KEY`);
+        return true;
+      }
+      posts = listing.posts;
+      partial = !listing.complete;
+    } else {
+      posts =
+        source.kind === "freelancer"
+          ? await fetchFreelancer(source.endpoint, userAgent, opts.log)
+          : await fetchPostings(source.kind, source.endpoint, userAgent);
+    }
   } catch (e) {
     const failCount = source.fail_count + 1;
     const message = e instanceof SourceFetchError || e instanceof Error ? e.message : String(e);
@@ -212,7 +282,8 @@ async function collectOne(db: ServiceClient, source: CollectSource, userAgent: s
   }
   await markSeen(db, plan.seenRawIds, now);
   const cacheOnly = source.kind === "freelancer";
-  const closed = cacheOnly ? await purgeRaw(db, plan.missingRawIds) : await markMissing(db, plan.missingRawIds);
+  const missing = partial ? [] : plan.missingRawIds;
+  const closed = cacheOnly ? await purgeRaw(db, missing) : await markMissing(db, missing);
   await db.from("sources").update({ fail_count: 0, last_fetched_at: now }).eq("id", source.id);
 
   opts.log(
@@ -240,6 +311,12 @@ export async function collectSources(
     }
     if (s.kind === "page" && s.endpoint && PAGE_SITES[s.endpoint]) {
       sources.push({ ...s, kind: "page", endpoint: s.endpoint });
+      continue;
+    }
+    if (isAggregatorKind(s.kind) && s.endpoint && SLUG_PATTERN.test(s.endpoint)) {
+      // Companies collected from their own hiring boards; their copies on the aggregator are skipped.
+      const own = data.filter((o) => isFetchableKind(o.kind) || o.kind === "page").map((o) => o.name);
+      sources.push({ ...s, kind: s.kind, endpoint: s.endpoint, covered: coveredCompanyKeys(own) });
       continue;
     }
     if (!isFetchableKind(s.kind) || !s.endpoint) {

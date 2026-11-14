@@ -134,6 +134,18 @@ export function normalizeTitle(title: string): string {
 }
 
 /** A freelance-marketplace project: you send a quote and compete with other bidders. */
+/** Boards whose terms ask for credit next to their jobs (Jobicy, Himalayas). Null for everyone else. */
+export function sourceCredit(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    if (/(^|\.)jobicy\.com$/.test(host)) return "Jobicy";
+    if (/(^|\.)himalayas\.app$/.test(host)) return "Himalayas";
+  } catch {
+    // not a URL
+  }
+  return null;
+}
+
 export function isBiddingGig(url: string): boolean {
   try {
     return /(^|\.)freelancer\.com$/.test(new URL(url).hostname);

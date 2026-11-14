@@ -88,7 +88,7 @@ export function decideKoreaEligible(location: string | null | undefined, llmValu
  */
 const RESIDENTS_ONLY_KO = /(?:거주자|거주\s*중인\s*(?:분|사람)|거주하는\s*(?:분|사람))\s*(?:만|한정|대상|에\s*한해|를\s*대상|를\s*위한)/;
 const RESIDENTS_ONLY_EN =
-  /\b(?:US|USA|U\.S\.|UK|EU|Canada|Europe|India|Philippines|Brazil|Mexico|LATAM)[\s-]*(?:residents?\s*)?only\b|\bresidents?\s+of\s+(?:the\s+)?(?:US|USA|United States|UK|United Kingdom|Canada|EU)\s+only\b|\((?:US|USA|UK|Canada|EU)\)/i;
+  /\b(?:US|USA|U\.S\.|UK|EU|Canada|Europe|India|Philippines|Brazil|Mexico|LATAM)[\s-]*(?:residents?\s*)?only\b|\bresidents?\s+of\s+(?:the\s+)?(?:US|USA|United States|UK|United Kingdom|Canada|EU)\s+only\b|\((?:US|USA|UK|Canada|EU)\)|\b(?:U\.S\.|US|USA|UK|EU|Canada)[\s-]*based\b/i;
 const KOREA_OR_WORLD = /한국|대한민국|국내|전\s*세계|전세계|글로벌|국가\s*무관|지역\s*무관|\bkorea\b|worldwide|world\s*wide|\bglobal\b|anywhere/i;
 
 export function residentsOnlyElsewhere(texts: (string | null | undefined)[]): boolean {

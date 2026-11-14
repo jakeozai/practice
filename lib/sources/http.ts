@@ -49,7 +49,7 @@ export async function fetchText(
 
 export async function fetchJson(
   url: string,
-  opts: { userAgent: string; timeoutMs?: number; attempts?: number; fetchImpl?: typeof fetch } = {
+  opts: { userAgent: string; timeoutMs?: number; attempts?: number; fetchImpl?: typeof fetch; headers?: Record<string, string> } = {
     userAgent: botUserAgent(undefined),
   },
 ): Promise<unknown> {
@@ -60,7 +60,7 @@ export async function fetchJson(
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const res = await doFetch(url, {
-        headers: { "user-agent": opts.userAgent, accept: "application/json" },
+        headers: { ...opts.headers, "user-agent": opts.userAgent, accept: "application/json" },
         signal: AbortSignal.timeout(opts.timeoutMs ?? SOURCE_TIMEOUT_MS),
       });
       if (res.ok) return await res.json();

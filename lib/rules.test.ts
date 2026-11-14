@@ -99,6 +99,8 @@ test("residents of another country only: summary or title says so", () => {
     ["캐나다 거주자를 대상으로 프랑스어 AI 데이터 관련 유연한 원격 프로젝트 참여자를 모집합니다."],
     ["프랑스, 스페인, 모로코 등 특정 국가 거주자만 지원 가능하며, 원격 근무입니다."],
     ["English Language Specialist (US Only) - Freelance AI Trainer"],
+    ["Web Developer: WordPress & HubSpot (U.S. Based, Remote Contractor)"],
+    ["Video Editor - US-based contractor"],
     ["Video editor, UK residents only"],
   ]) {
     assert.equal(residentsOnlyElsewhere(lines), true, lines[0]);
@@ -108,6 +110,7 @@ test("residents of another country only: summary or title says so", () => {
     ["전 세계 거주자 대상 원격 일감"],
     ["원어민 수준의 한국어 필요", "시간당 30달러"],
     ["North Korea excluded; worldwide remote"],
+    ["US-based startup hiring worldwide"],
     ["유튜브 쇼츠 편집 10개"],
   ]) {
     assert.equal(residentsOnlyElsewhere(lines), false, lines[0]);

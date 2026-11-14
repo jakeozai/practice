@@ -5,7 +5,7 @@
  */
 import { render } from "@react-email/components";
 import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/DailyFive";
-import { CATEGORY_CHIP_KO, compactPay, isBiddingGig, jobFacts, statusBadge } from "../jobs/format";
+import { CATEGORY_CHIP_KO, compactPay, isBiddingGig, jobFacts, sourceCredit, statusBadge } from "../jobs/format";
 import { mailAssets } from "../../emails/theme";
 import { signLink } from "../links";
 import type { ProfileNudge } from "./nudge";
@@ -33,7 +33,11 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     summary: job.summary_ko,
     badge: statusBadge(job.status),
     category: job.category && job.category !== "other" ? CATEGORY_CHIP_KO[job.category] : null,
-    facts: isBiddingGig(job.url) ? [...jobFacts(job), { label: "지원", value: "견적 입찰 (경쟁)" }] : jobFacts(job),
+    facts: [
+      ...jobFacts(job),
+      ...(isBiddingGig(job.url) ? [{ label: "지원", value: "견적 입찰 (경쟁)" }] : []),
+      ...(sourceCredit(job.url) ? [{ label: "출처", value: sourceCredit(job.url)! }] : []),
+    ],
     pay: compactPay(job),
     reason,
     today,

@@ -3,6 +3,7 @@
  * review decision (spec §8 steps 3 and 5). Pure.
  */
 import { decideKoreaEligible, koreaEligibleFromLocation, residentsOnlyElsewhere } from "../eligibility";
+import { companyFromBody, isAggregatorKind } from "../sources/aggregators";
 import { decideStatus } from "../status";
 import { isScamRejected, scamScore } from "../scam";
 import { normalizeTitle } from "./format";
@@ -95,10 +96,15 @@ const NO_COMPANY = /^(?:n\/?a|unknown|none|not specified|undisclosed|confidentia
  * Recruitee) belongs to one company, so its name wins over whatever the LLM
  * read in the text (2026-11-12: "N/A", or the job title, for Invisible).
  * Page sources can list other companies' jobs, so there the LLM's answer is
- * used unless it is a placeholder.
+ * used unless it is a placeholder. Aggregators (Jobicy, Himalayas) name the
+ * company in the posting itself, which wins.
  */
-export function decideCompany(source: SourceInfo, llmCompany: string | null | undefined): string {
-  if (source.kind !== "page" && source.kind !== "manual") return boardCompany(source.name);
+export function decideCompany(source: SourceInfo, llmCompany: string | null | undefined, rawBody?: string | null): string {
+  if (isAggregatorKind(source.kind)) {
+    const named = companyFromBody(rawBody);
+    if (named) return named;
+  }
+  if (source.kind !== "page" && source.kind !== "manual" && !isAggregatorKind(source.kind)) return boardCompany(source.name);
   const c = llmCompany?.trim();
   return c && !NO_COMPANY.test(c) ? c : boardCompany(source.name);
 }
@@ -128,7 +134,7 @@ export function buildJob(input: {
 }): JobInsert {
   const { raw, source, extraction: x, sameTitleCount } = input;
   const title = x?.title || raw.title?.trim() || "(제목 없음)";
-  const company = decideCompany(source, x?.company);
+  const company = decideCompany(source, x?.company, raw.body);
   // The posting's own words win over a generic "Remote" location: "US residents only" isn't for Korea.
   const korea = residentsOnlyElsewhere([raw.title, x?.title, ...(x?.summary_ko ?? [])])
     ? false
