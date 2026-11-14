@@ -8,6 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "../supabase/database.types";
 import { rankForEveryone } from "./plan";
 import { seoulSendTime } from "../time";
+import { ProfileSchema } from "../profile/parse";
+import { buildSignals, rankForProfile } from "../match/fit";
 
 export type Db = SupabaseClient<Database>;
 
@@ -29,23 +31,31 @@ export type DigestJob = Pick<
   | "pay_currency"
   | "pay_unit"
   | "hours_per_week_min"
+  | "requires_credential"
+  | "first_seen_at"
 >;
 
 export const DIGEST_JOB_COLUMNS =
-  "id, company, title, title_ko, summary_ko, status, category, languages, english_level, engagement, url, pay_min, pay_max, pay_currency, pay_unit, hours_per_week_min" as const;
+  "id, company, title, title_ko, summary_ko, status, category, languages, english_level, engagement, url, pay_min, pay_max, pay_currency, pay_unit, hours_per_week_min, requires_credential, first_seen_at" as const;
 
 /**
- * How many jobs to rank; each user gets the first DIGEST_SIZE they haven't
- * seen. Large enough that Korean-language work isn't cut off by a burst of
- * newer foreign-language postings before rankForEveryone sees it.
+ * How many jobs to rank (the API's row limit). Personal picks look at every
+ * open job that fits the person, not only the newest few, and without a
+ * profile Korean-language work must not be cut off by a burst of newer
+ * foreign-language postings before rankForEveryone sees it.
  */
-export const CANDIDATE_POOL = 500;
+export const CANDIDATE_POOL = 1000;
 
 /**
  * Approved, open to Korea residents, not permanent staff hiring, not closed —
  * newest first, then the highest pay, then Korean-language work moved ahead.
  */
 export async function loadCandidateJobs(db: Db, limit = CANDIDATE_POOL): Promise<DigestJob[]> {
+  return rankForEveryone(await loadCandidatePool(db, limit));
+}
+
+/** The same jobs in database order (newest, then best paid), for personal ranking. */
+export async function loadCandidatePool(db: Db, limit = CANDIDATE_POOL): Promise<DigestJob[]> {
   const { data, error } = await db
     .from("jobs")
     .select(DIGEST_JOB_COLUMNS)
@@ -57,15 +67,27 @@ export async function loadCandidateJobs(db: Db, limit = CANDIDATE_POOL): Promise
     .order("pay_max", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw new Error(`load candidate jobs: ${error.message}`);
-  return rankForEveryone(data);
+  return data;
 }
 
-/** What this subscriber's next mail would hold, given what they already got. */
+/**
+ * What this subscriber's next mail would hold, given what they already got:
+ * with a profile, the best fits by the rules of lib/match/fit.ts (the morning
+ * mail lets the model choose among the top of the same list); without one,
+ * the shared order.
+ */
 export async function nextMailJobs(db: Db, userId: string, size: number): Promise<DigestJob[]> {
-  const [jobs, sent] = await Promise.all([loadCandidateJobs(db), db.from("matches").select("job_id").eq("user_id", userId)]);
+  const [jobs, sent, prof] = await Promise.all([
+    loadCandidatePool(db),
+    db.from("matches").select("job_id").eq("user_id", userId),
+    db.from("profiles").select("profile_json").eq("user_id", userId).maybeSingle(),
+  ]);
   if (sent.error) throw new Error(`load matches: ${sent.error.message}`);
   const seen = new Set(sent.data.map((m) => m.job_id));
-  return jobs.filter((j) => !seen.has(j.id)).slice(0, size);
+  const fresh = jobs.filter((j) => !seen.has(j.id));
+  const profile = prof.data?.profile_json ? ProfileSchema.safeParse(prof.data.profile_json) : null;
+  if (profile?.success) return rankForProfile(fresh, buildSignals(profile.data)).slice(0, size).map((r) => r.job);
+  return rankForEveryone(fresh).slice(0, size);
 }
 
 export type CurationStats = {

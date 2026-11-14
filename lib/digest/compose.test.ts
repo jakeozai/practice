@@ -24,6 +24,8 @@ const job: DigestJob = {
   pay_currency: "USD",
   pay_unit: "hour",
   hours_per_week_min: 15,
+  requires_credential: false,
+  first_seen_at: "2026-11-12T10:00:00Z",
 };
 
 const input = {
@@ -94,4 +96,17 @@ test("top line: the day's numbers when they make sense, else the plain intro", a
   assert.ok(withStats.text.includes("지난 하루 새로 올라온 공고 120개 중 한국에서 할 수 있는 단기 일감 9개, 그중 1개를 골랐어요."));
   const plain = await composeDigestEmail(input);
   assert.ok(plain.text.includes("한국에서 할 수 있는 것만 골라"));
+});
+
+test("personal picks: reason, today's first step and own subject", async () => {
+  const mail = await composeDigestEmail({
+    ...input,
+    reasons: new Map([[JOB_ID, "사내방송 편집 실력 그대로 쓰는 일이에요"]]),
+    todays: new Map([[JOB_ID, "오늘 저녁 30분: 편집본 링크 붙여 지원"]]),
+    subject: "영상 편집 실력으로 오늘 할 일감 1개",
+  });
+  assert.equal(mail.subject, "영상 편집 실력으로 오늘 할 일감 1개 · 11월 8일");
+  for (const part of ["사내방송 편집 실력 그대로 쓰는 일이에요", "오늘 할 일", "오늘 저녁 30분: 편집본 링크 붙여 지원", "내 AI가 분석한 프로필에 딱 맞는"]) {
+    assert.ok(mail.html.includes(part), `html has ${part}`);
+  }
 });

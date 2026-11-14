@@ -225,6 +225,28 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["digest_sends"]["Insert"]>;
         Relationships: [];
       };
+      digest_picks: {
+        Row: {
+          user_id: string;
+          send_date: string;
+          job_ids: string[];
+          notes: Json;
+          subject: string | null;
+          method: "llm" | "rules";
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          send_date: string;
+          job_ids: string[];
+          notes?: Json;
+          subject?: string | null;
+          method: "llm" | "rules";
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["digest_picks"]["Insert"]>;
+        Relationships: [];
+      };
       applications: {
         Row: {
           id: string;

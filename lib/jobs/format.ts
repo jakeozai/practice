@@ -123,3 +123,12 @@ export function normalizeTitle(title: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** A freelance-marketplace project: you send a quote and compete with other bidders. */
+export function isBiddingGig(url: string): boolean {
+  try {
+    return /(^|\.)freelancer\.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}

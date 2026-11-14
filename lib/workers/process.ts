@@ -15,7 +15,7 @@
 import type { ServiceClient } from "../supabase/service";
 import { createAnthropic, fastModelConfig } from "../llm/client";
 import { extractJob, type JobExtract, type MessagesClient } from "../llm/extractJob";
-import { createPacer, llmRequestsPerMinute, pacedClient } from "../llm/pace";
+import { createPacer, llmRequestsPerMinute, pacedClient, type Pacer } from "../llm/pace";
 import { buildJob, decideCompany, triage, type SourceInfo } from "../jobs/process";
 import { normalizeTitle } from "../jobs/format";
 import { REPOST_WINDOW_DAYS } from "../status";
@@ -62,10 +62,11 @@ export type ProcessStats = {
   errors: number;
 };
 
-export async function processPostings(db: ServiceClient, opts: RunOptions & { limit?: number }): Promise<ProcessStats> {
+export async function processPostings(db: ServiceClient, opts: RunOptions & { limit?: number; pacer?: Pacer }): Promise<ProcessStats> {
   const limit = Math.min(MAX_PER_RUN, opts.limit ?? MAX_PER_RUN);
   const llm = await fastModelConfig();
-  const pacer = createPacer(llmRequestsPerMinute());
+  // Shared with the morning picks in the same run, so both stay under one rate limit.
+  const pacer = opts.pacer ?? createPacer(llmRequestsPerMinute());
   const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, pacer) : null;
   if (!llm) opts.log("No LLM configured (ANTHROPIC_MODEL_FAST + AI Gateway or ANTHROPIC_API_KEY): candidates go to the review queue without summaries.");
 

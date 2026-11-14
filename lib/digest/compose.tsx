@@ -5,7 +5,7 @@
  */
 import { render } from "@react-email/components";
 import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/DailyFive";
-import { CATEGORY_CHIP_KO, jobFacts, statusBadge } from "../jobs/format";
+import { CATEGORY_CHIP_KO, isBiddingGig, jobFacts, statusBadge } from "../jobs/format";
 import { signLink } from "../links";
 import { koreanMonthDay, koreanWeekday, seoulDayStartUtc } from "../time";
 import { BRAND, contactEmail } from "../brand";
@@ -17,17 +17,11 @@ import type { CurationStats } from "./candidates";
 export { DIGEST_JOB_COLUMNS, type DigestJob } from "./candidates";
 import type { DigestJob } from "./candidates";
 
-/** A freelance-marketplace project: you send a quote and compete with other bidders. */
-export function isBiddingGig(url: string): boolean {
-  try {
-    return /(^|\.)freelancer\.com$/.test(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-}
+// Lives with the other display helpers (no React there); re-exported for existing callers.
+export { isBiddingGig } from "../jobs/format";
 
 /** One mail card. The posting text never appears, only our Korean summary and structured fields (CLAUDE.md rule 1). */
-export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null): DailyFiveJob {
+export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null, today: string | null = null): DailyFiveJob {
   const korean = job.title_ko?.trim() || null;
   return {
     id: job.id,
@@ -39,6 +33,7 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     category: job.category && job.category !== "other" ? CATEGORY_CHIP_KO[job.category] : null,
     facts: isBiddingGig(job.url) ? [...jobFacts(job), { label: "지원", value: "견적 입찰 (경쟁)" }] : jobFacts(job),
     reason,
+    today,
     detailUrl,
   };
 }
@@ -50,15 +45,20 @@ export function digestIdempotencyKey(userId: string, sendDate: string): string {
 export async function composeDigestEmail(input: {
   recipient: { user_id: string; email: string };
   jobs: DigestJob[];
-  /** Per-job recommendation line (Phase 2). */
+  /** Per-job recommendation line (personal picks). */
   reasons?: Map<string, string>;
+  /** Per-job first step for today (personal picks). */
+  todays?: Map<string, string>;
+  /** Personal subject line (personal picks); the date is appended. */
+  subject?: string | null;
   /** Day's numbers for the top line (null: plain intro). */
   stats?: CurationStats | null;
   sendDate: string;
   appUrl: string;
   linkSecret: string;
 }): Promise<OutgoingEmail> {
-  const { recipient, jobs, reasons, stats, sendDate, appUrl, linkSecret } = input;
+  const { recipient, jobs, reasons, todays, subject, stats, sendDate, appUrl, linkSecret } = input;
+  const personal = Boolean(reasons?.size);
   // Issue time pinned to the send date keeps the payload identical on reruns.
   const issuedAt = seoulDayStartUtc(sendDate);
   const uid = recipient.user_id;
@@ -70,6 +70,7 @@ export async function composeDigestEmail(input: {
       job,
       `${appUrl}/r/${signLink({ uid, purpose: "click", jobId: job.id }, linkSecret, issuedAt)}`,
       reasons?.get(job.id) ?? null,
+      todays?.get(job.id) ?? null,
     ),
   );
 
@@ -79,7 +80,7 @@ export async function composeDigestEmail(input: {
       brand={BRAND.name}
       dateLabel={dateLabel}
       dayLabel={`${dateLabel} ${koreanWeekday(sendDate)}`}
-      curation={curationLine(stats, cards.length)}
+      curation={curationLine(stats, cards.length, personal)}
       jobs={cards}
       recipientEmail={recipient.email}
       logoUrl={`${appUrl}/duck-mail.png`}
@@ -93,7 +94,7 @@ export async function composeDigestEmail(input: {
 
   return {
     to: recipient.email,
-    subject: dailyFiveSubject(cards.length, dateLabel),
+    subject: subject ? `${subject} · ${dateLabel}` : dailyFiveSubject(cards.length, dateLabel),
     html: await render(element),
     text: await render(element, { plainText: true }),
     headers: unsubscribeHeaders(unsubscribeUrl),

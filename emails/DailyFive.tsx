@@ -14,7 +14,10 @@ export type DailyFiveJob = {
   badge: StatusBadge | null;
   category: string | null;
   facts: JobFact[];
+  /** Why this job fits the person (personal picks: written from their AI profile). */
   reason: string | null;
+  /** One concrete first step for today (personal picks). */
+  today?: string | null;
   detailUrl: string;
   /** Phase 2 (/feedback). Hidden when absent. */
   feedbackUrl?: string | null;
@@ -94,7 +97,9 @@ const s = {
   facts: { backgroundColor: "#FAF5EC", borderRadius: 12, padding: "10px 14px", margin: "14px 0 16px", width: "100%" },
   factLabel: { fontSize: 13, lineHeight: "22px", color: mailColor.muted, width: 72, verticalAlign: "top" as const, padding: "1px 0" },
   factValue: { fontSize: 13, lineHeight: "22px", color: mailColor.ink, fontWeight: 700, padding: "1px 0" },
-  reason: { fontSize: 13, color: mailColor.accent, margin: "0 0 12px" },
+  reason: { fontSize: 14, lineHeight: "21px", color: mailColor.accent, fontWeight: 700, margin: "0 0 6px" },
+  today: { fontSize: 13, lineHeight: "20px", color: mailColor.ink, backgroundColor: "#FFF4D6", borderRadius: 10, padding: "8px 12px", margin: "0 0 14px" },
+  todayLabel: { fontWeight: 800, color: mailColor.accent },
   button: {
     display: "block",
     textAlign: "center" as const,
@@ -150,6 +155,11 @@ function JobCard({ job, index }: { job: DailyFiveJob; index: number }) {
       </table>
 
       {job.reason && <Text style={s.reason}>{job.reason}</Text>}
+      {job.today && (
+        <Text style={s.today}>
+          <span style={s.todayLabel}>오늘 할 일</span> {job.today}
+        </Text>
+      )}
       <Button href={job.detailUrl} style={s.button}>
         공고 보러 가기 →
       </Button>

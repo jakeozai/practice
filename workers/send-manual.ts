@@ -84,6 +84,8 @@ async function loadJobs(db: ServiceClient, ids: string[]): Promise<DigestJob[]> 
       pay_currency: j.pay_currency,
       pay_unit: j.pay_unit,
       hours_per_week_min: j.hours_per_week_min,
+      requires_credential: j.requires_credential,
+      first_seen_at: j.first_seen_at,
     };
   });
 }

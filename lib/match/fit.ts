@@ -1,0 +1,271 @@
+/**
+ * How well one job fits one person, from the profile their own AI wrote
+ * (2026-11-14 user decision: the mail follows that analysis strictly, three
+ * best fits, no mixing of kinds for variety). Pure and LLM-free: this layer
+ * rules jobs out and ranks the rest; lib/match/pick.ts lets the model choose
+ * the final three from the top of this list and write why.
+ *
+ * Hard rules (a job is out):
+ *  - a work language the person doesn't have, or English two levels above theirs
+ *  - something on their `avoid` list (AVOID_RULES), or performer work they never mention
+ *  - more weekly hours than they have, or an hourly rate under their minimum
+ *  - a degree/licence requirement without a strong field match
+ *  - nothing in common with what they do (no concept from their profile)
+ *
+ * Score: profile concepts the job matches, weighted by where the AI wrote them
+ * (fields in order > its recommendations > expertise > skills > experience),
+ * plus named tools (small), then pay, freshness and small penalties.
+ */
+import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
+import { isBiddingGig } from "../jobs/format";
+import { AVOID_RULES, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, USD_PER_UNIT, toolTokens, type Concept } from "./concepts";
+
+type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
+
+export type FitJob = {
+  id: string;
+  title: string;
+  title_ko: string | null;
+  summary_ko: string[];
+  category: string | null;
+  languages: string[];
+  english_level: EnglishLevel | null;
+  requires_credential: boolean;
+  hours_per_week_min: number | null;
+  pay_min: number | null;
+  pay_max: number | null;
+  pay_currency: string | null;
+  pay_unit: "hour" | "task" | "project" | "month" | null;
+  status: string;
+  first_seen_at: string;
+  url: string;
+};
+
+/** (제안값) Weight of a concept by where the profile names it. */
+export const SECTION_WEIGHT = {
+  /** fields[0]; each later field 0.4 less. The AI lists them by strength. */
+  firstField: 5,
+  fieldStep: 0.4,
+  /** notes_ko: the AI's own "recommend first" line. */
+  notes: 4,
+  domain: 3,
+  skills: 2.5,
+  experience: 2,
+} as const;
+
+/** (제안값) A job needs at least this much in common with the profile. */
+export const MIN_RELEVANCE = 2.5;
+/** (제안값) Degree/licence jobs only for a match this strong (fields or the AI's recommendation). */
+const CREDENTIAL_MIN_WEIGHT = 3.4;
+/** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
+const TINY_BUDGET_USD = 50;
+
+export type ConceptHit = { id: string; label: string; weight: number; trigger: string; categories: string[] };
+
+export type ProfileSignals = {
+  langs: Set<string>;
+  english: EnglishLevel;
+  concepts: Map<string, ConceptHit>;
+  tools: string[];
+  avoid: Set<string>;
+  performer: boolean;
+  weeklyHours: number | null;
+  minHourlyUsd: number | null;
+  /** The profile's first fields, for the mail's intro line. */
+  focus: string[];
+};
+
+/** The clause of a longer text that contains the match, for citing it in a reason. */
+function clauseAround(text: string, re: RegExp): string {
+  const m = re.exec(text);
+  if (!m) return text.slice(0, 24);
+  const parts = text.split(/[.,;:()\n]|(?:\s+-\s+)/);
+  let pos = 0;
+  for (const p of parts) {
+    if (m.index >= pos && m.index < pos + p.length + 1) return p.trim();
+    pos += p.length + 1;
+  }
+  return m[0];
+}
+
+export function buildSignals(profile: Profile): ProfileSignals {
+  const langs = new Set(profile.languages.map((l) => l.code));
+  if (langs.size === 0) langs.add("ko");
+  const en = profile.languages.find((l) => l.code === "en");
+  const english: EnglishLevel = en ? (en.level ?? "reading") : "none";
+
+  const sections: { text: string; weight: number; cite: "item" | "clause" }[] = [
+    ...profile.fields.map((text, i) => ({ text, weight: SECTION_WEIGHT.firstField - SECTION_WEIGHT.fieldStep * i, cite: "item" as const })),
+    ...(profile.notes_ko ? [{ text: profile.notes_ko, weight: SECTION_WEIGHT.notes, cite: "clause" as const }] : []),
+    ...profile.domain_expertise.map((text) => ({ text, weight: SECTION_WEIGHT.domain, cite: "item" as const })),
+    ...profile.skills.map((text) => ({ text, weight: SECTION_WEIGHT.skills, cite: "item" as const })),
+    ...(profile.experience_summary_ko ? [{ text: profile.experience_summary_ko, weight: SECTION_WEIGHT.experience, cite: "clause" as const }] : []),
+  ];
+
+  const concepts = new Map<string, ConceptHit>();
+  for (const c of CONCEPTS) {
+    for (const s of sections) {
+      if (!c.profile.test(s.text)) continue;
+      const prev = concepts.get(c.id);
+      if (prev && prev.weight >= s.weight) continue;
+      const trigger = s.cite === "item" ? s.text : clauseAround(s.text, new RegExp(c.profile.source, "i"));
+      concepts.set(c.id, { id: c.id, label: c.label, weight: s.weight, trigger, categories: c.categories });
+    }
+  }
+
+  const everything = [...profile.fields, ...profile.skills, ...profile.domain_expertise, profile.notes_ko, profile.experience_summary_ko].join("\n");
+  return {
+    langs,
+    english,
+    concepts,
+    tools: toolTokens(profile.skills),
+    avoid: new Set(AVOID_RULES.filter((r) => profile.avoid.some((a) => r.avoid.test(a))).map((r) => r.id)),
+    performer: PERFORMER_PROFILE.test(everything),
+    weeklyHours: profile.weekly_hours,
+    minHourlyUsd: profile.min_hourly_usd,
+    focus: profile.fields.slice(0, 2),
+  };
+}
+
+export function jobText(job: Pick<FitJob, "title" | "title_ko" | "summary_ko">): string {
+  return [job.title, job.title_ko ?? "", ...job.summary_ko].join("\n");
+}
+
+export function toUsd(amount: number | null, currency: string | null): number | null {
+  if (amount === null || !currency) return null;
+  const rate = USD_PER_UNIT[currency.toUpperCase()];
+  return rate ? amount * rate : null;
+}
+
+const levelIndex = (l: EnglishLevel) => ENGLISH_LEVELS.indexOf(l);
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export type Fit =
+  | { ok: true; score: number; relevance: number; hits: ConceptHit[]; tools: string[] }
+  | { ok: false; why: string };
+
+export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date()): Fit {
+  const text = jobText(job);
+
+  const foreign = job.languages.filter((l) => !sig.langs.has(l));
+  if (foreign.length) return { ok: false, why: `language:${foreign.join(",")}` };
+
+  let penalty = 0;
+  if (job.english_level) {
+    const gap = levelIndex(job.english_level) - levelIndex(sig.english);
+    if (gap >= 2) return { ok: false, why: `english:${job.english_level}` };
+    if (gap === 1) penalty += 1.5;
+  }
+
+  if (!sig.performer && PERFORMER_JOB.test(text)) return { ok: false, why: "performer" };
+  for (const rule of AVOID_RULES) {
+    if (sig.avoid.has(rule.id) && rule.job.test(text)) return { ok: false, why: `avoid:${rule.id}` };
+  }
+
+  if (job.hours_per_week_min !== null && sig.weeklyHours !== null && job.hours_per_week_min > sig.weeklyHours) {
+    return { ok: false, why: `hours:${job.hours_per_week_min}` };
+  }
+  const payUsd = toUsd(job.pay_max ?? job.pay_min, job.pay_currency);
+  if (job.pay_unit === "hour" && payUsd !== null && sig.minHourlyUsd !== null && payUsd < sig.minHourlyUsd) {
+    return { ok: false, why: `pay:${Math.round(payUsd)}` };
+  }
+
+  const hits = CONCEPTS.flatMap((c: Concept) => {
+    const h = sig.concepts.get(c.id);
+    return h && c.job.test(text) ? [h] : [];
+  }).sort((a, b) => b.weight - a.weight);
+  const best = hits[0]?.weight ?? 0;
+  const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
+  const relevance = best + Math.min(0.35 * rest, 3);
+  if (best < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
+
+  // A degree/licence job only when the person's strongest field is that very kind of work
+  // (a "licensed lawyer" job that mentions AI video is still a lawyer job).
+  if (job.requires_credential) {
+    if (best < CREDENTIAL_MIN_WEIGHT || !job.category || !hits[0].categories.includes(job.category)) return { ok: false, why: "credential" };
+    penalty += 1;
+  }
+
+  const tools = sig.tools.filter((t) => new RegExp(`(^|[^a-z0-9])${escapeRe(t)}([^a-z0-9]|$)`, "i").test(text));
+
+  let bonus = 0;
+  if (job.category && hits[0].categories.includes(job.category)) bonus += 0.5;
+  if (payUsd !== null) {
+    if (job.pay_unit === "hour" && sig.minHourlyUsd !== null) bonus += payUsd >= sig.minHourlyUsd * 1.5 ? 1 : 0.5;
+    else if (job.pay_unit === "hour") bonus += 0.5;
+    else if (payUsd < TINY_BUDGET_USD) penalty += 2;
+    else if (payUsd >= 250) bonus += 0.5;
+  }
+  const ageHours = (now.getTime() - new Date(job.first_seen_at).getTime()) / 3_600_000;
+  if (ageHours <= 36) bonus += 1;
+  else if (ageHours <= 96) bonus += 0.5;
+  if (job.status === "pool") penalty += 1;
+
+  // Named tools confirm a match but never outweigh the order of the person's fields.
+  const toolBonus = tools.length === 0 ? 0 : tools.length === 1 ? 1 : 1.5;
+  const score = relevance + toolBonus + bonus - penalty;
+  return { ok: true, score: Math.round(score * 100) / 100, relevance, hits, tools };
+}
+
+export type Ranked<J extends FitJob> = { job: J; score: number; hits: ConceptHit[]; tools: string[] };
+
+/** Jobs that fit, best first (ties: newer first). */
+export function rankForProfile<J extends FitJob>(jobs: J[], sig: ProfileSignals, now: Date = new Date()): Ranked<J>[] {
+  const out: Ranked<J>[] = [];
+  for (const job of jobs) {
+    const fit = assessJob(job, sig, now);
+    if (fit.ok) out.push({ job, score: fit.score, hits: fit.hits, tools: fit.tools });
+  }
+  return out.sort((a, b) => b.score - a.score || b.job.first_seen_at.localeCompare(a.job.first_seen_at));
+}
+
+/** Count of why jobs were left out (dry runs, logs). */
+export function exclusionSummary(jobs: FitJob[], sig: ProfileSignals, now: Date = new Date()): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const job of jobs) {
+    const fit = assessJob(job, sig, now);
+    if (fit.ok) continue;
+    const key = fit.why.split(":")[0];
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function shorten(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
+}
+
+/** Display name of a matched tool token ("next.js" → "Next.js"), taken from the profile's own spelling. */
+function toolLabel(token: string, skills: string[]): string {
+  for (const s of skills) {
+    const m = new RegExp(escapeRe(token), "i").exec(s);
+    if (m) return m[0];
+  }
+  return token;
+}
+
+export type PickNote = { reason: string; today: string };
+
+/**
+ * Reason and today-line without the model (fallback, and for picks the model
+ * didn't make). Cites the profile wording that matched.
+ */
+export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Date()): PickNote {
+  const top = r.hits[0];
+  const tool = r.tools[0] ? ` · ${toolLabel(r.tools[0], profile.skills)} 그대로` : "";
+  const reason = shorten(`AI 분석의 ‘${shorten(top.trigger, 22)}’와 맞는 ${top.label} 일${tool}`, 80);
+
+  const ageHours = (now.getTime() - new Date(r.job.first_seen_at).getTime()) / 3_600_000;
+  let today: string;
+  if (isBiddingGig(r.job.url)) {
+    today = ageHours <= 36 ? "오늘 바로 견적 입찰: 올라온 지 하루 남짓, 지원자가 적을 때예요" : "오늘 견적 입찰: 비슷한 작업물 링크 1개와 짧은 제안이면 돼요";
+  } else if (r.job.hours_per_week_min) {
+    today = `오늘 지원서 제출: 통과하면 주 ${r.job.hours_per_week_min}시간부터 시작해요`;
+  } else {
+    today = "오늘 원문에서 조건 확인하고 바로 지원해 보세요";
+  }
+  return { reason, today };
+}

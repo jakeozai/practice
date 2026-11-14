@@ -92,3 +92,30 @@ test("curation line: shown only when the numbers make sense", () => {
   assert.equal(curationLine({ newPostings: 50, koreaJobs: 2 }, 3), null, "older jobs fill the mail: don't claim we picked 3 of 2");
   assert.equal(curationLine(null, 3), null);
 });
+
+test("personal picks replace the shared list; an empty pick means no mail, not filler", () => {
+  const plan = planManualDigest({
+    recipients: [a, b, c],
+    jobIds: ["j1", "j2", "j3"],
+    todayStatus: new Map(),
+    alreadyMatched: new Set(["u-a:p2"]),
+    maxJobs: 3,
+    perRecipient: new Map([
+      ["u-a", ["p1", "p2", "p3"]],
+      ["u-b", []],
+    ]),
+  });
+  assert.deepEqual(plan, [
+    { kind: "send", recipient: a, jobIds: ["p1", "p3"] },
+    { kind: "skip_empty", recipient: b },
+    { kind: "send", recipient: c, jobIds: ["j1", "j2", "j3"] },
+  ]);
+});
+
+test("personal curation line names the profile, with or without the day's numbers", () => {
+  assert.equal(
+    curationLine({ newPostings: 300, koreaJobs: 41 }, 3, true),
+    "지난 하루 새로 올라온 공고 300개 중 한국에서 할 수 있는 단기 일감 41개, 그중 내 AI가 분석한 프로필에 딱 맞는 3개를 골랐어요.",
+  );
+  assert.equal(curationLine(null, 3, true), "내 AI가 분석한 프로필에 딱 맞는 일감 3개를 골랐어요.");
+});

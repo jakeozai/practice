@@ -26,8 +26,14 @@ export function planManualDigest(input: {
   /** `${user_id}:${job_id}` pairs already in matches. */
   alreadyMatched: Set<string>;
   maxJobs: number;
+  /**
+   * Personal picks (lib/workers/picks.ts) by user_id; they replace the shared
+   * list for that person. An empty list means nothing fits them today: no
+   * filler from the shared list (2026-11-14: only jobs that fit the profile).
+   */
+  perRecipient?: Map<string, string[]>;
 }): PlanItem[] {
-  const { recipients, jobIds, todayStatus, alreadyMatched, maxJobs } = input;
+  const { recipients, jobIds, todayStatus, alreadyMatched, maxJobs, perRecipient } = input;
   const seen = new Set<string>();
   const plan: PlanItem[] = [];
 
@@ -41,7 +47,8 @@ export function planManualDigest(input: {
       continue;
     }
 
-    const remaining = [...new Set(jobIds)]
+    const own = perRecipient?.get(recipient.user_id);
+    const remaining = [...new Set(own ?? jobIds)]
       .filter((id) => !alreadyMatched.has(`${recipient.user_id}:${id}`))
       .slice(0, maxJobs);
 
@@ -79,8 +86,15 @@ export function rankForEveryone<T extends { languages: string[] }>(jobs: T[]): T
  * Null (the mail keeps its plain intro) when the numbers would read oddly, e.g.
  * nothing new came in or fewer new jobs passed than the mail carries.
  */
-export function curationLine(stats: { newPostings: number; koreaJobs: number } | null | undefined, picked: number): string | null {
-  if (!stats || picked <= 0 || stats.newPostings <= 0 || stats.koreaJobs < picked) return null;
+export function curationLine(
+  stats: { newPostings: number; koreaJobs: number } | null | undefined,
+  picked: number,
+  personal = false,
+): string | null {
+  const which = personal ? `내 AI가 분석한 프로필에 딱 맞는 ${picked}개` : `${picked}개`;
+  if (!stats || picked <= 0 || stats.newPostings <= 0 || stats.koreaJobs < picked) {
+    return personal && picked > 0 ? `내 AI가 분석한 프로필에 딱 맞는 일감 ${picked}개를 골랐어요.` : null;
+  }
   const n = (x: number) => x.toLocaleString("ko-KR");
-  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 할 수 있는 단기 일감 ${n(stats.koreaJobs)}개, 그중 ${picked}개를 골랐어요.`;
+  return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 할 수 있는 단기 일감 ${n(stats.koreaJobs)}개, 그중 ${which}를 골랐어요.`;
 }

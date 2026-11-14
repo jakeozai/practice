@@ -13,8 +13,8 @@
  *
  * `page` sources (lib/sources/pages.ts) are read from the site's sitemap;
  * only pages not stored yet are fetched, ≥1 s apart, robots.txt checked.
- * When the deadline nears, page fetching stops and the rest waits for the
- * next run.
+ * Page sites run side by side after the API boards. When the deadline nears,
+ * page fetching stops and the rest waits for the next run.
  */
 import type { ServiceClient } from "../supabase/service";
 import { adminEmails } from "../env";
@@ -225,7 +225,7 @@ export type CollectResult = { sources: number; failed: number; notReached: numbe
 
 export async function collectSources(
   db: ServiceClient,
-  opts: RunOptions & { userAgent: string; only?: string },
+  opts: RunOptions & { userAgent: string; only?: string; /** Page sites only (extra evening runs that drain their backlog). */ pagesOnly?: boolean },
 ): Promise<CollectResult> {
   const { data, error } = await db.from("sources").select("id, name, kind, endpoint, fail_count").eq("active", true).order("name");
   if (error) throw new Error(`load sources: ${error.message}`);
@@ -249,13 +249,11 @@ export async function collectSources(
     sources.push({ ...s, kind: s.kind, endpoint: s.endpoint });
   }
 
-  // API boards first: they are quick, so a tight deadline only ever cuts page fetching short.
-  sources.sort((a, b) => Number(a.kind === "page") - Number(b.kind === "page"));
+  const { boards, pages } = splitForCollection(opts.pagesOnly ? sources.filter((s) => s.kind === "page") : sources);
 
   let failed = 0;
   let done = 0;
-  for (const s of sources) {
-    if (pastDeadline(opts.deadline, PAGE_DEADLINE_MARGIN_MS)) break;
+  const runOne = async (s: CollectSource) => {
     try {
       if (!(await collectOne(db, s, opts.userAgent, opts))) failed++;
     } catch (e) {
@@ -263,8 +261,25 @@ export async function collectSources(
       opts.log(`  ✖ ${s.name}: ${(e as Error).message}`);
     }
     done++;
+  };
+
+  // API boards one after another: each is a few quick requests.
+  for (const s of boards) {
+    if (pastDeadline(opts.deadline, PAGE_DEADLINE_MARGIN_MS)) break;
+    await runOne(s);
     await sleep(PAUSE_BETWEEN_SOURCES_MS);
   }
+  // Page sites side by side. Each is a different host with its own ≥1 s spacing,
+  // so one site's backlog (Mercor lists hundreds of new pages) can no longer use
+  // up the whole run before the others start (2026-11-14: OpenTrain and OneForma
+  // had never been reached).
+  if (!pastDeadline(opts.deadline, PAGE_DEADLINE_MARGIN_MS)) await Promise.all(pages.map(runOne));
+
   opts.log(`Collected ${done - failed}/${sources.length} sources` + (done < sources.length ? ` (${sources.length - done} left for the next run)` : "") + ".");
   return { sources: sources.length, failed, notReached: sources.length - done };
+}
+
+/** API boards first (sequential), page sites after (in parallel). Exported for tests. */
+export function splitForCollection<T extends { kind: string }>(sources: T[]): { boards: T[]; pages: T[] } {
+  return { boards: sources.filter((s) => s.kind !== "page"), pages: sources.filter((s) => s.kind === "page") };
 }

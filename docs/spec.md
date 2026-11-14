@@ -161,7 +161,8 @@ Recruitee:  GET https://{company}.recruitee.com/api/offers/
 
 - `send_date` = 오늘(Asia/Seoul). 대상 = `profiles.digest_status = 'active'`이고 그날 `digest_sends`가 `sent`·`skipped`가 아닌 사용자.
 - **Phase 1 (전원 동일)**: 승인·한국 가능·정규직 아님·마감 아님·이전에 안 보낸 공고를 `first_seen_at` 최신순 + 시급 높은 순으로 3개(`DIGEST_SIZE`).
-- **Phase 2 (개인화)**: `candidate_jobs_for_user(user, 50)` → TS 필터 → 점수 → 상위 3개.
+- **2026-11-14 개인화 적용(사용자 결정)**: 프로필이 있으면 그 사람의 AI 분석을 철저히 따른 3개만 보낸다. 임베딩 대신 규칙 사전(`lib/match/concepts.ts`)으로 거르고 점수를 매긴 뒤, 모델이 상위 12개에서 3개를 고르고 추천 이유·오늘 할 일·메일 제목을 쓴다(사용자당 하루 1회). 맞는 게 없으면 그날은 보내지 않는다. 자세한 규칙은 CLAUDE.md "개인화". 아래 Phase 2 원안은 이력으로 남긴다.
+- **Phase 2 (개인화, 원안)**: `candidate_jobs_for_user(user, 50)` → TS 필터 → 점수 → 상위 3개.
   - 필터: 공고 영어 수준 ≤ 내 수준(내 수준 미상이면 `reading`으로 간주, 제안값), 공고 최소 주당 시간 ≤ 내 주당 시간(미상이면 통과), `avoid` 단어가 제목·카테고리에 들어가면 제외.
   - 점수 (제안값): `0.6 × similarity + 0.2 × fresh + 0.2 × payFit`
     - fresh: 첫 수집 48시간 이내 1, 7일 이내 0.5, 그 외 0
