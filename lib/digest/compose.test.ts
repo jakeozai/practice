@@ -77,6 +77,15 @@ test("detail link is a signed click token for this user and job", async () => {
   }
 });
 
+test("feedback link opens the confirmation page with a feedback token for this job", async () => {
+  const mail = await composeDigestEmail(input);
+  const m = /https:\/\/aijob5\.example\/feedback\?t=([\w-]+\.[\w-]+)/.exec(mail.html);
+  assert.ok(m, "feedback link present");
+  const r = verifyLink(m[1], "feedback", SECRET, new Date("2026-11-08T00:00:00Z"));
+  assert.equal(r.ok && r.payload.jobId, JOB_ID);
+  assert.match(mail.html, /관심 없어요·신고/);
+});
+
 test("same input renders the same payload (safe idempotent rerun)", async () => {
   const first = await composeDigestEmail(input);
   const second = await composeDigestEmail(input);

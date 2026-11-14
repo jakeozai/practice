@@ -19,7 +19,7 @@ export type DailyFiveJob = {
   /** One concrete first step for today (personal picks). */
   today?: string | null;
   detailUrl: string;
-  /** Phase 2 (/feedback). Hidden when absent. */
+  /** /feedback confirmation page (관심 없어요·신고). Hidden when absent. */
   feedbackUrl?: string | null;
 };
 
@@ -169,7 +169,7 @@ function JobCard({ job, index }: { job: DailyFiveJob; index: number }) {
           <>
             {"  ·  "}
             <Link href={job.feedbackUrl} style={s.smallLink}>
-              관심 없어요
+              관심 없어요·신고
             </Link>
           </>
         )}

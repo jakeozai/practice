@@ -65,14 +65,16 @@ export async function composeDigestEmail(input: {
 
   const unsubscribeUrl = `${appUrl}/api/email/unsubscribe?t=${signLink({ uid, purpose: "unsub" }, linkSecret, issuedAt)}`;
 
-  const cards: DailyFiveJob[] = jobs.map((job) =>
-    digestCard(
+  const cards: DailyFiveJob[] = jobs.map((job) => ({
+    ...digestCard(
       job,
       `${appUrl}/r/${signLink({ uid, purpose: "click", jobId: job.id }, linkSecret, issuedAt)}`,
       reasons?.get(job.id) ?? null,
       todays?.get(job.id) ?? null,
     ),
-  );
+    // Opens a confirmation page; its buttons POST (CLAUDE.md rule 8).
+    feedbackUrl: `${appUrl}/feedback?t=${signLink({ uid, purpose: "feedback", jobId: job.id }, linkSecret, issuedAt)}`,
+  }));
 
   const dateLabel = koreanMonthDay(sendDate);
   const element = (
