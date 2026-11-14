@@ -13,3 +13,10 @@ test("a stored pick is reused only while it still holds", () => {
   assert.equal(pickStillValid(undefined, "2026-11-13T04:00:00Z", open, new Set()), false);
   assert.equal(pickStillValid({ ...stored, jobIds: [] }, "2026-11-13T04:00:00Z", open, new Set()), false);
 });
+
+test("pick model: its own setting, else the extraction model", async () => {
+  const { pickModel } = await import("./picks");
+  assert.equal(pickModel("google/gemini-2.5-flash-lite", "google/gemini-2.5-flash"), "google/gemini-2.5-flash");
+  assert.equal(pickModel("google/gemini-2.5-flash-lite", " "), "google/gemini-2.5-flash-lite");
+  assert.equal(pickModel(null, undefined), null);
+});

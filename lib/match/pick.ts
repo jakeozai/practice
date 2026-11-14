@@ -155,7 +155,15 @@ export function ruleSubject(profile: Profile, count: number): string {
 export async function choosePicks(
   ranked: Ranked<PickJob>[],
   profile: Profile,
-  opts: { size: number; now?: Date; client?: MessagesClient | null; model?: string | null; log?: (line: string) => void },
+  opts: {
+    size: number;
+    now?: Date;
+    client?: MessagesClient | null;
+    model?: string | null;
+    /** Tried when `model` can't be used (e.g. not on this Gateway plan). */
+    fallbackModel?: string | null;
+    log?: (line: string) => void;
+  },
 ): Promise<PickResult> {
   const now = opts.now ?? new Date();
   const pool = ranked.slice(0, PICK_POOL);
@@ -163,21 +171,23 @@ export async function choosePicks(
   if (pool.length === 0) return empty;
 
   let parsed: ParsedPick | null = null;
-  if (opts.client && opts.model) {
+  const models = [...new Set([opts.model, opts.fallbackModel].filter((m): m is string => Boolean(m)))];
+  for (const model of opts.client ? models : []) {
+    if (parsed) break;
     for (let attempt = 1; attempt <= PICK_ATTEMPTS && !parsed; attempt++) {
       try {
-        const message = await opts.client.messages.create({
-          model: opts.model,
+        const message = await opts.client!.messages.create({
+          model,
           max_tokens: 1500,
           system: digestPickPrompt(),
           messages: [{ role: "user", content: pickMessage(profile, pool, now) }],
           output_config: { format: zodOutputFormat(PickWire) },
         });
         parsed = parsePick(firstText(message), pool.length, opts.size);
-        if (!parsed) opts.log?.(`    ! pick: invalid model output (attempt ${attempt})`);
+        if (!parsed) opts.log?.(`    ! pick (${model}): invalid model output (attempt ${attempt})`);
       } catch (e) {
-        opts.log?.(`    ! pick: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`);
-        if (isServiceFailure(e)) break; // the SDK already retried; rules take over
+        opts.log?.(`    ! pick (${model}): ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`);
+        if (isServiceFailure(e)) break; // the SDK already retried; the next model or the rules take over
       }
     }
   }

@@ -156,3 +156,19 @@ test("a first step that names a sum is dropped; long text is cut at a word bound
   assert.ok(reason.length <= 90 && reason.endsWith("…"));
   assert.ok(long.startsWith(reason.slice(0, -1)) && long[reason.length - 1] === " ", "cut where a word ends");
 });
+
+test("an unusable pick model falls back to the extraction model", async () => {
+  const calls: string[] = [];
+  const client: MessagesClient = {
+    messages: {
+      create: async (params) => {
+        calls.push(String(params.model));
+        if (params.model === "strong") throw Object.assign(new Error("model not on this plan"), { status: 403 });
+        return { content: [{ type: "text", text: JSON.stringify({ picks: [{ id: "c1", reason_ko: "이유예요", today_ko: "오늘 입찰해요" }], subject_ko: "제목" }) }] };
+      },
+    },
+  };
+  const r = await choosePicks(ranked, profile, { size: 1, now: NOW, client, model: "strong", fallbackModel: "lite" });
+  assert.deepEqual(calls, ["strong", "lite"]);
+  assert.equal(r.method, "llm");
+});

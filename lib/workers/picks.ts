@@ -26,6 +26,11 @@ import { chunks, pastDeadline, type RunOptions } from "./run";
 import type { Json } from "../supabase/database.types";
 
 const PAGE = 1000;
+
+/** ANTHROPIC_MODEL_PICK (Gateway ID, e.g. google/gemini-2.5-flash) for picks; else the extraction model. */
+export function pickModel(fastModel: string | null | undefined, env: string | undefined = process.env.ANTHROPIC_MODEL_PICK): string | null {
+  return env?.trim() || fastModel || null;
+}
 /** Don't start a model call this close to `llmDeadline`. */
 const LLM_MARGIN_MS = 30_000;
 
@@ -162,7 +167,9 @@ export async function preparePicks(
       size: opts.size,
       now,
       client: modelOk ? client : null,
-      model: llm?.model ?? null,
+      // Choosing and writing for one person a day earns a stronger model than per-posting extraction.
+      model: pickModel(llm?.model),
+      fallbackModel: llm?.model ?? null,
       log: opts.log,
     });
 
