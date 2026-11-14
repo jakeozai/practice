@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSignals, rankForProfile, type FitJob } from "./fit";
 import { PERSONAS } from "./personas";
+import { namedLanguages } from "../jobs/language";
 
 const NOW = new Date("2026-11-15T00:00:00Z");
 
@@ -43,7 +44,15 @@ const JOBS: FitJob[] = [
   job("render", "3D product rendering in Blender", { category: "motion_3d" }),
   job("annot", "Korean data annotation for AI", { category: "labeling", languages: ["ko"], pay_unit: "hour", pay_max: 15 }),
   job("fulltime", "Full-time video editor (40 hours/week)", { category: "video", hours_per_week_min: 40 }),
+  // Look like English work (the extraction kept only "en"), but the title names another language.
+  job("kaqchikel", "Kaqchikel AI Training Specialist", { title_ko: "카크치켈어 AI 학습 전문가", category: "language", pay_unit: "hour", pay_max: 30 }),
+  job("sign", "British Sign Language AI Trainer", { title_ko: "영국 수화(BSL) AI 트레이너", category: "language", pay_unit: "hour", pay_max: 30 }),
+  job("founding", "Founding Engineer for an AI agent builder platform", { category: "dev", summary_ko: ["Python 자동화 경험자"] }),
+  job("cad", "Mechanical part 3D CAD modeling", { category: "motion_3d" }),
 ];
+
+/** Nobody gets these: other languages, joining a company, a craft nobody has. */
+const NOBODY = ["fulltime", "kaqchikel", "sign", "founding", "cad"];
 
 const expectations: Record<string, { gets: string[]; never: string[] }> = {
   translator: { gets: ["loc", "ko_eval"], never: ["video", "logo", "scrape", "nurse", "chem", "acct", "render"] },
@@ -63,7 +72,7 @@ test("every kind of person gets the work their own AI described, and nothing els
     const ids = rankForProfile(JOBS, buildSignals(p.profile), NOW).map((r) => r.job.id);
     for (const id of want.gets) assert.ok(ids.includes(id), `${p.id} should get ${id}; got ${ids.join(",")}`);
     for (const id of want.never) assert.ok(!ids.includes(id), `${p.id} must not get ${id}; got ${ids.join(",")}`);
-    assert.ok(!ids.includes("fulltime"), `${p.id}: never full-time`);
+    for (const id of NOBODY) assert.ok(!ids.includes(id), `${p.id} must not get ${id}`);
     assert.equal(ids[0], want.gets[0], `${p.id}: the first field leads (${ids.join(",")})`);
   }
 });
@@ -74,4 +83,14 @@ test("the profile's own search terms reach work the concept list doesn't name", 
   const [r] = rankForProfile([packaging], buildSignals(p.profile), NOW);
   assert.ok(r, "packaging design is in the designer's search terms");
   assert.equal(r.hits[0].section, "keywords");
+});
+
+test("a title names the work language even when the extraction didn't", () => {
+  assert.deepEqual([...namedLanguages("카크치켈어 AI 학습 전문가")], ["?카크치켈어"]);
+  assert.deepEqual([...namedLanguages("움분두어 AI 언어 전문가 (프리랜서)")], ["?움분두어"]);
+  assert.deepEqual([...namedLanguages("일본어 원어민 평가자")], ["ja"]);
+  assert.deepEqual([...namedLanguages("British Sign Language AI Trainer")], ["sgn"]);
+  assert.deepEqual([...namedLanguages("시니어 AI 트레이너")], []);
+  assert.deepEqual([...namedLanguages("Premiere Pro 편집자")], []);
+  assert.deepEqual([...namedLanguages("Korean linguist")], ["ko"]);
 });

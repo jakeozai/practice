@@ -95,16 +95,14 @@ test("parsePick keeps valid, unique ids in order and trims long text", () => {
   assert.equal(parsePick(JSON.stringify({ picks: [], subject_ko: "x" }), 4, 3), null);
 });
 
-test("model picks come first; missing ones are filled from the rule order", async () => {
+test("when the model chooses fewer, the rest didn't fit: no rule fill", async () => {
   const client = fakeClient(
     JSON.stringify({ picks: [{ id: "c3", reason_ko: "썸네일 추천과 맞아요", today_ko: "오늘 시안 1개" }], subject_ko: "영상 편집 실력으로 할 일감" }),
   );
   const r = await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m" });
   assert.equal(r.method, "llm");
-  assert.equal(r.jobIds.length, 3);
-  assert.ok(r.jobIds.includes(ranked[2].job.id));
+  assert.deepEqual(r.jobIds, [ranked[2].job.id]);
   assert.equal(r.notes[ranked[2].job.id].reason, "썸네일 추천과 맞아요");
-  assert.match(r.notes[ranked[0].job.id].reason, /AI 분석의/); // rule-written fill
   assert.equal(r.subject, "영상 편집 실력으로 할 일감");
 });
 
@@ -138,7 +136,7 @@ test("final order is the rule order even when the model lists a weaker fit first
   assert.deepEqual(r.jobIds, [ranked[0].job.id, ranked[2].job.id]);
 });
 
-test("a first step that names a sum is dropped; long text is cut at a word boundary", () => {
+test("a first step that names a sum is replaced; long text is cut at a word boundary", () => {
   const long = "사내방송 편집하던 Premiere Pro 실력 그대로 쓰는 쇼츠 열 개 편집이고 자막과 썸네일까지 함께 맡는 작업이라 지금 바로 시작하기 좋아요 영어 다큐 채널 운영 경험도 그대로 쓸 수 있는 일이에요";
   const text = JSON.stringify({
     picks: [
@@ -150,9 +148,10 @@ test("a first step that names a sum is dropped; long text is cut at a word bound
   const p = parsePick(text, 3, 3)!;
   assert.deepEqual(
     p.picks.map((x) => x.index),
-    [1],
+    [0, 1],
   );
-  const reason = p.picks[0].reason;
+  assert.equal(p.picks[0].today, null, "the sum is dropped, the pick stays");
+  const reason = p.picks[1].reason;
   assert.ok(reason.length <= 90 && reason.endsWith("…"));
   assert.ok(long.startsWith(reason.slice(0, -1)) && long[reason.length - 1] === " ", "cut where a word ends");
 });
@@ -187,10 +186,13 @@ test("AI stretches come after the profile fits, from their own list", async () =
     }),
   );
   const r = await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m", stretch, stretchSize: 2 });
-  assert.equal(r.jobIds.length, 5);
-  assert.deepEqual(r.jobIds.slice(3), ["x1", "x2"], "stretches in rule order after the fits");
+  assert.deepEqual(r.jobIds, [ranked[0].job.id, "x2"], "the model's fit, then its stretch; nothing it passed over");
   assert.equal(r.notes.x2.kind, "stretch");
   assert.equal(r.notes.x2.reason, "AI 코딩 도구로 오늘 만들 만해요");
-  assert.match(r.notes.x1.reason, /로고·그래픽 디자인/); // rule-written fill
-  assert.ok(r.jobIds.slice(0, 3).every((id) => r.notes[id].kind === "core"));
+  assert.equal(r.notes[ranked[0].job.id].kind, "core");
+
+  const down = await choosePicks(ranked, profile, { size: 3, now: NOW, client: null, stretch, stretchSize: 2 });
+  assert.equal(down.jobIds.length, 5, "without a model the rules fill both lists");
+  assert.deepEqual(down.jobIds.slice(3), ["x1", "x2"]);
+  assert.match(down.notes.x1.reason, /로고·그래픽 디자인/);
 });

@@ -69,7 +69,7 @@ test("personal limits still apply; closer to the profile and fresher ranks highe
   assert.equal(rankStretch([social], sig, NOW, new Set([social.id])).length, 0, "jobs already offered as fits are left out");
 });
 
-test("pool keeps at most two of a kind so the mail can offer two different tries", () => {
+test("pool offers one of each kind, a second of a kind only when kinds run short", () => {
   const ranked = rankStretch(
     [
       job({ title: "Logo A" }),
@@ -82,8 +82,9 @@ test("pool keeps at most two of a kind so the mail can offer two different tries
     NOW,
   );
   const pool = stretchPool(ranked, 4);
-  assert.equal(pool.filter((r) => r.kind === "logo_graphics").length, 2);
-  assert.equal(pool.length, 4);
+  assert.deepEqual(pool.map((r) => r.kind).sort(), ["logo_graphics", "three_d", "web_bot"]);
+  const logosOnly = stretchPool(ranked.filter((r) => r.kind === "logo_graphics"), 4);
+  assert.equal(logosOnly.length, 2, "one kind only: two of it");
 });
 
 test("enterprise systems, support roles and writing aren't AI stretches; small deliverables rank above big builds", () => {

@@ -25,6 +25,7 @@ import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
 import { residentsOnlyElsewhere } from "../eligibility";
 import { isBiddingGig } from "../jobs/format";
 import { isFullTime } from "../jobs/process";
+import { namedLanguages } from "../jobs/language";
 import {
   AVOID_RULES,
   CODE_CONCEPTS,
@@ -80,6 +81,9 @@ export const SECTION_WEIGHT = {
 export const MIN_RELEVANCE = 2.5;
 /** (제안값) Degree/licence jobs need a match at least this strong, from the fields or expertise. */
 const CREDENTIAL_MIN_WEIGHT = 3;
+/** Joining a company rather than taking a gig: founding roles, equity pay. */
+const EMPLOYMENT_ROLE = /founding\s+(?:engineer|developer|designer|member|team)|co-?founder|공동\s*창업|창립\s*(?:멤버|엔지니어|팀)|\bcto\b|equity[- ](?:only|based)|지분\s*(?:보상|으로)/i;
+
 /** (제안값) A job in the person's own specialty outranks general work their profile also covers. */
 const SPECIALTY_BONUS = 1.5;
 /** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
@@ -203,7 +207,10 @@ export function personalLimits(job: FitJob, sig: ProfileSignals): { ok: false; w
   // Short-term only: never full-time, however many hours the person has (regular or bundled work is fine).
   if (isFullTime(text, job.hours_per_week_min)) return { ok: false, why: "fulltime" };
 
-  const foreign = job.languages.filter((l) => !sig.langs.has(l));
+  if (EMPLOYMENT_ROLE.test(text)) return { ok: false, why: "fulltime" };
+
+  const named = [...namedLanguages(`${job.title}\n${job.title_ko ?? ""}`)];
+  const foreign = [...new Set([...job.languages, ...named])].filter((l) => !sig.langs.has(l));
   if (foreign.length) return { ok: false, why: `language:${foreign.join(",")}` };
 
   let penalty = 0;

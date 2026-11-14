@@ -125,13 +125,15 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
 }
 
 /**
- * The model's stretch candidates: the best of each kind first (logo, 3D, web,
- * AI work), then the next best, at most `perKind` of a kind — so two
- * different tries are on offer. Best first within the result.
+ * The model's stretch candidates: the best of each kind (logo, 3D, web, AI
+ * work), so the two tries in a mail are of different kinds. Only when fewer
+ * than `minKinds` kinds have a candidate does a second of a kind come in (at
+ * most `perKind`). Best first within the result.
  */
-export function stretchPool<J extends FitJob>(ranked: StretchRanked<J>[], size: number, perKind = 2): StretchRanked<J>[] {
+export function stretchPool<J extends FitJob>(ranked: StretchRanked<J>[], size: number, perKind = 2, minKinds = 2): StretchRanked<J>[] {
   const out: StretchRanked<J>[] = [];
   for (let round = 0; round < perKind && out.length < size; round++) {
+    if (round > 0 && out.length >= minKinds) break;
     const seen = new Map<string, number>();
     for (const r of ranked) {
       if (out.length >= size) break;

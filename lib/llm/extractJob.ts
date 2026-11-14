@@ -56,7 +56,8 @@ export const JobExtractSchema = JobExtractWire.extend({
   title_ko: z.string().trim().min(1).max(TITLE_KO_MAX),
   languages: z
     .array(z.string().trim().toLowerCase())
-    .transform((ls) => [...new Set(ls.filter((l) => /^[a-z]{2}$/.test(l)))].slice(0, 5)),
+    // ISO 639-1, or 639-3 for languages without a two-letter code (Kaqchikel "cak").
+    .transform((ls) => [...new Set(ls.filter((l) => /^[a-z]{2,3}$/.test(l)))].slice(0, 5)),
   location_raw: z.string().trim().max(300).nullable(),
   pay_min: z.number().min(0).max(100_000).nullable(),
   pay_max: z.number().min(0).max(100_000).nullable(),

@@ -126,6 +126,13 @@ export const CONCEPTS: Concept[] = [
   },
   // Below: kinds of work that only count for profiles that name them.
   {
+    id: "cad",
+    label: "CAD 설계",
+    categories: ["motion_3d", "design"],
+    profile: /\bcad\b|solidworks|솔리드웍스|autocad|오토캐드|revit|fusion\s*360|catia|rhino|라이노|sketchup|스케치업|도면/i,
+    job: /\bcad\b|solidworks|솔리드웍스|autocad|오토캐드|revit|fusion\s*360|catia|rhino|sketchup|스케치업|도면|technical\s*drawing/i,
+  },
+  {
     id: "logo_brand",
     label: "로고·브랜딩",
     categories: ["design"],
@@ -208,7 +215,7 @@ export const CONCEPTS: Concept[] = [
     label: "의료·보건",
     categories: ["domain"],
     profile: /의료|의학|간호|약학|약사|의사|임상|보건|치위생|물리\s*치료|medical|nurs|pharma|clinical|healthcare/i,
-    job: /medical|medicine|의료|의학|\bnurs|간호|pharma|약학|clinical|임상|health\s*care|healthcare|헬스케어|physician|doctor|radiolog|dental|치과|patient|환자/i,
+    job: /medical|medicine|의료|의학|\bnurs|간호|pharma|약학|clinical|임상|health\s*care|healthcare|헬스케어|physician|doctor|radiolog|dental|치과|patient|환자|hospital|병원|clinic|클리닉/i,
   },
   {
     id: "finance",
@@ -357,7 +364,7 @@ export const USD_PER_UNIT: Record<string, number> = {
  * profile doesn't, the job is about that craft ("3D Modeling & Python
  * Specialist" is a 3D job even if it also mentions JavaScript).
  */
-export const TITLE_CRAFTS = new Set(["three_d", "motion", "logo_brand", "photo", "audio", "translation", "labeling", "language_eval"]);
+export const TITLE_CRAFTS = new Set(["three_d", "cad", "motion", "logo_brand", "photo", "audio", "translation", "labeling", "language_eval"]);
 
 /** Concepts about writing software: they only count when the job's language is one the person uses. */
 export const CODE_CONCEPTS = new Set(["web_fullstack", "ai_eval_code", "automation_ai", "data_scraping"]);

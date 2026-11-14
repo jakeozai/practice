@@ -135,10 +135,11 @@ function trimTo(s: string, max: number): string {
 /** Money in a "today" line is either repeated from the card or wrong (2026-11-14: one job's budget copied onto another). */
 const MONEY = /\$\s?\d|\d[\d,.]*\s?(?:USD|INR|EUR|GBP|AUD|CAD|NZD|달러|원|루피|유로)|(?:USD|INR|EUR|GBP|AUD|CAD|NZD)\s?\d/i;
 
-type ParsedItem = { index: number; reason: string; today: string };
+/** `today` is null when the model's first step had to be dropped (it named a sum); a rule-written one replaces it. */
+type ParsedItem = { index: number; reason: string; today: string | null };
 export type ParsedPick = { picks: ParsedItem[]; stretch: ParsedItem[]; subject: string | null };
 
-/** Valid, unique ids of one list ("c1", "s2"…) in the model's order; a first step that names a sum is dropped. */
+/** Valid, unique ids of one list ("c1", "s2"…) in the model's order; a first step that names a sum is dropped (the pick stays). */
 function readItems(items: z.infer<typeof PickItem>[], prefix: string, poolSize: number, size: number): ParsedItem[] {
   const seen = new Set<number>();
   const out: ParsedItem[] = [];
@@ -147,8 +148,9 @@ function readItems(items: z.infer<typeof PickItem>[], prefix: string, poolSize: 
     const index = m ? Number(m[1]) - 1 : -1;
     if (index < 0 || index >= poolSize || seen.has(index)) continue;
     const reason = trimTo(p.reason_ko, REASON_MAX);
-    const today = trimTo(p.today_ko, TODAY_MAX);
-    if (!reason || !today || MONEY.test(today)) continue;
+    const written = trimTo(p.today_ko, TODAY_MAX);
+    if (!reason) continue;
+    const today = written && !MONEY.test(written) ? written : null;
     seen.add(index);
     out.push({ index, reason, today });
     if (out.length === size) break;
@@ -239,10 +241,13 @@ export async function choosePicks(
 
   const chosen: { r: Ranked<PickJob>; note: PickNote }[] = (parsed?.picks ?? []).map((p) => ({
     r: pool[p.index],
-    note: { reason: p.reason, today: p.today },
+    note: { reason: p.reason, today: p.today ?? ruleNote(pool[p.index], profile, now).today },
   }));
-  // Fill what the model left out with the rule order, so the mail still has `size` jobs that fit.
-  for (const r of pool) {
+  // When the model chose, fewer than `size` means the rest didn't fit this person (2026-11-14: rule
+  // fills brought in other-language and founding-engineer jobs it had passed over). Only without a
+  // model answer do the rules fill the list.
+  const modelChose = chosen.length > 0;
+  for (const r of modelChose ? [] : pool) {
     if (chosen.length >= opts.size) break;
     if (!chosen.some((c) => c.r.job.id === r.job.id)) chosen.push({ r, note: ruleNote(r, profile, now) });
   }
@@ -252,9 +257,9 @@ export async function choosePicks(
 
   const stretched: { r: StretchRanked<PickJob>; note: PickNote }[] = (parsed?.stretch ?? []).map((p) => ({
     r: sPool[p.index],
-    note: { reason: p.reason, today: p.today },
+    note: { reason: p.reason, today: p.today ?? ruleStretchNote(sPool[p.index]).today },
   }));
-  for (const r of sPool) {
+  for (const r of modelChose ? [] : sPool) {
     if (stretched.length >= stretchSize) break;
     if (!stretched.some((c) => c.r.job.id === r.job.id)) stretched.push({ r, note: ruleStretchNote(r) });
   }
