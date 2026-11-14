@@ -7,6 +7,7 @@ import { render } from "@react-email/components";
 import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/DailyFive";
 import { CATEGORY_CHIP_KO, isBiddingGig, jobFacts, statusBadge } from "../jobs/format";
 import { signLink } from "../links";
+import type { ProfileNudge } from "./nudge";
 import { koreanMonthDay, koreanWeekday, seoulDayStartUtc } from "../time";
 import { BRAND, contactEmail } from "../brand";
 import { unsubscribeHeaders, type OutgoingEmail } from "../email/send";
@@ -56,11 +57,13 @@ export async function composeDigestEmail(input: {
   stretchIds?: Set<string>;
   /** Day's numbers for the top line (null: plain intro). */
   stats?: CurationStats | null;
+  /** Profile reminder box (lib/digest/nudge.ts). */
+  nudge?: ProfileNudge;
   sendDate: string;
   appUrl: string;
   linkSecret: string;
 }): Promise<OutgoingEmail> {
-  const { recipient, jobs, reasons, todays, subject, stretchIds, stats, sendDate, appUrl, linkSecret } = input;
+  const { recipient, jobs, reasons, todays, subject, stretchIds, stats, nudge, sendDate, appUrl, linkSecret } = input;
   const stretchCount = jobs.filter((j) => stretchIds?.has(j.id)).length;
   const personal = Boolean(reasons?.size);
   // Issue time pinned to the send date keeps the payload identical on reruns.
@@ -96,6 +99,7 @@ export async function composeDigestEmail(input: {
       unsubscribeUrl={unsubscribeUrl}
       privacyUrl={`${appUrl}/privacy`}
       contactEmail={contactEmail()}
+      profileNudge={nudge ?? null}
     />
   );
 

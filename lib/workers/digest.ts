@@ -20,6 +20,7 @@ import type { ServiceClient } from "../supabase/service";
 import { appEnv, emailEnv, linkEnv } from "../env";
 import { planManualDigest, summarizePlan, type DigestStatus, type Recipient } from "../digest/plan";
 import { composeDigestEmail } from "../digest/compose";
+import { profileNudge } from "../digest/nudge";
 import { loadCandidateJobs, loadCurationStats, type DigestJob } from "../digest/candidates";
 import { sendEmail } from "../email/send";
 import { SEND_INTERVAL_MS } from "../email/constants";
@@ -175,6 +176,16 @@ export async function sendDigest(
   const result: DigestResult = { recipients: recipients.length, sent: 0, failed: 0, skipped: 0, alreadyDone: summary.alreadyDone, notReached: 0 };
   if (opts.dryRun) return result;
 
+  // When each recipient last saved a profile, for the reminder box.
+  const toSend = plan.filter((p) => p.kind === "send").map((p) => p.recipient.user_id);
+  const importedAt = new Map<string, string | null>();
+  for (let i = 0; i < toSend.length; i += 200) {
+    // 200 ids per request keeps the query URL short.
+    const { data, error } = await db.from("profiles").select("user_id, profile_imported_at").in("user_id", toSend.slice(i, i + 200));
+    if (error) opts.log(`  ! profile dates not loaded (${error.message}); no reminder box`);
+    for (const r of data ?? []) importedAt.set(r.user_id, r.profile_imported_at);
+  }
+
   for (const [index, item] of plan.entries()) {
     const { recipient } = item;
     if (item.kind === "already_done") continue;
@@ -201,6 +212,7 @@ export async function sendDigest(
         subject: pick?.subject ?? null,
         stretchIds: pick ? new Set(item.jobIds.filter((id) => pick.notes[id]?.kind === "stretch")) : undefined,
         stats,
+        nudge: importedAt.has(recipient.user_id) ? profileNudge(importedAt.get(recipient.user_id), opts.sendDate) : null,
         sendDate: opts.sendDate,
         appUrl: APP_URL,
         linkSecret: EMAIL_LINK_SECRET,
