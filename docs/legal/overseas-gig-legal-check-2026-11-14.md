@@ -65,3 +65,9 @@
 - [요즘IT(위시켓) 하단 신고번호](https://yozm.wishket.com/magazine/questions/share/UTtyt0zzvwmpR1Sx), [크몽 통신판매업 안내](https://support.kmong.com/hc/ko/articles/28234503733401--%EC%A0%84%EB%AC%B8%EA%B0%80-%EB%93%B1%EB%A1%9D-%ED%81%AC%EB%AA%BD%EC%97%90%EC%84%9C-%ED%8C%90%EB%A7%A4%ED%95%98%EB%A0%A4%EB%A9%B4-%ED%86%B5%EC%8B%A0%ED%8C%90%EB%A7%A4%EC%97%85-%EC%8B%A0%EA%B3%A0%EA%B0%80-%ED%95%84%EC%9A%94%ED%95%9C%EA%B0%80%EC%9A%94)
 - [대법원 2020두51587 판결](https://www.law.go.kr/LSW/precInfoP.do?mode=0&precSeq=214213), [직업정보제공사업자 준수사항 안내](https://xn--9k3b19nba786n.com/board_notice/7800)
 - [2026년 최저임금 고시 제2025-47호](https://korea.legal/wiki/%ea%b3%a0%ec%9a%a9%eb%85%b8%eb%8f%99%eb%b6%80%ea%b3%a0%ec%8b%9c-%ec%a0%9c2025-47%ed%98%b8/), [2027년 최저임금 10,700원](https://www.taxnet.co.kr/contents/taxnetpost/post-detail?id=4905)
+
+## 운영 영향 점검 (같은 날 밤)
+
+- 메일로 보낼 수 있는 공고(승인·한국 가능·열림) 458개 중 Freelancer.com 136개. **영상·디자인·3D·개발·글쓰기 일감 124개는 전부 Freelancer**다. 신고 후 구인자 신원 요건 때문에 Freelancer를 꺼야 하면 C안의 창작 일감이 사라지고 AI 학습·언어 일감(Invisible, Welo)만 남는다.
+- 준수사항 위반 제재는 행정처분(제36조: 6개월 이내 사업정지 또는 등록·허가 취소)이고, 미신고 영업은 형사처벌이다. 2026-11-04 서울서부지청이 직업정보제공사업체 처분사전통지를 공시송달한 사례가 있다.
+- 다음 단계: 국민신문고(고용노동부)에 서면 질의해 ① 신고 대상 여부 ② 플랫폼이 인증한 익명 의뢰인과 원문 링크로 신원·연락처 요건을 충족하는지 답을 받는다. 그동안 창작 일감 수집처를 회사명이 공개되는 보드(원격 채용 보드의 계약·프리랜서 공고 등)로 넓혀 Freelancer 의존을 줄인다.
