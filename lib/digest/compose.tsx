@@ -98,6 +98,8 @@ export async function composeDigestEmail(input: {
       recipientEmail={recipient.email}
       logoUrl={mailAssets(appUrl).wordmarkUrl}
       iconUrl={mailAssets(appUrl).iconUrl}
+      banners={{ dawn: mailAssets(appUrl).dawnUrl, golden: mailAssets(appUrl).goldenUrl, blueHour: mailAssets(appUrl).blueHourUrl }}
+      fontUrl={mailAssets(appUrl).fontUrl}
       appUrl={appUrl}
       profileUrl={`${appUrl}/onboarding`}
       unsubscribeUrl={unsubscribeUrl}

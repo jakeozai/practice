@@ -1,5 +1,5 @@
 import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
-import { mailColor, mailFont, mailMono } from "./theme";
+import { mailColor, mailFont, mailFontFace, mailMono, type MailBanners } from "./theme";
 
 export type LoginLinkProps = {
   confirmUrl: string;
@@ -10,6 +10,10 @@ export type LoginLinkProps = {
   prompt: string;
   /** Where the AI's answer is pasted back (/onboarding). */
   pasteUrl: string;
+  /** Dawn and blue-hour photo banners, like the landing page's backdrop. */
+  banners?: MailBanners | null;
+  /** Pretendard web font (used where the mail app loads fonts). */
+  fontUrl?: string | null;
 };
 
 export function loginLinkSubject(brand: string): string {
@@ -19,8 +23,10 @@ export function loginLinkSubject(brand: string): string {
 const s = {
   body: { backgroundColor: mailColor.page, margin: 0, padding: "24px 0 40px", fontFamily: mailFont, color: mailColor.ink, wordBreak: "keep-all" as const },
   container: { maxWidth: 560, padding: "0 16px" },
+  hero: { display: "block", width: "100%", height: "auto", borderRadius: 26, margin: "20px 0 0" },
+  strip: { display: "block", width: "100%", height: "auto", borderRadius: 18, margin: "28px 0 0" },
   clock: { fontSize: 13, fontWeight: 700, color: mailColor.accent, margin: 0, textAlign: "right" as const },
-  heading: { fontSize: 28, fontWeight: 800, lineHeight: "36px", letterSpacing: "-0.03em", color: mailColor.ink, margin: "30px 0 10px" },
+  heading: { fontSize: 28, fontWeight: 800, lineHeight: "36px", letterSpacing: "-0.03em", color: mailColor.ink, margin: "26px 0 10px" },
   intro: { fontSize: 15, lineHeight: "24px", color: mailColor.inkSoft, margin: "0 0 24px" },
   step: { backgroundColor: mailColor.surface, borderRadius: 22, padding: "18px 20px", margin: "0 0 12px" },
   stepNo: { fontFamily: mailMono, fontSize: 13, color: mailColor.accent, margin: 0 },
@@ -62,12 +68,13 @@ const s = {
  * landing page's steps: confirm, paste this prompt into your own AI, paste
  * its answer back into 덕잡.
  */
-export default function LoginLink({ confirmUrl, logoUrl, brand, prompt, pasteUrl }: LoginLinkProps) {
+export default function LoginLink({ confirmUrl, logoUrl, brand, prompt, pasteUrl, banners, fontUrl }: LoginLinkProps) {
   return (
     <Html lang="ko">
       <Head>
         <meta name="color-scheme" content="light dark" />
         <meta name="supported-color-schemes" content="light dark" />
+        {fontUrl && <style dangerouslySetInnerHTML={{ __html: mailFontFace(fontUrl) }} />}
       </Head>
       <Preview>구독을 확인하고, 아래 프롬프트를 평소 쓰는 AI에 붙여넣어 주세요</Preview>
       <Body style={s.body}>
@@ -84,6 +91,8 @@ export default function LoginLink({ confirmUrl, logoUrl, brand, prompt, pasteUrl
               </tr>
             </tbody>
           </table>
+
+          {banners && <Img src={banners.dawn} width="528" height="264" alt="매일 아침 6시" style={s.hero} />}
 
           <Text style={s.heading}>
             확인 메일이에요.
@@ -129,6 +138,7 @@ export default function LoginLink({ confirmUrl, logoUrl, brand, prompt, pasteUrl
 
           <Text style={s.lock}>🔒 붙여넣은 내용은 공고를 고르는 데만 쓰고, 원문은 저장하지 않아요.</Text>
 
+          {banners && <Img src={banners.blueHour} width="528" height="200" alt="내일 아침 6시" style={s.strip} />}
           <Hr style={{ borderColor: mailColor.line, margin: "24px 0 16px" }} />
           <Text style={s.footer}>무료이고, 그만 받고 싶으면 일감 메일 맨 아래 [메일 그만 받기] 한 번이면 해지돼요.</Text>
           <Text style={s.footer}>{brand} · 매일 아침 6시, AI 일감 5개</Text>

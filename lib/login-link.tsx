@@ -63,6 +63,8 @@ export async function composeLoginEmail(input: { email: string; url: string; app
     <LoginLink
       confirmUrl={input.url}
       logoUrl={mailAssets(input.appUrl).wordmarkUrl}
+      banners={{ dawn: mailAssets(input.appUrl).dawnUrl, golden: mailAssets(input.appUrl).goldenUrl, blueHour: mailAssets(input.appUrl).blueHourUrl }}
+      fontUrl={mailAssets(input.appUrl).fontUrl}
       brand={BRAND.name}
       prompt={profilePromptText()}
       pasteUrl={`${input.appUrl}/onboarding`}

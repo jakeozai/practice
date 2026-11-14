@@ -27,10 +27,27 @@ export const mailColor = {
   paperWell: "#EAE8E2",
 } as const;
 
-/** Assets every mail shows (PNG: mail apps don't render SVG). */
+/**
+ * Assets every mail shows (PNG/JPEG: mail apps don't render SVG). The three
+ * banners carry the landing page's day of photos into the mail: dawn with the
+ * 06:00 clock at the top, golden hour before the AI stretches, the blue hour
+ * before the next 06:00 at the end (rendered from public/bg, 2x).
+ */
 export function mailAssets(appUrl: string) {
   return {
     wordmarkUrl: `${appUrl}/brand/duckjob-wordmark-ondark-240.png`,
     iconUrl: `${appUrl}/brand/duckjob-appicon-96.png`,
+    dawnUrl: `${appUrl}/mail/mail-hero-dawn.jpg`,
+    goldenUrl: `${appUrl}/mail/mail-strip-golden.jpg`,
+    blueHourUrl: `${appUrl}/mail/mail-strip-bluehour.jpg`,
+    fontUrl: `${appUrl}/fonts/pretendard-kr.woff2`,
   };
+}
+
+/** The landing page's day of photos, as mail banners (emails/theme.ts mailAssets). */
+export type MailBanners = { dawn: string; golden: string; blueHour: string };
+
+/** Pretendard where the mail app loads web fonts (Apple Mail, iOS); the stack covers the rest. */
+export function mailFontFace(fontUrl: string): string {
+  return `@font-face{font-family:'Pretendard';src:url('${fontUrl}') format('woff2');font-weight:45 930;font-style:normal;font-display:swap}`;
 }

@@ -42,7 +42,8 @@
 }
 .lp-track {
   display: inline-flex;
-  animation: lp-marquee 50s linear infinite;
+  /* Same speed as before: each half is now three times the list. */
+  animation: lp-marquee 150s linear infinite;
 }
 @keyframes lp-marquee {
   from {

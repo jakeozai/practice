@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import type { JobFact, StatusBadge } from "../lib/jobs/format";
 import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
-import { mailColor, mailFont } from "./theme";
+import { mailColor, mailFont, mailFontFace, type MailBanners } from "./theme";
 
 export type DailyFiveJob = {
   id: string;
@@ -44,6 +44,10 @@ export type DailyFiveProps = {
   logoUrl: string;
   /** App icon for the light list card (PNG). */
   iconUrl?: string;
+  /** Dawn, golden-hour and blue-hour photo banners, like the landing page's backdrop. */
+  banners?: MailBanners | null;
+  /** Pretendard web font (used where the mail app loads fonts). */
+  fontUrl?: string | null;
   appUrl: string;
   profileUrl: string;
   unsubscribeUrl: string;
@@ -79,6 +83,8 @@ const s = {
     wordBreak: "keep-all" as const,
   },
   container: { maxWidth: 560, padding: "0 16px" },
+  hero: { display: "block", width: "100%", height: "auto", borderRadius: 26, margin: "20px 0 0" },
+  strip: { display: "block", width: "100%", height: "auto", borderRadius: 18, margin: "30px 0 0" },
   clock: { fontSize: 13, fontWeight: 700, color: mailColor.accent, margin: 0, textAlign: "right" as const },
   day: { fontSize: 13, color: mailColor.muted, margin: "30px 0 8px" },
   heading: { fontSize: 30, fontWeight: 800, lineHeight: "38px", letterSpacing: "-0.03em", margin: "0 0 10px", color: mailColor.ink },
@@ -255,6 +261,7 @@ export default function DailyFive(props: DailyFiveProps) {
         {/* Already dark: tell mail apps not to repaint it. */}
         <meta name="color-scheme" content="light dark" />
         <meta name="supported-color-schemes" content="light dark" />
+        {props.fontUrl && <style dangerouslySetInnerHTML={{ __html: mailFontFace(props.fontUrl) }} />}
       </Head>
       <Preview>{preview}</Preview>
       <Body style={s.body}>
@@ -272,6 +279,8 @@ export default function DailyFive(props: DailyFiveProps) {
             </tbody>
           </table>
 
+          {props.banners && <Img src={props.banners.dawn} width="528" height="264" alt="매일 아침 6시" style={s.hero} />}
+
           <Text style={s.day}>{`${props.dayLabel} · 좋은 아침이에요`}</Text>
           <Text style={s.heading}>{title}</Text>
           <Text style={s.intro}>
@@ -284,7 +293,8 @@ export default function DailyFive(props: DailyFiveProps) {
             <Fragment key={job.id}>
               {job.stretch && !jobs[i - 1]?.stretch && (
                 <>
-                  <Text style={s.sectionLabel}>AI × 도전</Text>
+                  {props.banners && <Img src={props.banners.golden} width="528" height="120" alt="" style={s.strip} />}
+                  <Text style={props.banners ? { ...s.sectionLabel, marginTop: 14 } : s.sectionLabel}>AI × 도전</Text>
                   <Text style={s.sectionHeading}>{`AI로 도전해 볼 일감 ${stretchCount}개`}</Text>
                   <Text style={s.sectionIntro}>주력 분야는 아니지만, AI 도구로 오늘 시안을 만들어 지원해 볼 만한 일이에요.</Text>
                 </>
@@ -315,6 +325,7 @@ export default function DailyFive(props: DailyFiveProps) {
             <Text style={s.boxText}>· 돈을 먼저 내라거나 메신저로만 연락하자는 곳은 지원하지 마세요.</Text>
           </Section>
 
+          {props.banners && <Img src={props.banners.blueHour} width="528" height="200" alt="내일 아침 6시" style={{ ...s.strip, margin: "28px 0 0" }} />}
           <Hr style={{ borderColor: mailColor.line, margin: "28px 0 16px" }} />
           {/* Footer per docs/legal/privacy-research-2026-11-09.md (c): why you got this, how to stop, policy, contact. */}
           <Text style={s.footer}>

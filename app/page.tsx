@@ -283,10 +283,12 @@ export default function Home(props: PageProps<"/">) {
         }}
       >
         <div className="lp-track" style={{ fontSize: "clamp(16px, 1.6vw, 20px)", fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink-3)" }}>
+          {/* Two identical halves, each the list three times over, so either half is wider than any screen:
+              sliding by one half loops with no gap. */}
           {[0, 1].map((copy) => (
-            <span key={copy} style={{ display: "inline-flex", alignItems: "center", gap: 28, paddingRight: 28 }}>
-              {MARQUEE.map((w) => (
-                <span key={w} style={{ display: "inline-flex", alignItems: "center", gap: 28 }}>
+            <span key={copy} style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 28, paddingRight: 28 }}>
+              {[...MARQUEE, ...MARQUEE, ...MARQUEE].map((w, i) => (
+                <span key={`${w}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: 28 }}>
                   {w}
                   <span style={{ color: accent }}>/</span>
                 </span>
