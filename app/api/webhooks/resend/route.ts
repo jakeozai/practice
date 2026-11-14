@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deliveryAction } from "@/lib/email/webhook";
+import { deliveryAction, webhookSecret } from "@/lib/email/webhook";
 
 /**
  * Resend delivery events, signed with the webhook's secret (Svix headers).
  * Permanent bounce → digest_status 'bounced'; spam complaint → 'unsubscribed'.
  */
 export async function POST(request: Request) {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  const secret = webhookSecret();
   if (!secret) return NextResponse.json({ ok: false, error: "not configured" }, { status: 503 });
 
   const payload = await request.text();

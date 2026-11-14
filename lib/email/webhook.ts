@@ -17,3 +17,13 @@ export function deliveryAction(event: EventLike): DeliveryAction {
   }
   return null;
 }
+
+/**
+ * The webhook signing secret (whsec_…). Production stores it in Vercel as
+ * `duckjob_webhook` (2026-11-14): a sensitive variable can't be renamed, so
+ * both names are read.
+ */
+export function webhookSecret(env: Record<string, string | undefined> = process.env): string | null {
+  const v = (env.RESEND_WEBHOOK_SECRET || env.duckjob_webhook || "").trim();
+  return v || null;
+}
