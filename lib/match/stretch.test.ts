@@ -98,3 +98,26 @@ test("enterprise systems, support roles and writing aren't AI stretches; small d
   assert.equal(first.job.id, logo.id);
   assert.ok(first.score - second.score >= 2);
 });
+
+test("people's time isn't an AI stretch, whatever the title says; the pool covers each kind first", () => {
+  assert.equal(
+    stretchKindOf(job({ title: "Email & Chat Support Assistants", category: "dev", url: "https://www.freelancer.com/projects/customer-service/Email-Chat-Support" })),
+    null,
+  );
+  assert.equal(stretchKindOf(job({ title: "Live chat support agent for a SaaS", category: "dev" })), null);
+  assert.equal(stretchKindOf(job({ title: "AI email support bot development", category: "dev", url: "https://www.freelancer.com/projects/python/AI-Email-Bot" }))?.id, "web_bot");
+
+  const ranked = rankStretch(
+    [
+      job({ title: "Logo A", pay_max: 900 }),
+      job({ title: "Logo B", pay_max: 900 }),
+      job({ title: "Logo C", pay_max: 900 }),
+      job({ title: "Low poly character 3D model", category: "motion_3d" }),
+      job({ title: "Landing page for a bakery", category: "dev" }),
+    ],
+    sig,
+    NOW,
+  );
+  const pool = stretchPool(ranked, 3);
+  assert.deepEqual(new Set(pool.map((r) => r.kind)), new Set(["logo_graphics", "three_d", "web_bot"]));
+});

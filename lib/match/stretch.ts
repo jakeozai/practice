@@ -49,6 +49,18 @@ export const STRETCH_KINDS: StretchKind[] = [
 /** Categories a stretch may come from (language, labeling and expert-domain work are never a stretch; writing only as generative AI work). */
 const STRETCH_CATEGORIES = new Set(["design", "motion_3d", "dev", "video", "other", "writing"]);
 
+/**
+ * Freelancer.com files each project under a category in its URL
+ * (/projects/customer-service/…). These are people's time, not something AI
+ * builds, whatever words the title uses ("Email & Chat Support Assistants"). (제안값)
+ */
+const NOT_STRETCH_SLUG =
+  /\/projects\/(?:customer-service|customer-support|technical-support|data-entry|data-processing|virtual-assistant|telemarketing|sales|lead-generation|seo|internet-marketing|social-media-marketing|accounting|bookkeeping|finance|legal|translation|transcription|recruitment|project-management|excel|article-writing|copywriting|research|ghostwriting)\//i;
+
+/** A person doing the work by hand, even when the words sound technical — unless the posting asks to build the tool ("AI email support bot"). */
+const HUMAN_SERVICE = /support\s*(?:assistant|agent|specialist|representative)|chat\s*support|email\s*support|지원\s*보조|상담원|상담\s*업무|응대\s*업무|moderator|모더레이터/i;
+const BUILDS_TOOL = /\bbot\b|chat\s*bot|chatbot|챗봇|automat|자동화|develop|개발|\bbuild|구축|integration|연동/i;
+
 /** One small, clear deliverable is a fair first try with AI; a platform or app is not. (제안값) */
 const SMALL_DELIVERABLE =
   /\blogo|로고|\bicons?\b|아이콘|sticker|스티커|t-?shirt|티셔츠|poster|포스터|banner|배너|flyer|전단|thumbnail|썸네일|illustrat|삽화|일러스트|book\s*cover|표지|3d\s*model|3d\s*모델|figurine|피규어|character\s*model|landing\s*page|랜딩|one[- ]page|원\s*페이지|website|웹사이트|chat\s*bot|chatbot|챗봇|\bscript\b|스크립트/i;
@@ -61,7 +73,9 @@ export type StretchRanked<J extends FitJob> = { job: J; score: number; kind: str
 
 export function stretchKindOf(job: FitJob): StretchKind | null {
   if (!job.category || !STRETCH_CATEGORIES.has(job.category)) return null;
+  if (NOT_STRETCH_SLUG.test(job.url)) return null;
   const text = jobText(job);
+  if (HUMAN_SERVICE.test(text) && !BUILDS_TOOL.test(text)) return null;
   for (const k of STRETCH_KINDS) {
     if (job.category === "writing" && k.id !== "ai_content") continue;
     if (k.job.test(text) && !k.not?.test(text)) return k;
@@ -110,16 +124,21 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
   return out.sort((a, b) => b.score - a.score || b.job.first_seen_at.localeCompare(a.job.first_seen_at));
 }
 
-/** The model's stretch candidates: the best few, at most `perKind` of each kind so it can offer two different tries. */
+/**
+ * The model's stretch candidates: the best of each kind first (logo, 3D, web,
+ * AI work), then the next best, at most `perKind` of a kind — so two
+ * different tries are on offer. Best first within the result.
+ */
 export function stretchPool<J extends FitJob>(ranked: StretchRanked<J>[], size: number, perKind = 2): StretchRanked<J>[] {
-  const count = new Map<string, number>();
   const out: StretchRanked<J>[] = [];
-  for (const r of ranked) {
-    if (out.length >= size) break;
-    const n = count.get(r.kind) ?? 0;
-    if (n >= perKind) continue;
-    count.set(r.kind, n + 1);
-    out.push(r);
+  for (let round = 0; round < perKind && out.length < size; round++) {
+    const seen = new Map<string, number>();
+    for (const r of ranked) {
+      if (out.length >= size) break;
+      const n = seen.get(r.kind) ?? 0;
+      seen.set(r.kind, n + 1);
+      if (n === round && !out.includes(r)) out.push(r);
+    }
   }
-  return out;
+  return out.sort((a, b) => b.score - a.score);
 }
