@@ -222,7 +222,7 @@ export default function DailyFive(props: DailyFiveProps) {
               {job.stretch && !jobs[i - 1]?.stretch && (
                 <>
                   <Text style={s.sectionHeading}>{`AI로 도전해 볼 일감 ${jobs.filter((j) => j.stretch).length}개`}</Text>
-                  <Text style={s.sectionIntro}>아직 해 본 적 없는 종류지만, AI 도구로 오늘 시안을 만들어 지원해 볼 만한 일이에요.</Text>
+                  <Text style={s.sectionIntro}>주력 분야는 아니지만, AI 도구로 오늘 시안을 만들어 지원해 볼 만한 일이에요.</Text>
                 </>
               )}
               <JobCard job={job} index={i} />
