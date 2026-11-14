@@ -20,12 +20,15 @@ import { createAnthropic, fastModelConfig } from "../llm/client";
 import type { MessagesClient } from "../llm/extractJob";
 import { createPacer, llmRequestsPerMinute, pacedClient, type Pacer } from "../llm/pace";
 import { buildSignals, exclusionSummary, rankForProfile } from "../match/fit";
-import { choosePicks, type PickResult } from "../match/pick";
+import { choosePicks, PICK_POOL, STRETCH_POOL, type PickKind, type PickResult } from "../match/pick";
+import { rankStretch, stretchPool } from "../match/stretch";
 import { loadCandidatePool, type DigestJob } from "../digest/candidates";
 import { chunks, pastDeadline, type RunOptions } from "./run";
 import type { Json } from "../supabase/database.types";
 
 const PAGE = 1000;
+/** (제안값, 2026-11-14 user decision) "AI로 도전해 볼 일감" per mail, after the profile fits. */
+export const STRETCH_SIZE = 2;
 
 /** ANTHROPIC_MODEL_PICK (Gateway ID, e.g. google/gemini-2.5-flash) for picks; else the extraction model. */
 export function pickModel(fastModel: string | null | undefined, env: string | undefined = process.env.ANTHROPIC_MODEL_PICK): string | null {
@@ -40,9 +43,10 @@ export type PickDetail = {
   user_id: string;
   method: "llm" | "rules";
   subject: string | null;
-  picks: { id: string; title: string; title_ko: string | null; company: string; url: string; score: number; reason: string; today: string }[];
+  picks: { id: string; kind: PickKind; title: string; title_ko: string | null; company: string; url: string; score: number; reason: string; today: string }[];
   /** Dry runs: the rule ranking the model chose from, and why the rest were left out. */
   top?: { title: string; score: number; hits: string[] }[];
+  stretchTop?: { title: string; score: number; kind: string }[];
   excluded?: Record<string, number>;
   candidates?: number;
 };
@@ -122,7 +126,10 @@ export async function preparePicks(
   db: ServiceClient,
   opts: RunOptions & {
     sendDate: string;
+    /** Profile fits per mail. */
     size: number;
+    /** AI stretches per mail (default STRETCH_SIZE; 0 turns them off). */
+    stretchSize?: number;
     /** Model calls only before this (epoch ms); later subscribers get rule picks. Default: `deadline`. */
     llmDeadline?: number;
     pacer?: Pacer;
@@ -162,9 +169,12 @@ export async function preparePicks(
     const fresh = pool.filter((j) => !sent.has(j.id));
     const signals = buildSignals(sub.profile);
     const ranked = rankForProfile(fresh, signals, now);
+    const stretchRanked = rankStretch(fresh, signals, now, new Set(ranked.slice(0, PICK_POOL).map((r) => r.job.id)));
     const modelOk = client && llm && (llmDeadline === undefined || pacer.nextSlotAt() < llmDeadline - LLM_MARGIN_MS);
     const pick = await choosePicks(ranked, sub.profile, {
       size: opts.size,
+      stretch: stretchPool(stretchRanked, STRETCH_POOL),
+      stretchSize: opts.stretchSize ?? STRETCH_SIZE,
       now,
       client: modelOk ? client : null,
       // Choosing and writing for one person a day earns a stronger model than per-posting extraction.
@@ -200,12 +210,13 @@ export async function preparePicks(
       picks: pick.jobIds.map((id) => {
         const j = byId.get(id)!;
         const note = pick.notes[id];
-        return { id, title: j.title, title_ko: j.title_ko, company: j.company, url: j.url, score: note.score, reason: note.reason, today: note.today };
+        return { id, kind: note.kind, title: j.title, title_ko: j.title_ko, company: j.company, url: j.url, score: note.score, reason: note.reason, today: note.today };
       }),
       ...(opts.dryRun
         ? {
             candidates: ranked.length,
             top: ranked.slice(0, 15).map((r) => ({ title: r.job.title_ko || r.job.title, score: r.score, hits: [...r.hits.map((h) => h.label), ...r.tools] })),
+            stretchTop: stretchRanked.slice(0, 12).map((r) => ({ title: r.job.title_ko || r.job.title, score: r.score, kind: r.kindLabel })),
             excluded: exclusionSummary(fresh, signals, now),
           }
         : {}),

@@ -172,3 +172,25 @@ test("an unusable pick model falls back to the extraction model", async () => {
   assert.deepEqual(calls, ["strong", "lite"]);
   assert.equal(r.method, "llm");
 });
+
+test("AI stretches come after the profile fits, from their own list", async () => {
+  const stretch = [
+    { job: job("x1", "Logo for a cafe", { category: "design" }), score: 5, kind: "logo_graphics", kindLabel: "로고·그래픽 디자인", aiHow: "Ideogram으로 시안" },
+    { job: job("x2", "Landing page", { category: "dev" }), score: 4, kind: "web_bot", kindLabel: "웹·봇·자동화 개발", aiHow: "AI 코딩 도구로" },
+    { job: job("x3", "3D cup model", { category: "motion_3d" }), score: 3, kind: "three_d", kindLabel: "3D 모델·렌더", aiHow: "Meshy로 초안" },
+  ];
+  const client = fakeClient(
+    JSON.stringify({
+      picks: [{ id: "c1", reason_ko: "맞아요", today_ko: "오늘 입찰해요" }],
+      stretch: [{ id: "s2", reason_ko: "AI 코딩 도구로 오늘 만들 만해요", today_ko: "오늘 1시간: 샘플 만들어 입찰해요" }],
+      subject_ko: "제목",
+    }),
+  );
+  const r = await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m", stretch, stretchSize: 2 });
+  assert.equal(r.jobIds.length, 5);
+  assert.deepEqual(r.jobIds.slice(3), ["x1", "x2"], "stretches in rule order after the fits");
+  assert.equal(r.notes.x2.kind, "stretch");
+  assert.equal(r.notes.x2.reason, "AI 코딩 도구로 오늘 만들 만해요");
+  assert.match(r.notes.x1.reason, /로고·그래픽 디자인/); // rule-written fill
+  assert.ok(r.jobIds.slice(0, 3).every((id) => r.notes[id].kind === "core"));
+});

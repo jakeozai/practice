@@ -21,7 +21,7 @@ import type { DigestJob } from "./candidates";
 export { isBiddingGig } from "../jobs/format";
 
 /** One mail card. The posting text never appears, only our Korean summary and structured fields (CLAUDE.md rule 1). */
-export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null, today: string | null = null): DailyFiveJob {
+export function digestCard(job: DigestJob, detailUrl: string, reason: string | null = null, today: string | null = null, stretch = false): DailyFiveJob {
   const korean = job.title_ko?.trim() || null;
   return {
     id: job.id,
@@ -34,6 +34,7 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     facts: isBiddingGig(job.url) ? [...jobFacts(job), { label: "지원", value: "견적 입찰 (경쟁)" }] : jobFacts(job),
     reason,
     today,
+    stretch,
     detailUrl,
   };
 }
@@ -51,13 +52,16 @@ export async function composeDigestEmail(input: {
   todays?: Map<string, string>;
   /** Personal subject line (personal picks); the date is appended. */
   subject?: string | null;
+  /** Jobs shown under "AI로 도전해 볼 일감" (personal picks), after the profile fits. */
+  stretchIds?: Set<string>;
   /** Day's numbers for the top line (null: plain intro). */
   stats?: CurationStats | null;
   sendDate: string;
   appUrl: string;
   linkSecret: string;
 }): Promise<OutgoingEmail> {
-  const { recipient, jobs, reasons, todays, subject, stats, sendDate, appUrl, linkSecret } = input;
+  const { recipient, jobs, reasons, todays, subject, stretchIds, stats, sendDate, appUrl, linkSecret } = input;
+  const stretchCount = jobs.filter((j) => stretchIds?.has(j.id)).length;
   const personal = Boolean(reasons?.size);
   // Issue time pinned to the send date keeps the payload identical on reruns.
   const issuedAt = seoulDayStartUtc(sendDate);
@@ -71,6 +75,7 @@ export async function composeDigestEmail(input: {
       `${appUrl}/r/${signLink({ uid, purpose: "click", jobId: job.id }, linkSecret, issuedAt)}`,
       reasons?.get(job.id) ?? null,
       todays?.get(job.id) ?? null,
+      stretchIds?.has(job.id) ?? false,
     ),
     // Opens a confirmation page; its buttons POST (CLAUDE.md rule 8).
     feedbackUrl: `${appUrl}/feedback?t=${signLink({ uid, purpose: "feedback", jobId: job.id }, linkSecret, issuedAt)}`,
@@ -82,7 +87,7 @@ export async function composeDigestEmail(input: {
       brand={BRAND.name}
       dateLabel={dateLabel}
       dayLabel={`${dateLabel} ${koreanWeekday(sendDate)}`}
-      curation={curationLine(stats, cards.length, personal)}
+      curation={curationLine(stats, cards.length - stretchCount, personal, stretchCount)}
       jobs={cards}
       recipientEmail={recipient.email}
       logoUrl={`${appUrl}/duck-mail.png`}

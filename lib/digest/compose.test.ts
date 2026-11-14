@@ -119,3 +119,19 @@ test("personal picks: reason, today's first step and own subject", async () => {
     assert.ok(mail.html.includes(part), `html has ${part}`);
   }
 });
+
+test("AI stretches get their own section and chip", async () => {
+  const stretchJob = { ...job, id: "1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d", title: "Logo for a cafe", title_ko: "카페 로고 디자인" };
+  const mail = await composeDigestEmail({
+    ...input,
+    jobs: [job, stretchJob],
+    reasons: new Map([
+      [JOB_ID, "맞는 이유"],
+      [stretchJob.id, "Ideogram 시안으로 해볼 만해요"],
+    ]),
+    stretchIds: new Set([stretchJob.id]),
+  });
+  for (const part of ["AI로 도전해 볼 일감 1개", "AI로 도전", "카페 로고 디자인", "딱 맞는 일감 1개와 AI로 도전해 볼 1개"]) {
+    assert.ok(mail.html.includes(part), `html has ${part}`);
+  }
+});

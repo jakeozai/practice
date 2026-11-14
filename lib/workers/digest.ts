@@ -144,7 +144,7 @@ export async function sendDigest(
         dryRun: opts.dryRun,
       });
       const stored = opts.dryRun
-        ? new Map(prep.details.map((d) => [d.user_id, { jobIds: d.picks.map((p) => p.id), notes: Object.fromEntries(d.picks.map((p) => [p.id, { reason: p.reason, today: p.today, score: p.score }])), subject: d.subject, method: d.method, createdAt: "" } as StoredPick]))
+        ? new Map(prep.details.map((d) => [d.user_id, { jobIds: d.picks.map((p) => p.id), notes: Object.fromEntries(d.picks.map((p) => [p.id, { reason: p.reason, today: p.today, score: p.score, kind: p.kind }])), subject: d.subject, method: d.method, createdAt: "" } as StoredPick]))
         : await loadStoredPicks(db, opts.sendDate, pending.map((r) => r.user_id));
       for (const [userId, pick] of stored) {
         const ids = pick.jobIds.filter((id) => jobById.has(id));
@@ -199,6 +199,7 @@ export async function sendDigest(
         reasons: pick ? new Map(item.jobIds.flatMap((id) => (pick.notes[id] ? [[id, pick.notes[id].reason] as const] : []))) : undefined,
         todays: pick ? new Map(item.jobIds.flatMap((id) => (pick.notes[id] ? [[id, pick.notes[id].today] as const] : []))) : undefined,
         subject: pick?.subject ?? null,
+        stretchIds: pick ? new Set(item.jobIds.filter((id) => pick.notes[id]?.kind === "stretch")) : undefined,
         stats,
         sendDate: opts.sendDate,
         appUrl: APP_URL,

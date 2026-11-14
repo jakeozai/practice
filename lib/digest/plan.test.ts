@@ -119,3 +119,19 @@ test("personal curation line names the profile, with or without the day's number
   );
   assert.equal(curationLine(null, 3, true), "내 AI가 분석한 프로필에 딱 맞는 일감 3개를 골랐어요.");
 });
+
+test("a personal list of five (fits + AI stretches) is sent whole", () => {
+  const plan = planManualDigest({
+    recipients: [a],
+    jobIds: ["j1"],
+    todayStatus: new Map(),
+    alreadyMatched: new Set(),
+    maxJobs: 3,
+    perRecipient: new Map([["u-a", ["p1", "p2", "p3", "x1", "x2"]]]),
+  });
+  assert.deepEqual(plan, [{ kind: "send", recipient: a, jobIds: ["p1", "p2", "p3", "x1", "x2"] }]);
+  assert.equal(
+    curationLine(null, 3, true, 2),
+    "내 AI가 분석한 프로필에 딱 맞는 일감 3개와 AI로 도전해 볼 2개를 골랐어요.",
+  );
+});

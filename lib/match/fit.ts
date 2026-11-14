@@ -157,9 +157,13 @@ export type Fit =
   | { ok: true; score: number; relevance: number; hits: ConceptHit[]; tools: string[] }
   | { ok: false; why: string };
 
-export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date()): Fit {
+/**
+ * Rules that hold for every job sent to this person, whether it fits their
+ * profile or is an AI stretch (lib/match/stretch.ts): where they can work,
+ * languages and English, their avoid list, performer work, hours and pay.
+ */
+export function personalLimits(job: FitJob, sig: ProfileSignals): { ok: false; why: string } | { ok: true; penalty: number } {
   const text = jobText(job);
-
   if (residentsOnlyElsewhere([job.title, job.title_ko, ...job.summary_ko])) return { ok: false, why: "region" };
 
   const foreign = job.languages.filter((l) => !sig.langs.has(l));
@@ -176,10 +180,6 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   for (const rule of AVOID_RULES) {
     if (sig.avoid.has(rule.id) && rule.job.test(text)) return { ok: false, why: `avoid:${rule.id}` };
   }
-  const title = `${job.title}\n${job.title_ko ?? ""}`;
-  for (const c of CONCEPTS) {
-    if (TITLE_CRAFTS.has(c.id) && !sig.concepts.has(c.id) && c.job.test(title)) return { ok: false, why: `craft:${c.id}` };
-  }
 
   if (job.hours_per_week_min !== null && sig.weeklyHours !== null && job.hours_per_week_min > sig.weeklyHours) {
     return { ok: false, why: `hours:${job.hours_per_week_min}` };
@@ -188,6 +188,20 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   if (job.pay_unit === "hour" && payUsd !== null && sig.minHourlyUsd !== null && payUsd < sig.minHourlyUsd) {
     return { ok: false, why: `pay:${Math.round(payUsd)}` };
   }
+  return { ok: true, penalty };
+}
+
+export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date()): Fit {
+  const text = jobText(job);
+  const limits = personalLimits(job, sig);
+  if (!limits.ok) return limits;
+  let penalty = limits.penalty;
+
+  const title = `${job.title}\n${job.title_ko ?? ""}`;
+  for (const c of CONCEPTS) {
+    if (TITLE_CRAFTS.has(c.id) && !sig.concepts.has(c.id) && c.job.test(title)) return { ok: false, why: `craft:${c.id}` };
+  }
+  const payUsd = toUsd(job.pay_max ?? job.pay_min, job.pay_currency);
 
   // Software work counts only in a language the person uses (no Java trainer jobs for a Next.js developer).
   const jobCode = codeLanguages(text);

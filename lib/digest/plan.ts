@@ -48,9 +48,10 @@ export function planManualDigest(input: {
     }
 
     const own = perRecipient?.get(recipient.user_id);
+    // A personal list is already the right size (profile fits + AI stretches).
     const remaining = [...new Set(own ?? jobIds)]
       .filter((id) => !alreadyMatched.has(`${recipient.user_id}:${id}`))
-      .slice(0, maxJobs);
+      .slice(0, own ? own.length : maxJobs);
 
     plan.push(remaining.length ? { kind: "send", recipient, jobIds: remaining } : { kind: "skip_empty", recipient });
   }
@@ -90,10 +91,12 @@ export function curationLine(
   stats: { newPostings: number; koreaJobs: number } | null | undefined,
   picked: number,
   personal = false,
+  stretch = 0,
 ): string | null {
-  const which = personal ? `내 AI가 분석한 프로필에 딱 맞는 ${picked}개` : `${picked}개`;
-  if (!stats || picked <= 0 || stats.newPostings <= 0 || stats.koreaJobs < picked) {
-    return personal && picked > 0 ? `내 AI가 분석한 프로필에 딱 맞는 일감 ${picked}개를 골랐어요.` : null;
+  const plus = stretch > 0 ? `와 AI로 도전해 볼 ${stretch}개` : "";
+  const which = personal ? `내 AI가 분석한 프로필에 딱 맞는 ${picked}개${plus}` : `${picked}개`;
+  if (!stats || picked <= 0 || stats.newPostings <= 0 || stats.koreaJobs < picked + stretch) {
+    return personal && picked > 0 ? `내 AI가 분석한 프로필에 딱 맞는 일감 ${picked}개${plus}를 골랐어요.` : null;
   }
   const n = (x: number) => x.toLocaleString("ko-KR");
   return `지난 하루 새로 올라온 공고 ${n(stats.newPostings)}개 중 한국에서 할 수 있는 단기 일감 ${n(stats.koreaJobs)}개, 그중 ${which}를 골랐어요.`;

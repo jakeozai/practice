@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { JobFact, StatusBadge } from "../lib/jobs/format";
 import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
 import { mailColor, mailFont } from "./theme";
@@ -18,6 +19,8 @@ export type DailyFiveJob = {
   reason: string | null;
   /** One concrete first step for today (personal picks). */
   today?: string | null;
+  /** "AI로 도전해 볼 일감": not done before, doable with AI tools (personal picks). */
+  stretch?: boolean;
   detailUrl: string;
   /** /feedback confirmation page (관심 없어요·신고). Hidden when absent. */
   feedbackUrl?: string | null;
@@ -100,6 +103,9 @@ const s = {
   reason: { fontSize: 14, lineHeight: "21px", color: mailColor.accent, fontWeight: 700, margin: "0 0 6px" },
   today: { fontSize: 13, lineHeight: "20px", color: mailColor.ink, backgroundColor: "#FFF4D6", borderRadius: 10, padding: "8px 12px", margin: "0 0 14px" },
   todayLabel: { fontWeight: 800, color: mailColor.accent },
+  stretchChip: { ...pill, color: "#FFFFFF", backgroundColor: "#6B4EFF" },
+  sectionHeading: { fontSize: 18, fontWeight: 800, color: mailColor.ink, margin: "30px 0 4px" },
+  sectionIntro: { fontSize: 13, lineHeight: "20px", color: mailColor.muted, margin: "0 0 14px" },
   button: {
     display: "block",
     textAlign: "center" as const,
@@ -131,6 +137,7 @@ function JobCard({ job, index }: { job: DailyFiveJob; index: number }) {
     <Section style={s.card}>
       <Text style={{ margin: 0, lineHeight: "20px" }}>
         <span style={s.number}>{index + 1}</span>
+        {job.stretch && <span style={s.stretchChip}>AI로 도전</span>}
         {job.badge && <span style={job.badge.tone === "open" ? s.badgeOpen : s.badgePool}>{job.badge.label}</span>}
         {job.category && <span style={s.chip}>{job.category}</span>}
       </Text>
@@ -209,7 +216,15 @@ export default function DailyFive(props: DailyFiveProps) {
           </Text>
 
           {jobs.map((job, i) => (
-            <JobCard key={job.id} job={job} index={i} />
+            <Fragment key={job.id}>
+              {job.stretch && !jobs[i - 1]?.stretch && (
+                <>
+                  <Text style={s.sectionHeading}>{`AI로 도전해 볼 일감 ${jobs.filter((j) => j.stretch).length}개`}</Text>
+                  <Text style={s.sectionIntro}>아직 해 본 적 없는 종류지만, AI 도구로 오늘 시안을 만들어 지원해 볼 만한 일이에요.</Text>
+                </>
+              )}
+              <JobCard job={job} index={i} />
+            </Fragment>
           ))}
 
           <Section style={s.tip}>
