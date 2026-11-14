@@ -171,3 +171,12 @@ test("a title naming a craft the profile lacks rules the job out", () => {
   const shorts = job({ title: "Edit YouTube Shorts", summary_ko: ["자막과 간단한 모션 그래픽 포함"], category: "video" });
   assert.ok(assessJob(shorts, sig, NOW).ok, "craft words outside the title don't rule out (motion only in the body)");
 });
+
+test("jobs for other countries' residents and credential jobs outside the person's own fields are out", () => {
+  const usOnly = job({ title: "AI video evaluator", summary_ko: ["AI 영상 평가", "미국 거주자만 지원 가능합니다."], category: "video" });
+  assert.equal((assessJob(usOnly, sig, NOW) as { why: string }).why, "region");
+
+  // Matches only through the AI's recommendation line (notes_ko), not the person's own fields.
+  const seniorEval = job({ title: "Senior AI video quality evaluator", requires_credential: true, category: "labeling", summary_ko: ["AI 영상 결과 평가"] });
+  assert.equal((assessJob(seniorEval, sig, NOW) as { why: string }).why, "credential");
+});

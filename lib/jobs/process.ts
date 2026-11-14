@@ -2,7 +2,7 @@
  * Turns one raw posting (+ optional LLM extraction) into a jobs row and a
  * review decision (spec §8 steps 3 and 5). Pure.
  */
-import { decideKoreaEligible, koreaEligibleFromLocation } from "../eligibility";
+import { decideKoreaEligible, koreaEligibleFromLocation, residentsOnlyElsewhere } from "../eligibility";
 import { decideStatus } from "../status";
 import { isScamRejected, scamScore } from "../scam";
 import { normalizeTitle } from "./format";
@@ -80,7 +80,10 @@ export function buildJob(input: {
   const { raw, source, extraction: x, sameTitleCount } = input;
   const title = x?.title || raw.title?.trim() || "(제목 없음)";
   const company = decideCompany(source, x?.company);
-  const korea = decideKoreaEligible(raw.location_raw, x?.korea_eligible);
+  // The posting's own words win over a generic "Remote" location: "US residents only" isn't for Korea.
+  const korea = residentsOnlyElsewhere([raw.title, x?.title, ...(x?.summary_ko ?? [])])
+    ? false
+    : decideKoreaEligible(raw.location_raw, x?.korea_eligible);
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;
 

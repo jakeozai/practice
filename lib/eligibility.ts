@@ -66,3 +66,22 @@ export function koreaEligibleFromLocation(location: string | null | undefined): 
 export function decideKoreaEligible(location: string | null | undefined, llmValue: boolean | null | undefined): boolean | null {
   return koreaEligibleFromLocation(location) ?? llmValue ?? null;
 }
+
+/**
+ * The posting itself says it's for residents of some other country: our Korean
+ * summary ("미국 거주자만 지원 가능", "특정 국가 거주자만", "캐나다 거주자를
+ * 대상으로") or the English title ("(US Only)", "UK residents only"). Catches
+ * jobs whose location field said "Remote" and the extraction still marked
+ * Korea-eligible (2026-11-14: five such jobs were approved). Not when the same
+ * text also names Korea or a worldwide scope.
+ */
+const RESIDENTS_ONLY_KO = /(?:거주자|거주\s*중인\s*(?:분|사람)|거주하는\s*(?:분|사람))\s*(?:만|한정|대상|에\s*한해|를\s*대상|를\s*위한)/;
+const RESIDENTS_ONLY_EN =
+  /\b(?:US|USA|U\.S\.|UK|EU|Canada|Europe|India|Philippines|Brazil|Mexico|LATAM)[\s-]*(?:residents?\s*)?only\b|\bresidents?\s+of\s+(?:the\s+)?(?:US|USA|United States|UK|United Kingdom|Canada|EU)\s+only\b|\((?:US|USA|UK|Canada|EU)\)/i;
+const KOREA_OR_WORLD = /한국|대한민국|국내|전\s*세계|전세계|글로벌|국가\s*무관|지역\s*무관|\bkorea\b|worldwide|world\s*wide|\bglobal\b|anywhere/i;
+
+export function residentsOnlyElsewhere(texts: (string | null | undefined)[]): boolean {
+  const text = texts.filter(Boolean).join("\n");
+  if (KOREA_OR_WORLD.test(text.replace(NORTH_KOREA, " "))) return false;
+  return RESIDENTS_ONLY_KO.test(text) || RESIDENTS_ONLY_EN.test(text);
+}

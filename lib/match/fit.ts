@@ -9,7 +9,8 @@
  *  - a work language the person doesn't have, or English two levels above theirs
  *  - something on their `avoid` list (AVOID_RULES), or performer work they never mention
  *  - more weekly hours than they have, or an hourly rate under their minimum
- *  - a degree/licence requirement without a strong field match
+ *  - text saying it's for residents of another country ("미국 거주자만", "(US Only)")
+ *  - a degree/licence requirement outside the person's own fields
  *  - software work in a programming language the profile doesn't show
  *  - a title naming a craft the profile doesn't have (3D, motion, logo, photo, audio, translation, labeling)
  *  - nothing in common with what they do (no concept from their profile)
@@ -19,6 +20,7 @@
  * plus named tools (small), then pay, freshness and small penalties.
  */
 import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
+import { residentsOnlyElsewhere } from "../eligibility";
 import { isBiddingGig } from "../jobs/format";
 import { AVOID_RULES, CODE_CONCEPTS, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, TITLE_CRAFTS, USD_PER_UNIT, codeLanguages, toolTokens, type Concept } from "./concepts";
 
@@ -57,12 +59,13 @@ export const SECTION_WEIGHT = {
 
 /** (제안값) A job needs at least this much in common with the profile. */
 export const MIN_RELEVANCE = 2.5;
-/** (제안값) Degree/licence jobs only for a match this strong (fields or the AI's recommendation). */
-const CREDENTIAL_MIN_WEIGHT = 3.4;
+/** (제안값) Degree/licence jobs need a match at least this strong, from the fields or expertise. */
+const CREDENTIAL_MIN_WEIGHT = 3;
 /** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
 const TINY_BUDGET_USD = 50;
 
-export type ConceptHit = { id: string; label: string; weight: number; trigger: string; categories: string[] };
+export type ProfileSection = "field" | "notes" | "domain" | "skills" | "experience";
+export type ConceptHit = { id: string; label: string; weight: number; trigger: string; categories: string[]; section: ProfileSection };
 
 export type ProfileSignals = {
   langs: Set<string>;
@@ -98,12 +101,14 @@ export function buildSignals(profile: Profile): ProfileSignals {
   const en = profile.languages.find((l) => l.code === "en");
   const english: EnglishLevel = en ? (en.level ?? "reading") : "none";
 
-  const sections: { text: string; weight: number; cite: "item" | "clause" }[] = [
-    ...profile.fields.map((text, i) => ({ text, weight: SECTION_WEIGHT.firstField - SECTION_WEIGHT.fieldStep * i, cite: "item" as const })),
-    ...(profile.notes_ko ? [{ text: profile.notes_ko, weight: SECTION_WEIGHT.notes, cite: "clause" as const }] : []),
-    ...profile.domain_expertise.map((text) => ({ text, weight: SECTION_WEIGHT.domain, cite: "item" as const })),
-    ...profile.skills.map((text) => ({ text, weight: SECTION_WEIGHT.skills, cite: "item" as const })),
-    ...(profile.experience_summary_ko ? [{ text: profile.experience_summary_ko, weight: SECTION_WEIGHT.experience, cite: "clause" as const }] : []),
+  const sections: { text: string; weight: number; cite: "item" | "clause"; section: ProfileSection }[] = [
+    ...profile.fields.map((text, i) => ({ text, weight: SECTION_WEIGHT.firstField - SECTION_WEIGHT.fieldStep * i, cite: "item" as const, section: "field" as const })),
+    ...(profile.notes_ko ? [{ text: profile.notes_ko, weight: SECTION_WEIGHT.notes, cite: "clause" as const, section: "notes" as const }] : []),
+    ...profile.domain_expertise.map((text) => ({ text, weight: SECTION_WEIGHT.domain, cite: "item" as const, section: "domain" as const })),
+    ...profile.skills.map((text) => ({ text, weight: SECTION_WEIGHT.skills, cite: "item" as const, section: "skills" as const })),
+    ...(profile.experience_summary_ko
+      ? [{ text: profile.experience_summary_ko, weight: SECTION_WEIGHT.experience, cite: "clause" as const, section: "experience" as const }]
+      : []),
   ];
 
   const concepts = new Map<string, ConceptHit>();
@@ -113,7 +118,7 @@ export function buildSignals(profile: Profile): ProfileSignals {
       const prev = concepts.get(c.id);
       if (prev && prev.weight >= s.weight) continue;
       const trigger = s.cite === "item" ? s.text : clauseAround(s.text, new RegExp(c.profile.source, "i"));
-      concepts.set(c.id, { id: c.id, label: c.label, weight: s.weight, trigger, categories: c.categories });
+      concepts.set(c.id, { id: c.id, label: c.label, weight: s.weight, trigger, categories: c.categories, section: s.section });
     }
   }
 
@@ -155,6 +160,8 @@ export type Fit =
 export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date()): Fit {
   const text = jobText(job);
 
+  if (residentsOnlyElsewhere([job.title, job.title_ko, ...job.summary_ko])) return { ok: false, why: "region" };
+
   const foreign = job.languages.filter((l) => !sig.langs.has(l));
   if (foreign.length) return { ok: false, why: `language:${foreign.join(",")}` };
 
@@ -195,10 +202,12 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   const relevance = best + Math.min(0.35 * rest, 3);
   if (best < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
 
-  // A degree/licence job only when the person's strongest field is that very kind of work
+  // A degree/licence job only when it is the person's own line of work: the match comes from
+  // their fields or expertise (not a recommendation or a skill), in the job's category
   // (a "licensed lawyer" job that mentions AI video is still a lawyer job).
   if (job.requires_credential) {
-    if (best < CREDENTIAL_MIN_WEIGHT || !job.category || !hits[0].categories.includes(job.category)) return { ok: false, why: "credential" };
+    const own = hits[0].section === "field" || hits[0].section === "domain";
+    if (!own || best < CREDENTIAL_MIN_WEIGHT || !job.category || !hits[0].categories.includes(job.category)) return { ok: false, why: "credential" };
     penalty += 1;
   }
 
