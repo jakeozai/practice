@@ -1,8 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "mcp__Vercel",
-      "mcp__Supabase"
-    ]
+    "allow": ["mcp__Vercel", "mcp__Vercel__*", "mcp__Supabase", "mcp__Supabase__*"]
   }
 }

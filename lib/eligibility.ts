@@ -50,6 +50,16 @@ const COUNTRY_NAMES: RegExp = (() => {
 const US_STATE =
   /,\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/;
 
+/**
+ * A "/" list with a bare ISO code next to city names: RWS TrainAI writes
+ * "Rome / IT / remote", "Næstved / Aarhus / … / DK / remote" — remote work
+ * for residents of that one country (2026-11-14 review queue, 20 of 24).
+ */
+const LISTED_CODE = /(?:^|[/;]\s*)[A-Z]{2,3}\s*(?:[/;]|$)/;
+
+/** Office work: "Hybrid, SanFrancisco", "Mercor HQ, 181 Fremont Street". */
+const ON_SITE = /\bhybrid\b|\bon-?site\b|\bin-?office\b|\bHQ\b/i;
+
 /** "North Korea" (also in some all-countries lists) must not count as Korea. */
 const NORTH_KOREA = /north korea|democratic people'?s republic of korea|\bdprk\b|korea,? (?:dem\.?|democratic) people'?s rep(?:ublic|\.)?/gi;
 
@@ -59,6 +69,7 @@ export function koreaEligibleFromLocation(location: string | null | undefined): 
   if (CODE_LIST.test(text) && text.replace(/Remote/g, "").trim()) return /\b(?:KR|KOR)\b/.test(text);
   if (YES.test(text)) return true;
   if (COUNTRY_ONLY.test(text) || COUNTRY_NAMES.test(text) || US_STATE.test(text)) return false;
+  if (LISTED_CODE.test(text) || ON_SITE.test(text)) return false;
   return null;
 }
 

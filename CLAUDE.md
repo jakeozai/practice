@@ -48,6 +48,7 @@
 ## 시간
 - DB는 `timestamptz`(UTC). `send_date`는 Asia/Seoul 기준 날짜.
 - 발송은 매일 06:00 KST 정각(2026-11-12 결정). Supabase pg_cron이 `0 21 * * *`(UTC)에 pg_net으로 `/api/cron/digest`를 부른다(`0007_exact_daily_schedule.sql`, 토큰은 Vault에만 있고 앱은 `verify_cron_token`으로 확인).
+- 예약 호출 주소는 `https://www.duckjob.app`(0013). `private.call_app_cron`을 다시 정의할 땐 최신 마이그레이션의 경로 목록과 주소를 그대로 이어받는다.
 - 공고 처리(AI 요약)는 pg_cron이 19:00~05:50 KST에 10분마다 `/api/cron/process` 호출(`0009_process_window.sql`). 무료 Gateway 분당 5회 제한에 맞춰 호출 간격을 둔다(`lib/llm/pace.ts`).
 - Vercel Cron(`vercel.json`, UTC, Hobby는 지정한 시각부터 1시간 안에 실행): 수집 19:00 KST = `0 10 * * *`, 발송 예비 07:00 KST = `0 22 * * *`(6시에 못 받은 사람만 보냄).
 

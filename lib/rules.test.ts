@@ -39,7 +39,13 @@ test("korea eligibility from location text (real examples from the supply check)
     ["Washington, DC", false],
     ["Hong Kong , Hong Kong / Hong Kong / HK", false],
     ["seoul, Seoul-teukbyeolsi, South Korea / South Korea / KR", true],
-    ["Mercor HQ, 181 Fremont Street", null],
+    // One country's residents only, or office work (2026-11-14 review queue)
+    ["Rome / IT / remote", false],
+    ["Belgrade / RS / remote", false],
+    ["Reykjavik / Kópavogur / Hafnarfjörður / IS / remote", false],
+    ["Mercor HQ, 181 Fremont Street", false],
+    ["Hybrid, SanFrancisco", false],
+    ["Hybrid, Seoul", true],
     ["Remote", null],
   ];
   for (const [loc, expected] of cases) assert.equal(koreaEligibleFromLocation(loc), expected, String(loc));
