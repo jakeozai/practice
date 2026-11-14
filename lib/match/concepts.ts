@@ -171,7 +171,7 @@ export const CONCEPTS: Concept[] = [
     label: "언어 평가",
     categories: ["language"],
     profile: /언어\s*평가|원어민\s*평가|linguist|언어학|검색\s*(?:품질\s*)?평가|search\s*evaluat|ai\s*트레이너|ai\s*trainer/i,
-    job: /linguist|언어\s*(?:평가|전문가)|language\s*(?:expert|specialist|evaluat)|search\s*(?:engine\s*)?evaluat|검색\s*(?:엔진\s*)?평가|ads?\s*quality|광고\s*품질|\brater\b|ai\s*trainer|ai\s*트레이너/i,
+    job: /linguist|언어\s*(?:평가|전문가)|language\s*(?:expert|specialist|evaluat)|search\s*(?:engine\s*)?evaluat|검색\s*(?:엔진\s*)?평가|ads?\s*quality|광고\s*품질|\brater\b/i, // not "AI trainer": that's every kind of AI work
   },
   {
     id: "marketing",
@@ -265,6 +265,13 @@ export const USD_PER_UNIT: Record<string, number> = {
   NOK: 0.093,
   DKK: 0.145,
 };
+
+/**
+ * Crafts that can't be picked up on the spot. When a job's title names one the
+ * profile doesn't, the job is about that craft ("3D Modeling & Python
+ * Specialist" is a 3D job even if it also mentions JavaScript).
+ */
+export const TITLE_CRAFTS = new Set(["three_d", "motion", "logo_brand", "photo", "audio", "translation", "labeling", "language_eval"]);
 
 /** Concepts about writing software: they only count when the job's language is one the person uses. */
 export const CODE_CONCEPTS = new Set(["web_fullstack", "ai_eval_code", "automation_ai", "data_scraping"]);

@@ -11,6 +11,7 @@
  *  - more weekly hours than they have, or an hourly rate under their minimum
  *  - a degree/licence requirement without a strong field match
  *  - software work in a programming language the profile doesn't show
+ *  - a title naming a craft the profile doesn't have (3D, motion, logo, photo, audio, translation, labeling)
  *  - nothing in common with what they do (no concept from their profile)
  *
  * Score: profile concepts the job matches, weighted by where the AI wrote them
@@ -19,7 +20,7 @@
  */
 import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
 import { isBiddingGig } from "../jobs/format";
-import { AVOID_RULES, CODE_CONCEPTS, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, USD_PER_UNIT, codeLanguages, toolTokens, type Concept } from "./concepts";
+import { AVOID_RULES, CODE_CONCEPTS, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, TITLE_CRAFTS, USD_PER_UNIT, codeLanguages, toolTokens, type Concept } from "./concepts";
 
 type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
 
@@ -167,6 +168,10 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   if (!sig.performer && PERFORMER_JOB.test(text)) return { ok: false, why: "performer" };
   for (const rule of AVOID_RULES) {
     if (sig.avoid.has(rule.id) && rule.job.test(text)) return { ok: false, why: `avoid:${rule.id}` };
+  }
+  const title = `${job.title}\n${job.title_ko ?? ""}`;
+  for (const c of CONCEPTS) {
+    if (TITLE_CRAFTS.has(c.id) && !sig.concepts.has(c.id) && c.job.test(title)) return { ok: false, why: `craft:${c.id}` };
   }
 
   if (job.hours_per_week_min !== null && sig.weeklyHours !== null && job.hours_per_week_min > sig.weeklyHours) {

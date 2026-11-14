@@ -83,7 +83,7 @@ test("video editing ranks first; labeling, other languages and performer work ar
   assert.equal((assessJob(labeling, sig, NOW) as { why: string }).why, "avoid:repetitive");
   assert.equal((assessJob(japanese, sig, NOW) as { why: string }).why, "language:ja");
   assert.equal((assessJob(voice, sig, NOW) as { why: string }).why, "performer");
-  assert.equal((assessJob(logo, sig, NOW) as { why: string }).why, "unrelated");
+  assert.equal((assessJob(logo, sig, NOW) as { why: string }).why, "craft:logo_brand");
 });
 
 test("avoid list removes otherwise matching work", () => {
@@ -161,4 +161,13 @@ test("education means video or content to produce, not course design or articles
   assert.equal((assessJob(courseDesign, sig, NOW) as { why: string }).why, "unrelated");
   const fit = assessJob(trainingVideos, sig, NOW);
   assert.ok(fit.ok && fit.hits.some((h) => h.id === "edu_content"));
+});
+
+test("a title naming a craft the profile lacks rules the job out", () => {
+  const threeD = job({ title: "3D Modeling & Python Specialist - Freelance AI Trainer", summary_ko: ["JavaScript 사용"], category: "motion_3d" });
+  assert.equal((assessJob(threeD, sig, NOW) as { why: string }).why, "craft:three_d");
+  const audio = job({ title: "Audio Editor for Dialogue", summary_ko: ["유튜브 영상 대사 오디오 정리"], category: "other" });
+  assert.equal((assessJob(audio, sig, NOW) as { why: string }).why, "craft:audio");
+  const shorts = job({ title: "Edit YouTube Shorts", summary_ko: ["자막과 간단한 모션 그래픽 포함"], category: "video" });
+  assert.ok(assessJob(shorts, sig, NOW).ok, "craft words outside the title don't rule out (motion only in the body)");
 });
