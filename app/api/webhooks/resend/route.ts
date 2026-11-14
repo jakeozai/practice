@@ -25,10 +25,13 @@ export async function POST(request: Request) {
       webhookSecret: secret,
     });
   } catch {
+    console.warn("resend webhook: bad signature"); // wrong or missing secret shows up here
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   const action = deliveryAction(event as Parameters<typeof deliveryAction>[0]);
+  // Event type and outcome only, never addresses.
+  console.log(`resend webhook: ${event.type} → ${action?.status ?? "ignored"}`);
   if (!action) return NextResponse.json({ ok: true, ignored: event.type });
 
   const { error } = await createAdminClient()
