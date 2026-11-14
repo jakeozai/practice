@@ -5,10 +5,11 @@
  */
 export type ExampleRow = { title: string; meta: string; pay: string };
 
+/** All overseas, like the real supply (2026-11-14: every source is an overseas company or platform). */
 export const EXAMPLE_JOBS: ExampleRow[] = [
-  { title: "상세페이지 카피 5종", meta: "AI로 약 2시간 · 국내", pay: "15만 원" },
-  { title: "영어 인터뷰 한국어 자막", meta: "AI로 약 1.5시간 · 해외", pay: "$90" },
-  { title: "설문 800건 분류·요약", meta: "AI로 약 3시간 · 국내", pay: "20만 원" },
-  { title: "블로그 원고 4편", meta: "AI로 약 2시간 · 국내", pay: "12만 원" },
-  { title: "상품 썸네일 10장", meta: "AI로 약 1시간 · 국내", pay: "8만 원" },
+  { title: "유튜브 영상 한국어 자막", meta: "AI로 약 1.5시간 · 해외 원격", pay: "$90" },
+  { title: "AI 답변 한국어 평가", meta: "주 10시간부터 · 해외 원격", pay: "시간당 $25" },
+  { title: "카페 로고 시안 3종", meta: "AI로 약 2시간 · 해외 원격", pay: "$120" },
+  { title: "제품 3D 모델 1개", meta: "AI로 약 3시간 · 해외 원격", pay: "$150" },
+  { title: "숏폼 영상 5편 편집", meta: "AI로 약 2시간 · 해외 원격", pay: "$100" },
 ];
