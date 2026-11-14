@@ -85,3 +85,16 @@ test("pool keeps at most two of a kind so the mail can offer two different tries
   assert.equal(pool.filter((r) => r.kind === "logo_graphics").length, 2);
   assert.equal(pool.length, 4);
 });
+
+test("enterprise systems, support roles and writing aren't AI stretches; small deliverables rank above big builds", () => {
+  assert.equal(stretchKindOf(job({ title: "Infor CSD–PIM Data Integration", category: "dev", summary_ko: ["Infor PIM 데이터 연동"] })), null);
+  assert.equal(stretchKindOf(job({ title: "Email/chat support assistant", category: "dev", summary_ko: ["고객 응대 챗봇 운영 보조"] })), null);
+  assert.equal(stretchKindOf(job({ title: "Engaging social media content writing", category: "writing", summary_ko: ["소셜 미디어 게시물 글 작성"] })), null);
+  assert.equal(stretchKindOf(job({ title: "AI-generated blog images and captions", category: "writing" }))?.id, "ai_content");
+
+  const logo = job({ title: "Small business logo design" });
+  const app = job({ title: "E-commerce mobile app development", category: "dev" });
+  const [first, second] = rankStretch([app, logo], sig, NOW);
+  assert.equal(first.job.id, logo.id);
+  assert.ok(first.score - second.score >= 2);
+});

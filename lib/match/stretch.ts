@@ -35,7 +35,7 @@ export const STRETCH_KINDS: StretchKind[] = [
     label: "웹·봇·자동화 개발",
     aiHow: "Claude Code 같은 AI 코딩 도구로 빠르게 만들기",
     job: /website|웹사이트|landing\s*page|랜딩|web\s*app|웹\s*앱|chat\s*bot|chatbot|챗봇|\bbot\b|(?:^|[^로])봇|automat|자동화|\bscript\b|스크립트|scrap|크롤|integration|연동|plugin|플러그인|browser\s*extension|확장\s*프로그램|bug\s*fix|버그\s*수정|prototype|프로토타입|\bmvp\b|mobile\s*app|모바일\s*앱|앱\s*개발|wordpress|워드프레스|shopify|쇼피파이/i,
-    not: /\bseo\b|검색\s*(?:엔진\s*)?최적화|google\s*ads|구글\s*(?:광고|애즈)|광고\s*캠페인|\bsales\b|영업|cold\s*call|콜드\s*콜|telemarket|financial\s*model|재무\s*모델|trading|트레이더|트레이딩|recruit|채용|founding|창립|senior|시니어|\blead\b|\bcto\b|full[- ]?time|정규직|security\s*audit|보안\s*감사|blockchain|블록체인|smart\s*contract|\bcrm\b|amazon\s*fba|아마존\s*fba|listing/i,
+    not: /\bseo\b|검색\s*(?:엔진\s*)?최적화|google\s*ads|구글\s*(?:광고|애즈)|광고\s*캠페인|\bsales\b|영업|cold\s*call|콜드\s*콜|telemarket|financial\s*model|재무\s*모델|trading|트레이더|트레이딩|recruit|채용|founding|창립|senior|시니어|\blead\b|\bcto\b|full[- ]?time|정규직|security\s*audit|보안\s*감사|blockchain|블록체인|smart\s*contract|\bcrm\b|amazon\s*fba|아마존\s*fba|listing|\berp\b|infor\b|\bsap\b|oracle|netsuite|salesforce|odoo|zoho|hubspot|dynamics\s*365|\bpim\b|customer\s*support|고객\s*(?:지원|응대)|virtual\s*assistant|가상\s*비서|\bqa\b|테스트\s*자동화|test\s*automation|data\s*entry|데이터\s*입력/i,
   },
   {
     id: "ai_content",
@@ -46,8 +46,14 @@ export const STRETCH_KINDS: StretchKind[] = [
   },
 ];
 
-/** Categories a stretch may come from (language, labeling and expert-domain work are never a stretch). */
+/** Categories a stretch may come from (language, labeling and expert-domain work are never a stretch; writing only as generative AI work). */
 const STRETCH_CATEGORIES = new Set(["design", "motion_3d", "dev", "video", "other", "writing"]);
+
+/** One small, clear deliverable is a fair first try with AI; a platform or app is not. (제안값) */
+const SMALL_DELIVERABLE =
+  /\blogo|로고|\bicons?\b|아이콘|sticker|스티커|t-?shirt|티셔츠|poster|포스터|banner|배너|flyer|전단|thumbnail|썸네일|illustrat|삽화|일러스트|book\s*cover|표지|3d\s*model|3d\s*모델|figurine|피규어|character\s*model|landing\s*page|랜딩|one[- ]page|원\s*페이지|website|웹사이트|chat\s*bot|chatbot|챗봇|\bscript\b|스크립트/i;
+const BIG_SCOPE =
+  /platform|플랫폼|marketplace|마켓플레이스|enterprise|엔터프라이즈|integration\s*hub|데이터\s*통합|migration|마이그레이션|mobile\s*app|모바일\s*앱|e-?commerce\s*app|이커머스\s*앱|앱\s*개발|\bgame\b|게임|\bsaas\b|full[- ]?stack|풀스택|long[- ]term|장기/i;
 /** (제안값) Fixed-price budgets under this (USD) aren't worth a first try. */
 const STRETCH_MIN_BUDGET_USD = 50;
 
@@ -57,6 +63,7 @@ export function stretchKindOf(job: FitJob): StretchKind | null {
   if (!job.category || !STRETCH_CATEGORIES.has(job.category)) return null;
   const text = jobText(job);
   for (const k of STRETCH_KINDS) {
+    if (job.category === "writing" && k.id !== "ai_content") continue;
     if (k.job.test(text) && !k.not?.test(text)) return k;
   }
   return null;
@@ -95,6 +102,8 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
     if (ageHours <= 36) score += 1;
     else if (ageHours <= 96) score += 0.5;
     if (job.status === "pool") score -= 1;
+    if (SMALL_DELIVERABLE.test(text)) score += 1;
+    if (BIG_SCOPE.test(text)) score -= 1.5;
 
     out.push({ job, score: Math.round(score * 100) / 100, kind: kind.id, kindLabel: kind.label, aiHow: kind.aiHow });
   }
