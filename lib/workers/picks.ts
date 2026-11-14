@@ -19,9 +19,10 @@ import { ProfileSchema, type Profile } from "../profile/parse";
 import { createAnthropic, fastModelConfig } from "../llm/client";
 import type { MessagesClient } from "../llm/extractJob";
 import { createPacer, llmRequestsPerMinute, pacedClient, type Pacer } from "../llm/pace";
-import { buildSignals, exclusionSummary, rankForProfile } from "../match/fit";
+import { buildSignals, exclusionSummary, rankForProfile, type ProfileSignals, type Ranked } from "../match/fit";
 import { choosePicks, PICK_POOL, STRETCH_POOL, type PickKind, type PickResult } from "../match/pick";
-import { rankStretch, stretchPool } from "../match/stretch";
+import { rankStretch, stretchPool, type StretchRanked } from "../match/stretch";
+import type { Persona } from "../match/personas";
 import { loadCandidatePool, type DigestJob } from "../digest/candidates";
 import { chunks, pastDeadline, type RunOptions } from "./run";
 import type { Json } from "../supabase/database.types";
@@ -115,6 +116,58 @@ async function loadSubscribers(db: ServiceClient, onlyUser?: string): Promise<{ 
   }
 }
 
+type ModelContext = { client: MessagesClient | null; model: string | null; fallbackModel: string | null; log: (line: string) => void };
+
+/** One person's mail: rule ranking → stretch ranking → the model's (or the rules') choice. */
+async function pickFor(
+  profile: Profile,
+  jobs: DigestJob[],
+  opts: { size: number; stretchSize: number; now: Date; ctx: ModelContext },
+): Promise<{ pick: PickResult; signals: ProfileSignals; ranked: Ranked<DigestJob>[]; stretchRanked: StretchRanked<DigestJob>[] }> {
+  const signals = buildSignals(profile);
+  const ranked = rankForProfile(jobs, signals, opts.now);
+  const stretchRanked = rankStretch(jobs, signals, opts.now, new Set(ranked.slice(0, PICK_POOL).map((r) => r.job.id)));
+  const pick = await choosePicks(ranked, profile, {
+    size: opts.size,
+    stretch: stretchPool(stretchRanked, STRETCH_POOL),
+    stretchSize: opts.stretchSize,
+    now: opts.now,
+    client: opts.ctx.client,
+    model: opts.ctx.model,
+    fallbackModel: opts.ctx.fallbackModel,
+    log: opts.ctx.log,
+  });
+  return { pick, signals, ranked, stretchRanked };
+}
+
+function detailOf(
+  user_id: string,
+  r: Awaited<ReturnType<typeof pickFor>>,
+  jobs: DigestJob[],
+  now: Date,
+  dryRun: boolean,
+): PickDetail {
+  const byId = new Map<string, DigestJob>(jobs.map((j) => [j.id, j]));
+  return {
+    user_id,
+    method: r.pick.method,
+    subject: r.pick.subject,
+    picks: r.pick.jobIds.map((id) => {
+      const j = byId.get(id)!;
+      const note = r.pick.notes[id];
+      return { id, kind: note.kind, title: j.title, title_ko: j.title_ko, company: j.company, url: j.url, score: note.score, reason: note.reason, today: note.today };
+    }),
+    ...(dryRun
+      ? {
+          candidates: r.ranked.length,
+          top: r.ranked.slice(0, 15).map((x) => ({ title: x.job.title_ko || x.job.title, score: x.score, hits: [...x.hits.map((h) => (h.section === "keywords" ? `검색어:${h.trigger}` : h.label)), ...x.tools] })),
+          stretchTop: r.stretchRanked.slice(0, 12).map((x) => ({ title: x.job.title_ko || x.job.title, score: x.score, kind: x.kindLabel })),
+          excluded: exclusionSummary(jobs, r.signals, now),
+        }
+      : {}),
+  };
+}
+
 /** A stored pick still holds: made after the last profile change, every job still open and not yet sent. */
 export function pickStillValid(stored: StoredPick | undefined, profileUpdatedAt: string, open: Set<string>, sent: Set<string>): boolean {
   if (!stored || stored.jobIds.length === 0) return false;
@@ -167,21 +220,15 @@ export async function preparePicks(
     }
 
     const fresh = pool.filter((j) => !sent.has(j.id));
-    const signals = buildSignals(sub.profile);
-    const ranked = rankForProfile(fresh, signals, now);
-    const stretchRanked = rankStretch(fresh, signals, now, new Set(ranked.slice(0, PICK_POOL).map((r) => r.job.id)));
     const modelOk = client && llm && (llmDeadline === undefined || pacer.nextSlotAt() < llmDeadline - LLM_MARGIN_MS);
-    const pick = await choosePicks(ranked, sub.profile, {
+    const r = await pickFor(sub.profile, fresh, {
       size: opts.size,
-      stretch: stretchPool(stretchRanked, STRETCH_POOL),
       stretchSize: opts.stretchSize ?? STRETCH_SIZE,
       now,
-      client: modelOk ? client : null,
       // Choosing and writing for one person a day earns a stronger model than per-posting extraction.
-      model: pickModel(llm?.model),
-      fallbackModel: llm?.model ?? null,
-      log: opts.log,
+      ctx: { client: modelOk ? client : null, model: pickModel(llm?.model), fallbackModel: llm?.model ?? null, log: opts.log },
     });
+    const pick = r.pick;
 
     if (pick.jobIds.length === 0) result.empty++;
     else result[pick.method]++;
@@ -202,25 +249,7 @@ export async function preparePicks(
       if (error) throw new Error(`save digest_picks: ${error.message}`);
     }
 
-    const byId = new Map<string, DigestJob>(fresh.map((j) => [j.id, j]));
-    result.details.push({
-      user_id: sub.user_id,
-      method: pick.method,
-      subject: pick.subject,
-      picks: pick.jobIds.map((id) => {
-        const j = byId.get(id)!;
-        const note = pick.notes[id];
-        return { id, kind: note.kind, title: j.title, title_ko: j.title_ko, company: j.company, url: j.url, score: note.score, reason: note.reason, today: note.today };
-      }),
-      ...(opts.dryRun
-        ? {
-            candidates: ranked.length,
-            top: ranked.slice(0, 15).map((r) => ({ title: r.job.title_ko || r.job.title, score: r.score, hits: [...r.hits.map((h) => h.label), ...r.tools] })),
-            stretchTop: stretchRanked.slice(0, 12).map((r) => ({ title: r.job.title_ko || r.job.title, score: r.score, kind: r.kindLabel })),
-            excluded: exclusionSummary(fresh, signals, now),
-          }
-        : {}),
-    });
+    result.details.push(detailOf(sub.user_id, r, fresh, now, Boolean(opts.dryRun)));
   }
 
   opts.log(
@@ -229,4 +258,27 @@ export async function preparePicks(
       (opts.dryRun ? " (dry run, nothing stored)" : ""),
   );
   return result;
+}
+
+/**
+ * Dry run for made-up subscribers of different kinds (lib/match/personas.ts)
+ * against today's open jobs: what each would get, with the same rules, model
+ * and prompt as real subscribers. Nothing is stored or sent.
+ */
+export async function previewPersonas(
+  db: ServiceClient,
+  personas: Persona[],
+  opts: { log: (line: string) => void; size: number; stretchSize?: number; now?: Date },
+): Promise<(PickDetail & { label: string })[]> {
+  const now = opts.now ?? new Date();
+  const pool = await loadCandidatePool(db);
+  const llm = await fastModelConfig();
+  const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, createPacer(llmRequestsPerMinute())) : null;
+  const ctx: ModelContext = { client, model: pickModel(llm?.model), fallbackModel: llm?.model ?? null, log: opts.log };
+  return Promise.all(
+    personas.map(async (p) => {
+      const r = await pickFor(p.profile, pool, { size: opts.size, stretchSize: opts.stretchSize ?? STRETCH_SIZE, now, ctx });
+      return { ...detailOf(`persona:${p.id}`, r, pool, now, true), label: p.label };
+    }),
+  );
 }

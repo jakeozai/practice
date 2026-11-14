@@ -94,7 +94,7 @@ export function OnboardingFlow(props: {
       <div className="card">
         <p className="text-lg font-bold">{step === "skipped" ? "구독 완료!" : "확인 완료!"}</p>
         <p className="mt-1 text-sm text-muted">
-          매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 일감 3개를 보내드려요.
+          매일 아침 6시, <strong className="text-[var(--ink)]">{props.email}</strong>로 {step === "skipped" ? "일감 3개를" : "딱 맞는 일감 3개와 AI로 도전해 볼 일감 2개를"} 보내드려요.
         </p>
         <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받아 업데이트하면 추천이 더 정확해져요. 메일로 알려 드릴게요.</p>
         <p className="mt-1 text-xs text-muted">그만 받고 싶으면 메일 맨 아래 [메일 그만 받기] 한 번이면 해지돼요.</p>

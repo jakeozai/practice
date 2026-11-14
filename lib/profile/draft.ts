@@ -76,5 +76,8 @@ export function fromDraft(d: ProfileDraft, base: Profile): Record<string, unknow
     has_desktop: d.hasDesktop === "" ? null : d.hasDesktop === "yes",
     avoid: splitList(d.avoid),
     notes_ko: d.notes,
+    // Not edited on the confirmation screen; kept as the AI wrote them.
+    job_keywords: base.job_keywords,
+    portfolio_ko: base.portfolio_ko,
   };
 }

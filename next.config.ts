@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     "/api/cron/llm-check": ["./prompts/job-extract.md"],
     "/api/cron/digest": ["./prompts/digest-pick.md"],
     "/api/cron/picks": ["./prompts/digest-pick.md"],
+    "/api/cron/picks-personas": ["./prompts/digest-pick.md"],
   },
   turbopack: {
     rules: {

@@ -142,3 +142,22 @@ test("분석 답 뒤에 영문 이력서가 이어져도 프로필 블록만 읽
     "Here is your resume (resume_en.pdf).\nSUMMARY\nBilingual Korean-English evaluator {not json}.\n";
   assert.equal(parseProfileText(answer).ok, true);
 });
+
+test("search terms and portfolio are kept; template placeholders are dropped", () => {
+  const r = parseProfileText(
+    `<<AIJOB5_PROFILE_V1>>\n${JSON.stringify({
+      version: 1,
+      languages: [{ code: "en", level: "business" }],
+      fields: ["영→한 번역"],
+      job_keywords: ["english to korean translation", "game localization", "공고에서 나를 찾을 검색어 8~15개"],
+      portfolio_ko: ["번역 샘플 3종", "지원할 때 보여줄 수 있는 내 작업물, 최대 5개"],
+      weekly_hours: 10,
+    })}\n<<END_AIJOB5_PROFILE>>`,
+  );
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  assert.deepEqual(r.profile.job_keywords, ["english to korean translation", "game localization"]);
+  assert.deepEqual(r.profile.portfolio_ko, ["번역 샘플 3종"]);
+  const old = parseProfileText(`<<AIJOB5_PROFILE_V1>>\n{"version":1,"fields":["영상 편집"]}\n<<END_AIJOB5_PROFILE>>`);
+  assert.ok(old.ok && old.profile.job_keywords.length === 0, "profiles from before the new fields still parse");
+});

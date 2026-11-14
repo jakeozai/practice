@@ -13,17 +13,32 @@
  *  - a degree/licence requirement outside the person's own fields
  *  - software work in a programming language the profile doesn't show
  *  - a title naming a craft the profile doesn't have (3D, motion, logo, photo, audio, translation, labeling)
- *  - nothing in common with what they do (no concept from their profile)
+ *  - specialist ("domain") work outside the person's own specialty
+ *  - nothing in common with what they do (no concept or search term from their profile)
  *
  * Score: profile concepts the job matches, weighted by where the AI wrote them
- * (fields in order > its recommendations > expertise > skills > experience),
+ * (fields in order > its recommendations > expertise > search terms > skills >
+ * experience), the profile's own search terms (job_keywords) matched directly,
  * plus named tools (small), then pay, freshness and small penalties.
  */
 import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
 import { residentsOnlyElsewhere } from "../eligibility";
 import { isBiddingGig } from "../jobs/format";
 import { isFullTime } from "../jobs/process";
-import { AVOID_RULES, CODE_CONCEPTS, CONCEPTS, PERFORMER_JOB, PERFORMER_PROFILE, TITLE_CRAFTS, USD_PER_UNIT, codeLanguages, toolTokens, type Concept } from "./concepts";
+import {
+  AVOID_RULES,
+  CODE_CONCEPTS,
+  CONCEPTS,
+  DOMAIN_CONCEPTS,
+  PERFORMER_JOB,
+  PERFORMER_PROFILE,
+  TITLE_CRAFTS,
+  USD_PER_UNIT,
+  codeLanguages,
+  keywordPattern,
+  toolTokens,
+  type Concept,
+} from "./concepts";
 
 type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
 
@@ -54,6 +69,9 @@ export const SECTION_WEIGHT = {
   /** notes_ko: the AI's own "recommend first" line. */
   notes: 4,
   domain: 3,
+  /** job_keywords[0]; each later one 0.1 less, never under MIN_RELEVANCE. The AI lists them by importance. */
+  firstKeyword: 3.5,
+  keywordStep: 0.1,
   skills: 2.5,
   experience: 2,
 } as const;
@@ -62,16 +80,20 @@ export const SECTION_WEIGHT = {
 export const MIN_RELEVANCE = 2.5;
 /** (제안값) Degree/licence jobs need a match at least this strong, from the fields or expertise. */
 const CREDENTIAL_MIN_WEIGHT = 3;
+/** (제안값) A job in the person's own specialty outranks general work their profile also covers. */
+const SPECIALTY_BONUS = 1.5;
 /** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
 const TINY_BUDGET_USD = 50;
 
-export type ProfileSection = "field" | "notes" | "domain" | "skills" | "experience";
+export type ProfileSection = "field" | "notes" | "domain" | "keywords" | "skills" | "experience";
 export type ConceptHit = { id: string; label: string; weight: number; trigger: string; categories: string[]; section: ProfileSection };
 
 export type ProfileSignals = {
   langs: Set<string>;
   english: EnglishLevel;
   concepts: Map<string, ConceptHit>;
+  /** The profile's own search terms (job_keywords) that say enough to match on. */
+  keywords: { hit: ConceptHit; re: RegExp }[];
   tools: string[];
   avoid: Set<string>;
   performer: boolean;
@@ -96,6 +118,10 @@ function clauseAround(text: string, re: RegExp): string {
   return m[0];
 }
 
+function keywordWeight(i: number): number {
+  return Math.max(SECTION_WEIGHT.firstKeyword - SECTION_WEIGHT.keywordStep * i, MIN_RELEVANCE);
+}
+
 export function buildSignals(profile: Profile): ProfileSignals {
   const langs = new Set(profile.languages.map((l) => l.code));
   if (langs.size === 0) langs.add("ko");
@@ -106,6 +132,7 @@ export function buildSignals(profile: Profile): ProfileSignals {
     ...profile.fields.map((text, i) => ({ text, weight: SECTION_WEIGHT.firstField - SECTION_WEIGHT.fieldStep * i, cite: "item" as const, section: "field" as const })),
     ...(profile.notes_ko ? [{ text: profile.notes_ko, weight: SECTION_WEIGHT.notes, cite: "clause" as const, section: "notes" as const }] : []),
     ...profile.domain_expertise.map((text) => ({ text, weight: SECTION_WEIGHT.domain, cite: "item" as const, section: "domain" as const })),
+    ...profile.job_keywords.map((text, i) => ({ text, weight: keywordWeight(i), cite: "item" as const, section: "keywords" as const })),
     ...profile.skills.map((text) => ({ text, weight: SECTION_WEIGHT.skills, cite: "item" as const, section: "skills" as const })),
     ...(profile.experience_summary_ko
       ? [{ text: profile.experience_summary_ko, weight: SECTION_WEIGHT.experience, cite: "clause" as const, section: "experience" as const }]
@@ -123,11 +150,17 @@ export function buildSignals(profile: Profile): ProfileSignals {
     }
   }
 
-  const everything = [...profile.fields, ...profile.skills, ...profile.domain_expertise, profile.notes_ko, profile.experience_summary_ko].join("\n");
+  const keywords = profile.job_keywords.flatMap((text, i) => {
+    const re = keywordPattern(text);
+    return re ? [{ re, hit: { id: `kw:${text.toLowerCase()}`, label: "검색어", weight: keywordWeight(i), trigger: text, categories: [], section: "keywords" as const } }] : [];
+  });
+
+  const everything = [...profile.fields, ...profile.skills, ...profile.domain_expertise, ...profile.job_keywords, profile.notes_ko, profile.experience_summary_ko].join("\n");
   return {
     langs,
     english,
     concepts,
+    keywords,
     tools: toolTokens(profile.skills),
     avoid: new Set(AVOID_RULES.filter((r) => profile.avoid.some((a) => r.avoid.test(a))).map((r) => r.id)),
     performer: PERFORMER_PROFILE.test(everything),
@@ -210,15 +243,27 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   // Software work counts only in a language the person uses (no Java trainer jobs for a Next.js developer).
   const jobCode = codeLanguages(text);
   const codeFits = jobCode.size === 0 || [...jobCode].some((l) => sig.code.has(l));
-  const hits = CONCEPTS.flatMap((c: Concept) => {
-    const h = sig.concepts.get(c.id);
-    if (!h || !c.job.test(text)) return [];
-    return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [h];
-  }).sort((a, b) => b.weight - a.weight);
+  const hits = [
+    ...CONCEPTS.flatMap((c: Concept) => {
+      const h = sig.concepts.get(c.id);
+      if (!h || !c.job.test(text)) return [];
+      return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [h];
+    }),
+    // The profile's own search terms reach work the concept list doesn't name.
+    ...sig.keywords.filter((k) => k.re.test(text)).map((k) => k.hit),
+  ].sort((a, b) => b.weight - a.weight);
   const best = hits[0]?.weight ?? 0;
   const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
   const relevance = best + Math.min(0.35 * rest, 3);
   if (best < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
+
+  // Specialist work (AI training or review for experts) only in the person's own specialty:
+  // a chemistry trainer job isn't for a generalist AI evaluator.
+  if (job.category === "domain") {
+    const named = CONCEPTS.filter((c) => DOMAIN_CONCEPTS.has(c.id) && c.job.test(title));
+    if (named.some((c) => !sig.concepts.has(c.id))) return { ok: false, why: "domain" };
+    if (!hits.some((h) => h.categories.includes("domain") || h.section === "keywords")) return { ok: false, why: "domain" };
+  }
 
   // A degree/licence job only when it is the person's own line of work: the match comes from
   // their fields or expertise (not a recommendation or a skill), in the job's category
@@ -233,6 +278,8 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
 
   let bonus = 0;
   if (job.category && hits[0].categories.includes(job.category)) bonus += 0.5;
+  // The person's own specialty (nursing, accounting, law…) is the most specific fit there is.
+  if (hits.some((h) => DOMAIN_CONCEPTS.has(h.id))) bonus += SPECIALTY_BONUS;
   if (payUsd !== null) {
     if (job.pay_unit === "hour" && sig.minHourlyUsd !== null) bonus += payUsd >= sig.minHourlyUsd * 1.5 ? 1 : 0.5;
     else if (job.pay_unit === "hour") bonus += 0.5;
@@ -296,7 +343,10 @@ export type PickNote = { reason: string; today: string };
 export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Date()): PickNote {
   const top = r.hits[0];
   const tool = r.tools[0] ? ` · ${toolLabel(r.tools[0], profile.skills)} 그대로` : "";
-  const reason = shorten(`AI 분석의 ‘${shorten(top.trigger, 22)}’와 맞는 ${top.label} 일${tool}`, 80);
+  const reason =
+    top.section === "keywords"
+      ? shorten(`AI 분석의 검색어 ‘${shorten(top.trigger, 24)}’에 딱 맞는 일${tool}`, 80)
+      : shorten(`AI 분석의 ‘${shorten(top.trigger, 22)}’와 맞는 ${top.label} 일${tool}`, 80);
 
   const ageHours = (now.getTime() - new Date(r.job.first_seen_at).getTime()) / 3_600_000;
   let today: string;

@@ -83,6 +83,8 @@ export function profileForModel(p: Profile) {
     domain_expertise: p.domain_expertise,
     skills: p.skills,
     experience_summary_ko: p.experience_summary_ko,
+    portfolio_ko: p.portfolio_ko,
+    job_keywords: p.job_keywords,
     avoid: p.avoid,
     languages: p.languages,
     weekly_hours: p.weekly_hours,

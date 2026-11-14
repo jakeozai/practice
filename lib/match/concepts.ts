@@ -116,6 +116,14 @@ export const CONCEPTS: Concept[] = [
     profile: /(?:영상|이미지|비디오|video|image|생성).{0,20}(?:결과\s*)?평가/i,
     job: /(?:video|image|visual|multimodal|creative|영상|이미지|멀티모달|시각).{0,40}(?:evaluat|rater|rating|judg|평가|검수)|(?:evaluat|rater|평가).{0,30}(?:video|image|visual|영상|이미지)/i,
   },
+  {
+    id: "ai_eval_text",
+    label: "AI 답변 평가·학습 데이터",
+    categories: ["language", "labeling", "writing"],
+    profile:
+      /ai\s*(?:답변|응답|모델|챗봇|출력|결과)\s*(?:평가|검수|비교|작성)|\brlhf\b|ai\s*학습\s*데이터|ai\s*(?:트레이닝|트레이너|튜터)|ai\s*(?:trainer|tutor)|프롬프트\s*(?:작성|평가|엔지니어)|prompt\s*(?:writ|engineer)|llm\s*(?:평가|evaluat)/i,
+    job: /\brlhf\b|\bai\s*(?:trainer|tutor|rater|evaluator)|(?:response|output|answer|chatbot|model|llm)s?\s*(?:evaluat|rating|ranking|review|quality)|prompt\s*(?:writ|engineer|creat)|preference\s*(?:data|ranking)|red[- ]?team|ai\s*(?:답변|응답|모델|챗봇)\s*(?:평가|검수)|ai\s*학습\s*데이터|ai\s*트레이너|프롬프트\s*작성/i,
+  },
   // Below: kinds of work that only count for profiles that name them.
   {
     id: "logo_brand",
@@ -171,7 +179,7 @@ export const CONCEPTS: Concept[] = [
     label: "언어 평가",
     categories: ["language"],
     profile: /언어\s*평가|원어민\s*평가|linguist|언어학|검색\s*(?:품질\s*)?평가|search\s*evaluat|ai\s*트레이너|ai\s*trainer/i,
-    job: /linguist|언어\s*(?:평가|전문가)|language\s*(?:expert|specialist|evaluat)|search\s*(?:engine\s*)?evaluat|검색\s*(?:엔진\s*)?평가|ads?\s*quality|광고\s*품질|\brater\b/i, // not "AI trainer": that's every kind of AI work
+    job: /linguist|언어\s*(?:평가|전문가)|language\s*(?:expert|specialist|evaluat)|search\s*(?:engine\s*)?evaluat|검색\s*(?:엔진\s*)?평가|ads?\s*quality|광고\s*품질|\brater\b|korean\s*(?:language|linguist|speaker|native|evaluator|expert|specialist|reviewer|annotator|data)|한국어\s*(?:평가|전문가|원어민|데이터|검수|화자)/i, // not "AI trainer": that's every kind of AI work
   },
   {
     id: "marketing",
@@ -187,7 +195,85 @@ export const CONCEPTS: Concept[] = [
     profile: /오디오|음향|\baudio\b|사운드|\bsound\b|음악|\bmusic\b|믹싱|mixing/i,
     job: /\baudio\b|오디오|\bsound\b|사운드|음향|\bmusic\b|음악|mixing|믹싱|mastering|podcast|팟캐스트/i,
   },
+  // Specialist knowledge (AI training and review for experts, consulting). See DOMAIN_CONCEPTS.
+  {
+    id: "law",
+    label: "법률",
+    categories: ["domain"],
+    profile: /법률|법학|법무|변호사|법조|\blegal\b|\blaw(?:yer)?\b|paralegal|계약서\s*검토/i,
+    job: /\blegal\b|\blaw\b|lawyer|attorney|paralegal|법률|법무|변호사|contract\s*review|계약서\s*검토|compliance|규정\s*준수/i,
+  },
+  {
+    id: "medical",
+    label: "의료·보건",
+    categories: ["domain"],
+    profile: /의료|의학|간호|약학|약사|의사|임상|보건|치위생|물리\s*치료|medical|nurs|pharma|clinical|healthcare/i,
+    job: /medical|medicine|의료|의학|\bnurs|간호|pharma|약학|clinical|임상|health\s*care|healthcare|헬스케어|physician|doctor|radiolog|dental|치과|patient|환자/i,
+  },
+  {
+    id: "finance",
+    label: "회계·금융",
+    categories: ["domain"],
+    profile: /회계|재무|세무|금융|투자|증권|보험|accounting|financ|\btax\b|\bcpa\b|bookkeep/i,
+    job: /accounting|회계|financ|재무|금융|\btax\b|세무|\bcpa\b|bookkeep|investment|투자|banking|은행|insurance|보험|actuar|equity|trading/i,
+  },
+  {
+    id: "chemistry",
+    label: "화학",
+    categories: ["domain"],
+    profile: /화학|chemi/i,
+    job: /chemi|화학/i,
+  },
+  {
+    id: "biology",
+    label: "생명과학",
+    categories: ["domain"],
+    profile: /생물|생명\s*과학|생명공학|biolog|biotech|biochem|유전/i,
+    job: /biolog|생물|생명\s*과학|biotech|biochem|genetic|유전|molecular|분자/i,
+  },
+  {
+    id: "physics",
+    label: "물리",
+    categories: ["domain"],
+    profile: /물리학|physics/i,
+    job: /physics|물리학|astrophys|quantum|양자/i,
+  },
+  {
+    id: "math",
+    label: "수학·통계",
+    categories: ["domain"],
+    profile: /수학|통계|math|statistic|계리/i,
+    job: /\bmath|수학|statistic|통계|calculus|미적분|algebra|대수|probability|확률/i,
+  },
+  {
+    id: "teaching",
+    label: "교육·튜터링",
+    categories: ["domain", "language"],
+    profile: /교사|교육학|강사|튜터|과외|학원|tutor|teach|교직/i,
+    job: /tutor|튜터|teach|교사|강사|과외|curriculum|교육\s*과정|lesson\s*plan|수업\s*자료/i,
+  },
+  {
+    id: "engineering",
+    label: "공학",
+    categories: ["domain"],
+    profile: /기계\s*공학|전기|전자\s*공학|토목|건축\s*공학|화공|산업\s*공학|mechanical|electrical|civil\s*engineer/i,
+    job: /mechanical\s*engineer|electrical\s*engineer|civil\s*engineer|기계\s*공학|전기\s*공학|전자\s*공학|토목|structural|circuit|회로/i,
+  },
+  {
+    id: "psychology",
+    label: "심리",
+    categories: ["domain"],
+    profile: /심리|psycholog|상담\s*(?:심리|사)/i,
+    job: /psycholog|심리|mental\s*health|정신\s*건강|counsel/i,
+  },
 ];
+
+/**
+ * Specialist fields. A job filed as specialist work ("domain") that names one
+ * in its title goes only to people whose profile has it: a chemistry AI
+ * trainer job isn't for a generalist AI evaluator.
+ */
+export const DOMAIN_CONCEPTS = new Set(["law", "medical", "finance", "chemistry", "biology", "physics", "math", "teaching", "engineering", "psychology"]);
 
 /**
  * Work where the person themselves is the product (their voice, face or name).
@@ -332,4 +418,48 @@ export function toolTokens(skills: string[]): string[] {
     }
   }
   return [...out];
+}
+
+/** A one-word term from this list says too little on its own ("design", "video"). */
+const GENERIC_KEYWORDS = new Set([
+  "ai", "data", "design", "designer", "content", "contents", "editing", "editor", "writing", "writer", "development", "developer",
+  "marketing", "video", "videos", "english", "korean", "remote", "freelance", "freelancer", "project", "projects", "work", "online",
+  "research", "support", "management", "creative", "social", "media", "web", "app", "apps", "software", "job", "jobs",
+  "task", "tasks", "service", "services", "business", "consulting", "assistant", "specialist", "expert", "analysis", "review",
+]);
+/** Terms made only of these never describe a kind of work ("remote work", "part time job"). */
+const EMPTY_WORDS = new Set(["remote", "freelance", "freelancer", "online", "work", "job", "jobs", "project", "projects", "task", "tasks", "part", "time", "full", "ai", "it", "gig", "gigs"]);
+const STOP_WORDS = new Set(["and", "or", "for", "of", "the", "to", "in", "on", "with", "a", "an", "&"]);
+
+function stem(word: string): string {
+  for (const suffix of ["ations", "ation", "ings", "ing", "ers", "er", "ors", "or", "ions", "ion", "ed", "es", "s"]) {
+    if (word.endsWith(suffix) && word.length - suffix.length >= 4) return word.slice(0, -suffix.length);
+  }
+  return word;
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Between two words of a term: punctuation or spaces, and up to two other English words. */
+const SEP = "[^a-z0-9가-힣]+";
+const GAP = `(?:[a-z0-9]+${SEP}){0,2}?`;
+
+/**
+ * Search terms the person's AI wrote for postings (profile.job_keywords) as
+ * patterns. English words take any ending and may have up to two words
+ * between them ("video editing" meets "Video Editor", "logo design" meets
+ * "Logo & Brand Designer"); Korean terms must appear as written. A one-word
+ * generic term is dropped: it would match almost anything.
+ */
+export function keywordPattern(keyword: string): RegExp | null {
+  const words = keyword
+    .trim()
+    .toLowerCase()
+    .split(/[\s\-_/&,+.()]+/)
+    .filter((w) => w && !STOP_WORDS.has(w));
+  if (words.length === 0 || words.join("").length < 3) return null;
+  if (words.every((w) => EMPTY_WORDS.has(w))) return null;
+  if (words.length === 1 && (GENERIC_KEYWORDS.has(words[0]) || (!/[가-힣]/.test(words[0]) && words[0].length < 4))) return null;
+  if (words.some((w) => /[가-힣]/.test(w))) return new RegExp(words.map(escapeRegExp).join("\\s*"), "i");
+  const parts = words.map((w) => `\\b${escapeRegExp(stem(w))}[a-z]*`);
+  return new RegExp(parts.join(SEP + GAP), "i");
 }

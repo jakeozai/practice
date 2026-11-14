@@ -26,6 +26,8 @@ const PLACEHOLDERS = new Set([
   "전문 지식 분야, 없으면 빈 배열",
   "경력 요약 2~3문장, 회사 이름 없이",
   "하기 싫은 일 유형, 예: 음성 녹음, 얼굴 촬영",
+  "공고에서 나를 찾을 검색어 8~15개",
+  "지원할 때 보여줄 수 있는 내 작업물, 최대 5개",
 ]);
 
 /** 템플릿을 그대로 붙여넣었는지 판별하는 표지 */
@@ -104,6 +106,10 @@ export const ProfileSchema = z.object({
   has_desktop: z.unknown().optional().transform((v) => (typeof v === "boolean" ? v : null)),
   avoid: listField(10),
   notes_ko: textField(300),
+  /** Search terms for postings, mostly English (postings are), most important first. Added 2026-11-14. */
+  job_keywords: listField(15, 40),
+  /** Personal work the person can attach when applying (no in-house material). Added 2026-11-14. */
+  portfolio_ko: listField(5, 80),
 });
 
 export type Profile = z.output<typeof ProfileSchema>;

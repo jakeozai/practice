@@ -112,7 +112,10 @@ test("English, hours, pay and credential rules", () => {
   const credential = job({ title: "Licensed lawyer to review AI video scripts", requires_credential: true, category: "domain", summary_ko: ["영어 다큐 대본 검토"] });
   const credentialVideo = job({ title: "Certified video editor for AI video", requires_credential: true, category: "video" });
   assert.ok(assessJob(credentialVideo, sig, NOW).ok, "same kind of work as the first field: kept");
-  assert.equal((assessJob(credential, sig, NOW) as { why: string }).why, "credential");
+  // A lawyer job is specialist work outside this person's specialty, before its licence is even weighed.
+  assert.equal((assessJob(credential, sig, NOW) as { why: string }).why, "domain");
+  const credentialWriting = job({ title: "Licensed lawyer to review AI video scripts", requires_credential: true, category: "writing", summary_ko: ["영어 다큐 대본 검토"] });
+  assert.equal((assessJob(credentialWriting, sig, NOW) as { why: string }).why, "credential");
 });
 
 test("fresh, well-paid hourly work scores above stale talent pools", () => {
