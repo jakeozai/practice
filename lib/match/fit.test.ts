@@ -183,3 +183,34 @@ test("jobs for other countries' residents and credential jobs outside the person
   const seniorEval = job({ title: "Senior AI video quality evaluator", requires_credential: true, category: "labeling", summary_ko: ["AI 영상 결과 평가"] });
   assert.equal((assessJob(seniorEval, sig, NOW) as { why: string }).why, "credential");
 });
+
+test("UI/UX and website work reach designers; localization 'UI content review' doesn't", () => {
+  const designer = buildSignals(
+    ProfileSchema.parse({
+      languages: [
+        { code: "ko", level: "native" },
+        { code: "en", level: "reading" },
+      ],
+      fields: ["UI/UX 디자인", "웹사이트 제작(워드프레스·웹플로우)"],
+      skills: ["Figma", "Webflow"],
+      domain_expertise: [],
+      experience_summary_ko: "앱 화면과 랜딩 페이지를 피그마로 디자인해 왔다.",
+      weekly_hours: 10,
+      min_hourly_usd: null,
+      avoid: [],
+      notes_ko: "",
+    }),
+  );
+  assert.ok(designer.concepts.has("ui_ux"));
+  assert.ok(designer.concepts.has("web_builder"));
+  const app = assessJob(job({ title: "Mobile app UI design in Figma", category: "design", summary_ko: ["피그마로 앱 화면 12장 디자인"] }), designer, NOW);
+  assert.equal(app.ok, true, JSON.stringify(app));
+  const wp = assessJob(job({ title: "WordPress landing page for a cafe", category: "dev", summary_ko: ["워드프레스로 랜딩 페이지 제작"] }), designer, NOW);
+  assert.equal(wp.ok, true, "a WordPress site doesn't need PHP in the profile: " + JSON.stringify(wp));
+  const l10n = assessJob(
+    job({ title: "English to Latvian UI, Marketing & Product Content Review Lead", category: "language", languages: ["en", "lv"], summary_ko: ["UI·마케팅 콘텐츠 번역 검수"] }),
+    designer,
+    NOW,
+  );
+  assert.equal(l10n.ok, false);
+});

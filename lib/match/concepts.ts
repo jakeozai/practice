@@ -133,6 +133,24 @@ export const CONCEPTS: Concept[] = [
     job: /\bcad\b|solidworks|솔리드웍스|autocad|오토캐드|revit|fusion\s*360|catia|rhino|sketchup|스케치업|도면|technical\s*drawing/i,
   },
   {
+    // 2026-11-15: a "UI/UX 디자이너" profile matched nothing. Bare "UI" is left out on the job side:
+    // "UI/marketing content review" is localization work, not design.
+    id: "ui_ux",
+    label: "UI·UX 디자인",
+    categories: ["design", "dev"],
+    profile: /\bui\b|\bux\b|피그마|figma|와이어프레임|wireframe|프로덕트\s*디자인|product\s*design|앱\s*디자인|웹\s*디자인|화면\s*(?:설계|디자인)|사용자\s*경험/i,
+    job: /ui\s*\/\s*ux|\bux\b|\bui\s*(?:design|designer|kit|디자인)|figma|피그마|wireframe|와이어프레임|user\s*(?:interface|experience)|(?:app|web|website|dashboard|landing\s*page|mobile)\s*(?:ui\s*)?design|웹\s*디자인|앱\s*디자인|화면\s*디자인|product\s*design|프로덕트\s*디자인/i,
+  },
+  {
+    // Sites built with WordPress, Webflow, Shopify or no-code tools: designers do these too, so this
+    // is not a code concept (no programming-language match needed).
+    id: "web_builder",
+    label: "웹사이트 제작",
+    categories: ["dev", "design"],
+    profile: /워드프레스|wordpress|웹플로우|webflow|framer|프레이머|\bwix\b|윅스|shopify|쇼피파이|아임웹|카페24|노코드|no[- ]?code|퍼블리싱|퍼블리셔|\bhtml\b|\bcss\b|(?:웹사이트|홈페이지|랜딩\s*페이지)\s*(?:제작|구축|디자인)/i,
+    job: /wordpress|워드프레스|webflow|framer|\bwix\b|shopify|squarespace|elementor|woocommerce|우커머스|no[- ]?code|노코드|\bhtml\b|landing\s*page|랜딩\s*페이지|website\s*(?:design|build|redesign|creation)|웹사이트\s*(?:제작|구축|디자인|리뉴얼|개선)|홈페이지\s*(?:제작|구축|리뉴얼)/i,
+  },
+  {
     id: "logo_brand",
     label: "로고·브랜딩",
     categories: ["design"],

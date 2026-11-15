@@ -21,7 +21,7 @@ export type FreelancerPreset = {
   windowHours: number;
   /** Results per query (API maximum is 100). */
   perQuery: number;
-  /** Newest projects kept per run after filtering, to bound LLM calls (5 a minute on the free Gateway tier). */
+  /** Newest projects kept per run after filtering, to bound LLM calls (5 a minute on the free Gateway tier: 200 take ~40 of the ~650 processing minutes a night). */
   maxPerRun: number;
 };
 
@@ -39,12 +39,14 @@ export const FREELANCER_PRESETS: Record<string, FreelancerPreset> = {
       "ai video", "ai image", "ai content", "midjourney", "prompt", "chatbot", "ai automation", "n8n", "ai agent",
       // Korean, writing, voice
       "korean", "translation", "content writing", "copywriting", "voice over",
-      // building with code
-      "next.js", "react", "website", "web scraping",
+      // UI/UX design (2026-11-15)
+      "figma", "ux design", "app ui design", "landing page design", "web design",
+      // building websites, with or without code (2026-11-15)
+      "next.js", "react", "website", "web development", "frontend", "wordpress", "webflow", "shopify", "web scraping",
     ],
     windowHours: 48,
     perQuery: 50,
-    maxPerRun: 150,
+    maxPerRun: 200,
   },
 };
 
