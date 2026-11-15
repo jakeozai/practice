@@ -1,5 +1,6 @@
 import { Body, Button, Container, Head, Hr, Html, Img, Preview, Text } from "@react-email/components";
 import { mailColor, mailFont, mailFontFace, type MailBanners } from "./theme";
+import { BRAND } from "../lib/brand";
 
 export type LoginLinkProps = {
   confirmUrl: string;
@@ -76,6 +77,9 @@ export default function LoginLink({ confirmUrl, logoUrl, brand, banners, fontUrl
             구독 확인하기
           </Button>
           <Text style={s.note}>버튼은 1시간 동안 쓸 수 있어요. 직접 요청하지 않았다면 이 메일은 무시하세요.</Text>
+          <Text style={s.note}>
+            매일 아침 메일이 받은편지함에 바로 오게 하려면 {BRAND.sender}을 연락처에 추가해 주세요.
+          </Text>
 
           {banners && <Img src={banners.blueHour} width="528" height="200" alt="내일 아침 6시" style={s.strip} />}
           <Hr style={{ borderColor: mailColor.line, margin: "24px 0 16px" }} />

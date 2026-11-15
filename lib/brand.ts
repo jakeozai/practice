@@ -2,6 +2,8 @@
 export const BRAND = {
   name: "덕잡",
   tagline: "매일 아침 6시, 해외 AI 일감 5개",
+  /** The From address of every mail (keep in step with EMAIL_FROM). Shown so people can add it to their contacts. */
+  sender: "hello@duckjob.app",
 } as const;
 
 /**

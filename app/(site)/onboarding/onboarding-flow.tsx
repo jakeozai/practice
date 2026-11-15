@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BRAND } from "@/lib/brand";
 import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import {
   ENGLISH_LEVEL_OPTIONS,
@@ -91,6 +92,13 @@ export function OnboardingFlow(props: {
           <strong className="text-[var(--ink)]">{props.email}</strong>로 {analyzed ? "딱 맞는 일감 3개와 AI로 도전해 볼 일감 2개를" : "일감 5개를"} 보내드려요.
         </p>
         <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받으면 추천이 더 정확해져요. 메일로 알려 드릴게요.</p>
+        <div className="mt-4 rounded-2xl bg-[var(--surface-2)] px-4 py-3 text-sm">
+          <p className="font-semibold">받은편지함에서 바로 보려면</p>
+          <p className="mt-1 text-muted">
+            <strong className="text-[var(--ink)]">{BRAND.sender}</strong>을 연락처에 추가해 주세요. Gmail은 처음 오는 메일을 프로모션이나
+            전체보관함으로 보낼 때가 있어요.
+          </p>
+        </div>
         <button type="button" className={`${secondary} mt-4`} onClick={() => setStep(analyzed ? "confirm" : "copy")}>
           {analyzed ? "분석 결과 다시 보기" : "지금 AI로 1분 분석하기"}
         </button>
