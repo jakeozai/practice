@@ -297,6 +297,26 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["reviews"]["Insert"]>;
         Relationships: [];
       };
+      mail_feedback: {
+        Row: {
+          user_id: string;
+          send_date: string;
+          rating: "good" | "soso" | "bad";
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          send_date: string;
+          rating: "good" | "soso" | "bad";
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["mail_feedback"]["Insert"]>;
+        Relationships: [];
+      };
       reports: {
         Row: {
           id: string;

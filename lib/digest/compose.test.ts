@@ -107,7 +107,7 @@ test("top line: the day's numbers when they make sense, else the plain intro", a
   assert.ok(plain.text.includes("한국에서 할 수 있는 일감만 골라"));
 });
 
-test("personal picks: reason, today's first step and own subject", async () => {
+test("personal picks: no reason line, today's first step and own subject", async () => {
   const mail = await composeDigestEmail({
     ...input,
     reasons: new Map([[JOB_ID, "사내방송 편집 실력 그대로 쓰는 일이에요"]]),
@@ -115,9 +115,10 @@ test("personal picks: reason, today's first step and own subject", async () => {
     subject: "영상 편집 실력으로 오늘 할 일감 1개",
   });
   assert.equal(mail.subject, "🦆 영상 편집 실력으로 해볼 만한 일감 1개 가져왔어요 (11/8)");
-  for (const part of ["사내방송 편집 실력 그대로 쓰는 일이에요", "오늘 할 일", "오늘 저녁 30분: 편집본 링크 붙여 지원", "내 AI가 분석한 프로필에 딱 맞는"]) {
+  for (const part of ["오늘 할 일", "오늘 저녁 30분: 편집본 링크 붙여 지원", "내 AI가 분석한 프로필에 딱 맞는"]) {
     assert.ok(mail.html.includes(part), `html has ${part}`);
   }
+  assert.ok(!mail.html.includes("사내방송 편집 실력 그대로 쓰는 일이에요"), "no reason line (2026-11-16 user decision)");
 });
 
 test("rule picks (no model): still a personal list, without reason or first step", async () => {
@@ -167,4 +168,22 @@ test("subject: friendly, and the count is the mail's real count", () => {
   // Whatever the model added after the field, the sentence is always the same.
   assert.equal(digestSubject("로고 디자인 실력으로 오늘 바로 할 일감 3개!", 5, "2026-11-17"), "🦆 로고 디자인 실력으로 해볼 만한 일감 5개 가져왔어요 (11/17)");
   assert.equal(digestSubject("번역 경력 살릴 오늘의 일감", 5, "2026-12-01"), "🦆 번역 경력 살릴 오늘의 일감 (12/1)");
+});
+
+test("rating buttons: three links to /rate with one token for this mail", async () => {
+  const mail = await composeDigestEmail(input);
+  assert.match(mail.html, /오늘 메일 어땠어요\?/);
+  const links = [...mail.html.matchAll(/https:\/\/aijob5\.example\/rate\?t=([\w-]+\.[\w-]+)&amp;r=(good|soso|bad)/g)];
+  assert.deepEqual(links.map((m) => m[2]), ["good", "soso", "bad"]);
+  const r = verifyLink(links[0][1], "rate", SECRET, new Date("2026-11-08T00:00:00Z"));
+  assert.ok(r.ok && r.payload.uid === UID && r.payload.date === "2026-11-08");
+  for (const label of ["좋아요", "쏘쏘", "싫어요"]) assert.ok(mail.html.includes(label));
+});
+
+test("fewer jobs than a full mail: the 'today this is our best' note", async () => {
+  const short = await composeDigestEmail(input);
+  assert.match(short.html, /오늘은 1개만 골랐어요/);
+  assert.match(short.html, /오늘은 이게 최선이에요/);
+  const full = await composeDigestEmail({ ...input, fullCount: 1 });
+  assert.doesNotMatch(full.html, /오늘은 이게 최선이에요/);
 });

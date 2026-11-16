@@ -13,6 +13,9 @@ export function AdminNav({ email }: { email: string }) {
         <Link href="/admin/jobs/new" className="hover:underline">
           공고 수동 등록
         </Link>
+        <Link href="/admin/feedback" className="hover:underline">
+          메일 피드백
+        </Link>
       </nav>
       <span className="text-xs text-zinc-500">{email}</span>
     </div>
