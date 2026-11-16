@@ -20,7 +20,7 @@ import { createAnthropic, fastModelConfig } from "../llm/client";
 import type { MessagesClient } from "../llm/extractJob";
 import { createPacer, llmRequestsPerMinute, pacedClient, type Pacer } from "../llm/pace";
 import { buildSignals, exclusionSummary, rankForProfile, type ProfileSignals, type Ranked } from "../match/fit";
-import { choosePicks, PICK_POOL, STRETCH_POOL, type PickKind, type PickResult, type PickThinking } from "../match/pick";
+import { choosePicks, PICK_POOL, PICK_WITH_MODEL, STRETCH_POOL, type PickKind, type PickResult, type PickThinking } from "../match/pick";
 import { rankStretch, stretchPool, type StretchRanked } from "../match/stretch";
 import type { Persona } from "../match/personas";
 import { loadCandidatePool, type DigestJob } from "../digest/candidates";
@@ -214,7 +214,7 @@ export async function preparePicks(
   const userIds = subs.map((s) => s.user_id);
   const [sentBy, stored] = await Promise.all([loadSentJobIds(db, userIds), loadStoredPicks(db, opts.sendDate, userIds)]);
 
-  const llm = await fastModelConfig();
+  const llm = PICK_WITH_MODEL ? await fastModelConfig() : null;
   const pacer = opts.pacer ?? createPacer(llmRequestsPerMinute());
   const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, pacer) : null;
   const llmDeadline = opts.llmDeadline ?? opts.deadline;
@@ -276,11 +276,11 @@ export async function preparePicks(
 export async function previewPersonas(
   db: ServiceClient,
   personas: Persona[],
-  opts: { log: (line: string) => void; size: number; stretchSize?: number; now?: Date; thinking?: PickThinking },
+  opts: { log: (line: string) => void; size: number; stretchSize?: number; now?: Date; thinking?: PickThinking; model?: boolean },
 ): Promise<(PickDetail & { label: string })[]> {
   const now = opts.now ?? new Date();
   const pool = await loadCandidatePool(db);
-  const llm = await fastModelConfig();
+  const llm = (opts.model ?? PICK_WITH_MODEL) ? await fastModelConfig() : null;
   const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, createPacer(llmRequestsPerMinute())) : null;
   const ctx: ModelContext = { client, model: pickModel(llm?.model), fallbackModel: llm?.model ?? null, log: opts.log, thinking: opts.thinking };
   return Promise.all(

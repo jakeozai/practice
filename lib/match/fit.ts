@@ -93,6 +93,9 @@ const AI_CODING_LANGUAGES = ["js", "python"];
 const CRAFT_CATEGORIES = new Set(["dev", "design", "video", "motion_3d"]);
 
 /** Joining a company rather than taking a gig: founding roles, equity pay. */
+/** Roles only for enrolled students ("Student Ambassador", "대학생 대상"): profiles don't say who is one. */
+const STUDENT_ONLY =
+  /student\s+ambassador|campus\s+(?:ambassador|rep(?:resentative)?)|currently\s+enrolled|enrolled\s+students?\s+only|학생\s*앰버서더|캠퍼스\s*(?:앰버서더|대사)|(?:대학생|재학생)\s*(?:대상|만|한정|모집)/i;
 const EMPLOYMENT_ROLE = /founding\s+(?:engineer|developer|designer|member|team)|co-?founder|공동\s*창업|창립\s*(?:멤버|엔지니어|팀)|\bcto\b|equity[- ](?:only|based)|지분\s*(?:보상|으로)/i;
 
 /** (제안값) A job in the person's own specialty outranks general work their profile also covers. */
@@ -219,6 +222,7 @@ export function personalLimits(job: FitJob, sig: ProfileSignals): { ok: false; w
   if (isFullTime(text, job.hours_per_week_min)) return { ok: false, why: "fulltime" };
 
   if (EMPLOYMENT_ROLE.test(text)) return { ok: false, why: "fulltime" };
+  if (STUDENT_ONLY.test(text)) return { ok: false, why: "student" };
 
   const named = [...namedLanguages(`${job.title}\n${job.title_ko ?? ""}`)];
   const foreign = [...new Set([...job.languages, ...named])].filter((l) => !sig.langs.has(l));

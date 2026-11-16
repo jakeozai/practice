@@ -22,6 +22,17 @@ export const TITLE_KO_MAX = 40;
 
 const nullableNumber = z.number().nullable();
 
+/** Longest stored eligibility note (jobs.eligibility_note). */
+export const LOCATION_MAX = 300;
+
+/** Keeps a long country list readable: cut at the last separator before the limit and mark the cut. */
+export function clipLocation(s: string): string {
+  if (s.length <= LOCATION_MAX) return s;
+  const head = s.slice(0, LOCATION_MAX - 1);
+  const cut = Math.max(head.lastIndexOf(","), head.lastIndexOf("/"), head.lastIndexOf(";"));
+  return `${(cut > LOCATION_MAX / 2 ? head.slice(0, cut) : head).trimEnd()}…`;
+}
+
 /** Structural schema sent to the API as the output format. */
 const JobExtractWire = z.object({
   company: z.string(),
@@ -58,7 +69,15 @@ export const JobExtractSchema = JobExtractWire.extend({
     .array(z.string().trim().toLowerCase())
     // ISO 639-1, or 639-3 for languages without a two-letter code (Kaqchikel "cak").
     .transform((ls) => [...new Set(ls.filter((l) => /^[a-z]{2,3}$/.test(l)))].slice(0, 5)),
-  location_raw: z.string().trim().max(300).nullable(),
+  /**
+   * Boards like Himalayas list every allowed country (up to ~3,400 characters), and the model sometimes
+   * copies the whole list. Cut it instead of failing the job: eligibility is decided from the raw text.
+   */
+  location_raw: z
+    .string()
+    .trim()
+    .transform((s) => clipLocation(s))
+    .nullable(),
   pay_min: z.number().min(0).max(100_000).nullable(),
   pay_max: z.number().min(0).max(100_000).nullable(),
   pay_currency: z

@@ -155,7 +155,10 @@ export function parseHimalayas(json: unknown): HimalayasJob[] {
   return z.object({ jobs: z.array(HimalayasJob) }).parse(json).jobs;
 }
 
-/** No listed restriction isn't the same as "worldwide": the text may still say "U.S. based", so the extraction decides. */
+/**
+ * No listed restriction isn't the same as "worldwide": the text may still say "U.S. based", so the extraction
+ * decides. When it can't tell, the country=KR search counts (boardFilteredForKorea in lib/jobs/process.ts).
+ */
 export const HIMALAYAS_NO_RESTRICTION = "Remote (no location restriction listed)";
 
 export function himalayasListing(pages: HimalayasJob[][], covered: Set<string>, complete: boolean, now: Date): Listing {

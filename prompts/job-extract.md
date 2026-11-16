@@ -34,7 +34,7 @@
 - languages: 공고가 쓰인 언어가 아니라 작업에 필요한 언어의 ISO 639-1 코드(두 글자 코드가 없는 언어는 ISO 639-3 세 글자, 수화는 "sgn"). 예: 영어로 AI 답변을 평가하면 ["en"], 한국어 음성을 전사하면 ["ko"].
   - 제목이나 본문이 특정 언어 사용자·원어민을 찾으면 그 언어를 반드시 넣는다. 예: "AI Trainers Network - Odia" → ["or", "en"], "Hindi speakers" → ["hi", "en"], "native Tagalog" → ["tl", "en"], "Cebuano" → ["ceb", "en"]. 지시문이 영어라는 이유로 ["en"]만 넣지 않는다.
   - 어떤 언어도 따로 요구하지 않을 때만 ["en"](지시문·소통 언어).
-- location_raw: 지원 가능 지역을 말하는 문구를 짧게 그대로. 없으면 null.
+- location_raw: 지원 가능 지역을 말하는 문구를 짧게 그대로. 나라 목록이 길면 앞의 몇 개만 쓰고 "외 N개국"으로 줄인다(200자 이내). 없으면 null.
 - korea_eligible: 한국 거주자가 지원할 수 있으면 true, 특정 국가 거주자만이면 false, 알 수 없으면 null.
 - requires_credential: 학위·자격증·면허·특정 직업 경력이 필수면 true. "우대"는 false.
 - pay_*: 원문에 적힌 보수. 통화는 ISO 4217(예: USD). 범위가 하나뿐이면 min과 max에 같은 값.

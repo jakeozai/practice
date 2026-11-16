@@ -227,3 +227,12 @@ test("thinking switch: unset leaves the request alone; off and a cap map to the 
   assert.ok(defaultCalls.every((p) => !("thinking" in p)), "real mail keeps the model's default");
   assert.ok(seen.every((p) => JSON.stringify(p.thinking) === JSON.stringify({ type: "disabled" })));
 });
+
+test("rule picks leave out a much weaker fit instead of filling the list", async () => {
+  // Real rule hits from the shared ranking, with the scores under test.
+  const r = (id: string, score: number) => ({ ...ranked[0], job: { ...ranked[0].job, id }, score });
+  const res = await choosePicks([r("x1", 10), r("x2", 9), r("x3", 7.5), r("x4", 7)], profile, { size: 3, now: NOW });
+  assert.deepEqual(res.jobIds, ["x1", "x2"], "7.5 is under 80% of 10");
+  const close = await choosePicks([r("y1", 8.75), r("y2", 8.5), r("y3", 7.1)], profile, { size: 3, now: NOW });
+  assert.deepEqual(close.jobIds, ["y1", "y2", "y3"]);
+});
