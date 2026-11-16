@@ -271,7 +271,8 @@ export async function choosePicks(
       ...chosen.map((c) => [c.r.job.id, { ...c.note, score: c.r.score, kind: "core" as const }]),
       ...stretched.map((c) => [c.r.job.id, { ...c.note, score: c.r.score, kind: "stretch" as const }]),
     ]),
-    subject: parsed?.subject ?? ruleSubject(profile, chosen.length + stretched.length),
+    // Always "{분야} 실력으로 해볼 만한 일감 N개 가져왔어요" (2026-11-16): a line in another form is replaced.
+    subject: parsed?.subject && /실력으로/.test(parsed.subject) ? parsed.subject : ruleSubject(profile, chosen.length + stretched.length),
     method: parsed && parsed.picks.length > 0 ? "llm" : "rules",
   };
 }

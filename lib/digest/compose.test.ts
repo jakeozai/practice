@@ -39,7 +39,7 @@ const input = {
 test("subject, card content and unsubscribe headers", async () => {
   const mail = await composeDigestEmail(input);
   assert.equal(mail.to, "a@example.com");
-  assert.equal(mail.subject, "☀️ 오늘 해볼 만한 일감 1개 가져왔어요 (11/8)");
+  assert.equal(mail.subject, "🦆 오늘 해볼 만한 일감 1개 가져왔어요 (11/8)");
   assert.equal(mail.idempotencyKey, `digest-${UID}-2026-11-08`);
   assert.match(mail.headers["List-Unsubscribe"], /^<https:\/\/aijob5\.example\/api\/email\/unsubscribe\?t=[\w-]+\.[\w-]+>$/);
   assert.equal(mail.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
@@ -114,7 +114,7 @@ test("personal picks: reason, today's first step and own subject", async () => {
     todays: new Map([[JOB_ID, "오늘 저녁 30분: 편집본 링크 붙여 지원"]]),
     subject: "영상 편집 실력으로 오늘 할 일감 1개",
   });
-  assert.equal(mail.subject, "☀️ 영상 편집 실력으로 오늘 할 일감 1개 (11/8)");
+  assert.equal(mail.subject, "🦆 영상 편집 실력으로 해볼 만한 일감 1개 가져왔어요 (11/8)");
   for (const part of ["사내방송 편집 실력 그대로 쓰는 일이에요", "오늘 할 일", "오늘 저녁 30분: 편집본 링크 붙여 지원", "내 AI가 분석한 프로필에 딱 맞는"]) {
     assert.ok(mail.html.includes(part), `html has ${part}`);
   }
@@ -154,8 +154,10 @@ test("boards that ask for credit get a 출처 line", () => {
 });
 
 test("subject: friendly, and the count is the mail's real count", () => {
-  assert.equal(digestSubject("영상 편집 실력으로 해볼 만한 일감 3개 가져왔어요", 5, "2026-11-17"), "☀️ 영상 편집 실력으로 해볼 만한 일감 5개 가져왔어요 (11/17)");
-  assert.equal(digestSubject(null, 5, "2026-11-17"), "☀️ 오늘 해볼 만한 일감 5개 가져왔어요 (11/17)");
-  assert.equal(digestSubject("모션그래픽으로 해볼 만한 일감 5개 가져왔어요.", 3, "2026-11-17"), "☀️ 모션그래픽으로 해볼 만한 일감 3개 가져왔어요 (11/17)");
-  assert.equal(digestSubject("번역 경력 살릴 오늘의 일감", 5, "2026-12-01"), "☀️ 번역 경력 살릴 오늘의 일감 (12/1)");
+  assert.equal(digestSubject("영상 편집 실력으로 해볼 만한 일감 3개 가져왔어요", 5, "2026-11-17"), "🦆 영상 편집 실력으로 해볼 만한 일감 5개 가져왔어요 (11/17)");
+  assert.equal(digestSubject(null, 5, "2026-11-17"), "🦆 오늘 해볼 만한 일감 5개 가져왔어요 (11/17)");
+  assert.equal(digestSubject("모션그래픽으로 해볼 만한 일감 5개 가져왔어요.", 3, "2026-11-17"), "🦆 모션그래픽으로 해볼 만한 일감 3개 가져왔어요 (11/17)");
+  // Whatever the model added after the field, the sentence is always the same.
+  assert.equal(digestSubject("로고 디자인 실력으로 오늘 바로 할 일감 3개!", 5, "2026-11-17"), "🦆 로고 디자인 실력으로 해볼 만한 일감 5개 가져왔어요 (11/17)");
+  assert.equal(digestSubject("번역 경력 살릴 오늘의 일감", 5, "2026-12-01"), "🦆 번역 경력 살릴 오늘의 일감 (12/1)");
 });

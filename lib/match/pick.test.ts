@@ -196,3 +196,9 @@ test("AI stretches come after the profile fits, from their own list", async () =
   assert.deepEqual(down.jobIds.slice(3), ["x1", "x2"]);
   assert.match(down.notes.x1.reason, /로고·그래픽 디자인/);
 });
+
+test("a subject in another form becomes the fixed sentence", async () => {
+  const client = fakeClient(JSON.stringify({ picks: [{ id: "c1", reason_ko: "맞아요", today_ko: "오늘 입찰해요" }], subject_ko: "오늘의 추천 일감 안내" }));
+  const r = await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m" });
+  assert.equal(r.subject, "영상 편집 실력으로 해볼 만한 일감 1개 가져왔어요");
+});

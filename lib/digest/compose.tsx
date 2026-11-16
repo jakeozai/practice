@@ -47,16 +47,20 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
 }
 
 /**
- * "☀️ 영상 편집 실력으로 해볼 만한 일감 5개 가져왔어요 (11/16)" (2026-11-16 user
- * decision: friendly, and the number is the mail's real count). The model
- * writes its line about the three fits, so any "N개" in it is set to the
- * number of jobs actually in the mail; the date keeps each day its own
- * thread in the inbox.
+ * "🦆 로고 디자인 실력으로 해볼 만한 일감 5개 가져왔어요 (11/17)" (2026-11-16
+ * user decision: always this sentence, with the duck). The model names the
+ * person's field in its line; the sentence around it and the count — the
+ * number of jobs actually in the mail — come from here, so a line written
+ * another way, or before this change, still comes out the same. The date
+ * keeps each day its own thread in the inbox.
  */
 export function digestSubject(line: string | null | undefined, count: number, sendDate: string): string {
-  const base = (line?.trim() || dailyFiveLine(count)).replace(/\d+\s*개/, `${count}개`).replace(/[.。]+$/, "");
+  const focus = line?.trim().match(/^(.{1,20}?)\s*실력으로/)?.[1]?.trim();
+  const base = focus
+    ? `${focus} 실력으로 해볼 만한 일감 ${count}개 가져왔어요`
+    : (line?.trim() || dailyFiveLine(count)).replace(/\d+\s*개/, `${count}개`).replace(/[.。!]+$/, "");
   const [, month, day] = sendDate.split("-").map(Number);
-  return `☀️ ${base} (${month}/${day})`;
+  return `🦆 ${base} (${month}/${day})`;
 }
 
 export function digestIdempotencyKey(userId: string, sendDate: string): string {
