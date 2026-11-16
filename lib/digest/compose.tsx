@@ -54,7 +54,7 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
  * thread in the inbox.
  */
 export function digestSubject(line: string | null | undefined, count: number, sendDate: string): string {
-  const base = (line?.trim() || dailyFiveLine(count)).replace(/\d+\s*개/, `${count}개`);
+  const base = (line?.trim() || dailyFiveLine(count)).replace(/\d+\s*개/, `${count}개`).replace(/[.。]+$/, "");
   const [, month, day] = sendDate.split("-").map(Number);
   return `☀️ ${base} (${month}/${day})`;
 }
