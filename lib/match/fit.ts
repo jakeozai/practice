@@ -106,11 +106,25 @@ const SPECIALTY_BONUS = 1.5;
  * training job for "small business owners" isn't accounting work (2026-11-16 rules-only review).
  */
 export const SUMMARY_ONLY_FACTOR = 0.7;
+/**
+ * (제안값) Expert AI-training work for someone with a specialty, whose title doesn't name it
+ * ("Small Business Owner" training for an accountant): ranked below the ones that do.
+ */
+const DOMAIN_NOT_IN_TITLE_PENALTY = 2;
 /** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
 const TINY_BUDGET_USD = 50;
 
 export type ProfileSection = "field" | "notes" | "domain" | "keywords" | "skills" | "experience";
-export type ConceptHit = { id: string; label: string; weight: number; trigger: string; categories: string[]; section: ProfileSection };
+export type ConceptHit = {
+  id: string;
+  label: string;
+  weight: number;
+  trigger: string;
+  categories: string[];
+  section: ProfileSection;
+  /** Set on a job's hits: the match is in the job's title, not only its summary. */
+  inTitle?: boolean;
+};
 
 export type ProfileSignals = {
   langs: Set<string>;
@@ -285,7 +299,7 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   // Whether the job is related at all counts every match; how well it fits weighs the title more.
   if (Math.max(0, ...found.map((f) => f.hit.weight)) < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
   const hits = found
-    .map(({ hit, inTitle }) => (inTitle ? hit : { ...hit, weight: Math.round(hit.weight * SUMMARY_ONLY_FACTOR * 100) / 100 }))
+    .map(({ hit, inTitle }) => (inTitle ? { ...hit, inTitle } : { ...hit, weight: Math.round(hit.weight * SUMMARY_ONLY_FACTOR * 100) / 100, inTitle }))
     .sort((a, b) => b.weight - a.weight);
   const best = hits[0].weight;
   const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
@@ -324,6 +338,9 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   if (ageHours <= 36) bonus += 1;
   else if (ageHours <= 96) bonus += 0.5;
   if (job.status === "pool") penalty += 1;
+  if (job.category === "domain" && [...sig.concepts.keys()].some((id) => DOMAIN_CONCEPTS.has(id)) && !hits.some((h) => h.inTitle && DOMAIN_CONCEPTS.has(h.id))) {
+    penalty += DOMAIN_NOT_IN_TITLE_PENALTY;
+  }
 
   // Named tools confirm a match but never outweigh the order of the person's fields.
   const toolBonus = tools.length === 0 ? 0 : tools.length === 1 ? 1 : 1.5;
@@ -359,13 +376,22 @@ function shorten(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
 }
 
-/** Display name of a matched tool token ("next.js" → "Next.js"), taken from the profile's own spelling. */
+/** Display name of a matched tool ("after" → "After Effects"): the profile's own skill when short, else the word. */
 function toolLabel(token: string, skills: string[]): string {
   for (const s of skills) {
     const m = new RegExp(escapeRe(token), "i").exec(s);
-    if (m) return m[0];
+    if (m) return s.trim().length <= 20 ? s.trim() : m[0];
   }
   return token;
+}
+
+/** Profile wording for a quote: cut at a natural break (·, comma, bracket) before cutting mid-word. */
+export function quoteProfile(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  const head = t.slice(0, max);
+  const cut = Math.max(...["·", ",", "(", "/", "、"].map((c) => head.lastIndexOf(c)));
+  return cut >= 6 ? head.slice(0, cut).trim() : shorten(t, max);
 }
 
 export type PickNote = { reason: string; today: string };
@@ -375,13 +401,18 @@ export type PickNote = { reason: string; today: string };
  * didn't make). Cites the profile wording that matched.
  */
 export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Date()): PickNote {
-  const top = r.hits[0];
+  // Cite what the job itself is about: a match in its title, and the craft (translation) over the
+  // specialty (medicine) when both are there.
+  const top = r.hits.find((h) => h.inTitle && !DOMAIN_CONCEPTS.has(h.id)) ?? r.hits.find((h) => h.inTitle) ?? r.hits[0];
   const tool = r.tools[0] ? ` (${toolLabel(r.tools[0], profile.skills)} 사용)` : "";
-  // Worded so no particle depends on the quoted profile text ('그대로', '에' fit after any word).
+  // Worded so no particle depends on the quoted profile text ('그대로', '에', fixed '경험과').
+  const quote = quoteProfile(top.trigger, 22);
   const reason =
     top.section === "keywords"
-      ? shorten(`내 분석의 검색어 ‘${shorten(top.trigger, 24)}’에 맞는 일이에요${tool}`, 80)
-      : shorten(`내 분석의 ‘${shorten(top.trigger, 22)}’ 그대로 할 수 있는 ${top.label} 일이에요${tool}`, 80);
+      ? `내 분석의 검색어 ‘${quoteProfile(top.trigger, 24)}’에 맞는 일이에요${tool}`
+      : top.inTitle === false
+        ? `내 분석의 ‘${quote}’ 경험과 가까운 일이에요${tool}`
+        : `내 분석의 ‘${quote}’ 그대로 할 수 있는 ${top.label} 일이에요${tool}`;
 
   const ageHours = (now.getTime() - new Date(r.job.first_seen_at).getTime()) / 3_600_000;
   let today: string;
@@ -392,5 +423,5 @@ export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Da
   } else {
     today = "오늘 원문에서 조건 확인하고 바로 지원해 보세요";
   }
-  return { reason, today };
+  return { reason: shorten(reason, 90), today };
 }

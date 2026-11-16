@@ -19,7 +19,7 @@ import { CATEGORY_CHIP_KO, ENGLISH_LEVEL_LABELS_KO, formatPay, isBiddingGig } fr
 import { languageNameKo } from "../jobs/language";
 import { firstText } from "../llm/client";
 import { isServiceFailure, type MessagesClient } from "../llm/extractJob";
-import { ruleNote, type FitJob, type PickNote, type Ranked } from "./fit";
+import { quoteProfile, ruleNote, type FitJob, type PickNote, type Ranked } from "./fit";
 import type { StretchRanked } from "./stretch";
 
 /**
@@ -193,7 +193,7 @@ export function ruleStretchNote(r: StretchRanked<PickJob>): PickNote {
   // A link to the profile only when the job shares a concept with it; never a made-up one.
   const howTo = `AI로 하는 법: ${r.aiHow}`;
   return {
-    reason: trimTo(r.link ? `내 분석의 ‘${trimTo(r.link, 18)}’에서 이어지는 일 · ${howTo}` : howTo, REASON_MAX),
+    reason: trimTo(r.link ? `내 분석의 ‘${quoteProfile(r.link, 18)}’에서 이어지는 일 · ${howTo}` : howTo, REASON_MAX),
     today: isBiddingGig(r.job.url) ? "오늘 1시간: AI로 시안 1개를 만들어 첨부하고 견적 입찰해요" : "오늘 1시간: AI로 샘플 1개를 만들어 지원서에 붙여 제출해요",
   };
 }

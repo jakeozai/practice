@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ProfileSchema } from "../profile/parse";
-import { assessJob, buildSignals, rankForProfile, ruleNote, toUsd, type FitJob } from "./fit";
+import { assessJob, buildSignals, quoteProfile, rankForProfile, ruleNote, toUsd, type FitJob } from "./fit";
 import { toolTokens } from "./concepts";
 
 const NOW = new Date("2026-11-15T00:00:00Z");
@@ -137,7 +137,7 @@ test("rule note cites the profile and suits the way to apply", () => {
   const [r] = rankForProfile([gig], sig, NOW);
   const note = ruleNote(r, profile, NOW);
   assert.match(note.reason, /^내 분석의 ‘생성형 AI 영상 제작’ 그대로 할 수 있는 영상 편집 일이에요/);
-  assert.match(note.reason, /\(Premiere 사용\)$/);
+  assert.match(note.reason, /\(Adobe Premiere Pro 사용\)$/, "the tool as the profile spells it");
   assert.match(note.today, /견적 입찰/);
 });
 
@@ -232,4 +232,9 @@ test("a match only in the summary ranks below one in the title", () => {
   assert.deepEqual(ranked.map((r) => r.job.id), ["t", "s"], "both stay related, the title match first");
   const s = ranked.find((r) => r.job.id === "s")!;
   assert.ok(s.hits.every((h) => h.weight < 5), "summary-only weight is discounted");
+});
+
+test("quotes of the profile break at a natural point", () => {
+  assert.equal(quoteProfile("Claude Code로 만드는 웹앱·랜딩페이지·자동화", 22), "Claude Code로 만드는 웹앱");
+  assert.equal(quoteProfile("회계·재무 전문 AI 답변 평가", 22), "회계·재무 전문 AI 답변 평가");
 });

@@ -149,3 +149,11 @@ test("a try names the profile only when it shares a concept with it", () => {
   assert.ok(a.link, "clinic site links to nursing");
   assert.equal(b.link, undefined);
 });
+
+test("a role is not a try, and a summary word doesn't change what the job is", () => {
+  assert.equal(stretchKindOf(job({ title: "AI Engineer (contract)", category: "dev", summary_ko: ["생성형 AI 챗봇 구축"] })), null);
+  assert.equal(stretchKindOf(job({ title: "GTM Engineer", category: "other", summary_ko: ["생성형 검색 콘텐츠"] })), null);
+  const podcast = job({ title: "Podcast video editor", category: "video", summary_ko: ["유튜브 썸네일과 배너도 함께"] });
+  assert.equal(stretchKindOf(podcast), null, "video work isn't a graphics try because the summary mentions a banner");
+  assert.equal(stretchKindOf(job({ title: "Logo for a bakery" }))?.id, "logo_graphics");
+});

@@ -11,13 +11,22 @@
  * count as a stretch.
  */
 import { CONCEPTS, codeLanguages } from "./concepts";
-import { jobText, personalLimits, toUsd, type FitJob, type ProfileSignals } from "./fit";
+import { jobText, personalLimits, SUMMARY_ONLY_FACTOR, toUsd, type FitJob, type ProfileSignals } from "./fit";
 
-export type StretchKind = { id: string; label: string; aiHow: string; job: RegExp; not?: RegExp };
+export type StretchKind = {
+  id: string;
+  label: string;
+  aiHow: string;
+  job: RegExp;
+  not?: RegExp;
+  /** Job categories the kind can come from when only the summary names it (the title decides otherwise). */
+  categories: string[];
+};
 
 export const STRETCH_KINDS: StretchKind[] = [
   {
     id: "logo_graphics",
+    categories: ["design"],
     label: "로고·그래픽 디자인",
     aiHow: "Midjourney·Ideogram으로 시안을 뽑고 Illustrator·Canva로 다듬기",
     job: /\blogo|로고|branding\s*kit|brand\s*identity|브랜드\s*아이덴티티|illustrat|삽화|일러스트|t-?shirt|티셔츠|poster|포스터|banner|배너|flyer|전단|sticker|스티커|\bicons?\b|아이콘|vector|벡터|\bpng\b|social\s*media\s*(?:post|graphic|design)|소셜\s*미디어\s*(?:디자인|그래픽)|book\s*cover|표지|mock-?up|목업|infographic|인포그래픽|template\s*design|템플릿\s*디자인/i,
@@ -25,6 +34,7 @@ export const STRETCH_KINDS: StretchKind[] = [
   },
   {
     id: "three_d",
+    categories: ["motion_3d", "design"],
     label: "3D 모델·렌더",
     aiHow: "Meshy·Tripo 같은 AI 3D 생성으로 초안을 만들고 Blender로 다듬기",
     job: /\b3d\b|blender|블렌더|render|렌더|game\s*asset|게임\s*에셋|character\s*model|캐릭터\s*모델|\bstl\b|3d\s*print|3d\s*프린팅|figurine|피규어|low[- ]?poly|로우\s*폴리/i,
@@ -32,6 +42,7 @@ export const STRETCH_KINDS: StretchKind[] = [
   },
   {
     id: "web_bot",
+    categories: ["dev"],
     label: "웹·봇·자동화 개발",
     aiHow: "Claude Code 같은 AI 코딩 도구로 빠르게 만들기",
     job: /website|웹사이트|landing\s*page|랜딩|web\s*app|웹\s*앱|chat\s*bot|chatbot|챗봇|\bbot\b|(?:^|[^로])봇|automat|자동화|\bscript\b|스크립트|scrap|크롤|integration|연동|plugin|플러그인|browser\s*extension|확장\s*프로그램|bug\s*fix|버그\s*수정|prototype|프로토타입|\bmvp\b|mobile\s*app|모바일\s*앱|앱\s*개발|wordpress|워드프레스|shopify|쇼피파이/i,
@@ -39,6 +50,7 @@ export const STRETCH_KINDS: StretchKind[] = [
   },
   {
     id: "ai_content",
+    categories: ["video", "design", "writing", "other", "motion_3d"],
     label: "생성형 AI 작업",
     aiHow: "생성형 AI 도구로 결과물을 만들고 직접 손봐서 완성하기",
     job: /\bai[- ](?:generated|image|art|video|avatar|voice|content|influencer|music)|ai\s*(?:이미지|영상|콘텐츠|아바타|그림|음악)|생성형|generative|midjourney|stable\s*diffusion|prompt\s*engineer|프롬프트\s*(?:작성|엔지니어)|custom\s*gpt|gpts\b/i,
@@ -60,6 +72,13 @@ const NOT_STRETCH_SLUG =
 /** A person doing the work by hand, even when the words sound technical — unless the posting asks to build the tool ("AI email support bot"). */
 const HUMAN_SERVICE = /support\s*(?:assistant|agent|specialist|representative)|chat\s*support|email\s*support|지원\s*보조|상담원|상담\s*업무|응대\s*업무|moderator|모더레이터/i;
 const BUILDS_TOOL = /\bbot\b|chat\s*bot|chatbot|챗봇|automat|자동화|develop|개발|\bbuild|구축|integration|연동/i;
+
+/**
+ * A role, not a deliverable: "AI Engineer (contract)", "GTM Engineer", "Project Manager". Fine as
+ * work, but there is nothing to make with AI today and attach (2026-11-16 persona run). (제안값)
+ */
+const ROLE_TITLE =
+  /\b(?:engineer|manager|director|lead|head\s+of|scientist|researcher|analyst|consultant|architect|executive|coordinator|officer|strategist|recruiter)\b|엔지니어|매니저|디렉터|리드|과학자|연구원|분석가|컨설턴트|아키텍트|임원|코디네이터|전략가/i;
 
 /** One small, clear deliverable is a fair first try with AI; a platform or app is not. (제안값) */
 const SMALL_DELIVERABLE =
@@ -125,13 +144,13 @@ export type StretchRanked<J extends FitJob> = {
 export function stretchKindOf(job: FitJob): StretchKind | null {
   if (!job.category || !STRETCH_CATEGORIES.has(job.category)) return null;
   if (NOT_STRETCH_SLUG.test(job.url)) return null;
+  const title = `${job.title}\n${job.title_ko ?? ""}`;
+  if (ROLE_TITLE.test(title)) return null;
   const text = jobText(job);
   if (HUMAN_SERVICE.test(text) && !BUILDS_TOOL.test(text)) return null;
-  for (const k of STRETCH_KINDS) {
-    if (job.category === "writing" && k.id !== "ai_content") continue;
-    if (k.job.test(text) && !k.not?.test(text)) return k;
-  }
-  return null;
+  const allowed = STRETCH_KINDS.filter((k) => !(job.category === "writing" && k.id !== "ai_content") && !k.not?.test(text));
+  // The title says what the job is; a word in the summary ("with a banner") only counts in the kind's own categories.
+  return allowed.find((k) => k.job.test(title)) ?? allowed.find((k) => k.categories.includes(job.category!) && k.job.test(text)) ?? null;
 }
 
 /** Stretch candidates, best first; `exclude` holds the jobs that already fit the profile (they are not a stretch). */
@@ -148,10 +167,15 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
     let score = 3 - limits.penalty;
     // Closer to what the person already does is an easier first try (thumbnails → social graphics, web dev → landing pages,
     // a nurse → a clinic's website).
-    let near: { weight: number; trigger: string } | null = null;
+    // Only a link the job's title shows is named in the reason; a summary word still helps the score a little.
+    const title = `${job.title}\n${job.title_ko ?? ""}`;
+    let near: { weight: number; trigger: string; inTitle: boolean } | null = null;
     for (const c of CONCEPTS) {
       const h = sig.concepts.get(c.id);
-      if (h && c.job.test(text) && h.weight > (near?.weight ?? 0)) near = { weight: h.weight, trigger: h.trigger };
+      if (!h || !c.job.test(text)) continue;
+      const inTitle = c.job.test(title);
+      const w = inTitle ? h.weight : h.weight * SUMMARY_ONLY_FACTOR;
+      if (w > (near?.weight ?? 0)) near = { weight: w, trigger: h.trigger, inTitle };
     }
     score += Math.min((near?.weight ?? 0) * 0.4, 2);
     score += AFFINITY_BONUS * kindAffinity(kind.id, sig);
@@ -173,7 +197,7 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
     if (SMALL_DELIVERABLE.test(text)) score += 1;
     if (BIG_SCOPE.test(text)) score -= 1.5;
 
-    out.push({ job, score: Math.round(score * 100) / 100, kind: kind.id, kindLabel: kind.label, aiHow: kind.aiHow, ...(near ? { link: near.trigger } : {}) });
+    out.push({ job, score: Math.round(score * 100) / 100, kind: kind.id, kindLabel: kind.label, aiHow: kind.aiHow, ...(near?.inTitle ? { link: near.trigger } : {}) });
   }
   return out.sort((a, b) => b.score - a.score || b.job.first_seen_at.localeCompare(a.job.first_seen_at));
 }
