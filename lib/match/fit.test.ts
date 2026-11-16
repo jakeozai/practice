@@ -214,3 +214,13 @@ test("UI/UX and website work reach designers; localization 'UI content review' d
   );
   assert.equal(l10n.ok, false);
 });
+
+test("a video call is not video editing; student-only roles are out", () => {
+  const editing = job({ title: "Edit YouTube videos", category: "video" });
+  const call = job({ title: "Video Call API Automation", title_ko: "화상 통화 API 자동화 스크립트 개발", summary_ko: ["영상 통화 API 연동"], category: "dev" });
+  const ambassador = job({ title: "Cengage Student Ambassador", summary_ko: ["대학생 대상, 콘텐츠 제작"], category: "writing" });
+  assert.ok(assessJob(editing, sig, NOW).ok);
+  const callFit = assessJob(call, sig, NOW);
+  assert.ok(!callFit.ok || !callFit.hits.some((h) => h.id === "video_edit"), "a video call doesn't count as editing");
+  assert.equal((assessJob(ambassador, sig, NOW) as { why: string }).why, "student");
+});

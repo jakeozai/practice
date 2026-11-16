@@ -27,7 +27,7 @@ export const CONCEPTS: Concept[] = [
     label: "영상 편집",
     categories: ["video"],
     profile: /영상|동영상|편집|후반\s*작업|프리미어|premiere|final\s*cut|파이널\s*컷|다빈치|davinci|사내\s*방송|브이로그|vlog|\bvideos?\b/i,
-    job: /\bvideos?\b(?!\s*games?)|영상|동영상|premiere|final\s*cut|davinci|post[- ]?production|후반\s*작업|footage|촬영본|\breels?\b|릴스|\bshorts\b|쇼츠|숏폼|short[- ]form|tiktok|틱톡|youtube|유튜브|vlog|브이로그|자막|subtitl|컷\s*편집/i,
+    job: /\bvideos?\b(?!\s*(?:games?|calls?|calling|conferenc\w*|chats?|meetings?|interviews?))|영상(?!\s*(?:통화|회의|면접))|premiere|final\s*cut|davinci|post[- ]?production|후반\s*작업|footage|촬영본|\breels?\b|릴스|\bshorts\b|쇼츠|숏폼|short[- ]form|tiktok|틱톡|youtube|유튜브|vlog|브이로그|자막|subtitl|컷\s*편집/i,
   },
   {
     id: "short_form",
