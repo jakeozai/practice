@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { boardCompany, buildJob, decideCompany, forbidsAi, isFullTime, luresOffPlatform, triage } from "./process";
-import { extractJob, isServiceFailure, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
+import { clipLocation, extractJob, isServiceFailure, LOCATION_MAX, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
 
 const raw = {
   id: "raw-1",
@@ -119,6 +119,19 @@ test("parseExtraction validates strictly", () => {
   assert.equal(parseExtraction(JSON.stringify({ ...extraction, summary_ko: ["한 줄"] })).ok, false);
   assert.equal(parseExtraction(JSON.stringify({ ...extraction, pay_min: 50, pay_max: 10 })).ok, false);
   assert.equal(parseExtraction("not json").ok, false);
+});
+
+test("parseExtraction cuts a long country list instead of failing", () => {
+  const countries = Array.from({ length: 120 }, (_, i) => `Country ${i + 1}`).join(", ");
+  const r = parseExtraction(JSON.stringify({ ...extraction, location_raw: countries }));
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  const loc = r.data.location_raw ?? "";
+  assert.ok(loc.length <= LOCATION_MAX, `length ${loc.length}`);
+  assert.ok(loc.endsWith("…"));
+  assert.match(loc, /^Country 1, Country 2/);
+  assert.doesNotMatch(loc, /, …$/);
+  assert.equal(clipLocation("Worldwide"), "Worldwide");
 });
 
 function fakeClient(outputs: (string | Error)[]): MessagesClient & { calls: Record<string, unknown>[] } {
