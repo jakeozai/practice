@@ -238,3 +238,23 @@ test("quotes of the profile break at a natural point", () => {
   assert.equal(quoteProfile("Claude Code로 만드는 웹앱·랜딩페이지·자동화", 22), "Claude Code로 만드는 웹앱");
   assert.equal(quoteProfile("회계·재무 전문 AI 답변 평가", 22), "회계·재무 전문 AI 답변 평가");
 });
+
+test("expert AI training ranks by the specialty its title names", () => {
+  const accountant = buildSignals(
+    ProfileSchema.parse({
+      languages: [{ code: "ko", level: "native" }, { code: "en", level: "business" }],
+      fields: ["회계·재무 전문 AI 답변 평가"],
+      domain_expertise: ["회계", "재무"],
+      avoid: [],
+    }),
+  );
+  const finance = job({ id: "f", title: "Financial Expert", title_ko: "금융 전문가", category: "domain", summary_ko: ["AI 금융 에이전트 평가", "재무·회계 경력", "AI 응답 평가"] });
+  const owner = job({
+    id: "o",
+    title: "Small Business Ownership or Manager – Freelance AI Trainer Project",
+    title_ko: "사업가 AI 교육",
+    category: "language",
+    summary_ko: ["소상공인 사업주를 위한 AI 교육 프로젝트", "사업 운영, 전략, 재무 계획 시나리오의 AI 답변 평가", "시간당 20~100달러"],
+  });
+  assert.deepEqual(rankForProfile([owner, finance], accountant, NOW).map((r) => r.job.id), ["f", "o"]);
+});

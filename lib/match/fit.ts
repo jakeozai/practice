@@ -326,8 +326,8 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
 
   let bonus = 0;
   if (job.category && hits[0].categories.includes(job.category)) bonus += 0.5;
-  // The person's own specialty (nursing, accounting, law…) is the most specific fit there is.
-  if (hits.some((h) => DOMAIN_CONCEPTS.has(h.id))) bonus += SPECIALTY_BONUS;
+  // The person's own specialty (nursing, accounting, law…) named in the title is the most specific fit there is.
+  if (hits.some((h) => h.inTitle && DOMAIN_CONCEPTS.has(h.id))) bonus += SPECIALTY_BONUS;
   if (payUsd !== null) {
     if (job.pay_unit === "hour" && sig.minHourlyUsd !== null) bonus += payUsd >= sig.minHourlyUsd * 1.5 ? 1 : 0.5;
     else if (job.pay_unit === "hour") bonus += 0.5;
@@ -338,7 +338,11 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   if (ageHours <= 36) bonus += 1;
   else if (ageHours <= 96) bonus += 0.5;
   if (job.status === "pool") penalty += 1;
-  if (job.category === "domain" && [...sig.concepts.keys()].some((id) => DOMAIN_CONCEPTS.has(id)) && !hits.some((h) => h.inTitle && DOMAIN_CONCEPTS.has(h.id))) {
+  // Expert work (by category, or because the summary names the person's specialty) whose title names
+  // another line of work: "Small Business Owner AI trainer" mentions finance but is for business owners.
+  const specialtyInTitle = hits.some((h) => h.inTitle && DOMAIN_CONCEPTS.has(h.id));
+  const expertWork = job.category === "domain" || hits.some((h) => DOMAIN_CONCEPTS.has(h.id));
+  if (expertWork && !specialtyInTitle && [...sig.concepts.keys()].some((id) => DOMAIN_CONCEPTS.has(id))) {
     penalty += DOMAIN_NOT_IN_TITLE_PENALTY;
   }
 
@@ -406,7 +410,7 @@ export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Da
   const top = r.hits.find((h) => h.inTitle && !DOMAIN_CONCEPTS.has(h.id)) ?? r.hits.find((h) => h.inTitle) ?? r.hits[0];
   const tool = r.tools[0] ? ` (${toolLabel(r.tools[0], profile.skills)} 사용)` : "";
   // Worded so no particle depends on the quoted profile text ('그대로', '에', fixed '경험과').
-  const quote = quoteProfile(top.trigger, 22);
+  const quote = quoteProfile(top.trigger, 26);
   const reason =
     top.section === "keywords"
       ? `내 분석의 검색어 ‘${quoteProfile(top.trigger, 24)}’에 맞는 일이에요${tool}`
