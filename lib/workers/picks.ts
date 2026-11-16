@@ -20,7 +20,7 @@ import { createAnthropic, fastModelConfig } from "../llm/client";
 import type { MessagesClient } from "../llm/extractJob";
 import { createPacer, llmRequestsPerMinute, pacedClient, type Pacer } from "../llm/pace";
 import { buildSignals, exclusionSummary, rankForProfile, type ProfileSignals, type Ranked } from "../match/fit";
-import { choosePicks, PICK_POOL, STRETCH_POOL, type PickKind, type PickResult } from "../match/pick";
+import { choosePicks, PICK_POOL, STRETCH_POOL, type PickKind, type PickResult, type PickThinking } from "../match/pick";
 import { rankStretch, stretchPool, type StretchRanked } from "../match/stretch";
 import type { Persona } from "../match/personas";
 import { loadCandidatePool, type DigestJob } from "../digest/candidates";
@@ -116,7 +116,14 @@ async function loadSubscribers(db: ServiceClient, onlyUser?: string): Promise<{ 
   }
 }
 
-type ModelContext = { client: MessagesClient | null; model: string | null; fallbackModel: string | null; log: (line: string) => void };
+type ModelContext = {
+  client: MessagesClient | null;
+  model: string | null;
+  fallbackModel: string | null;
+  log: (line: string) => void;
+  /** Operator experiments only (previewPersonas); real mail leaves it unset. */
+  thinking?: PickThinking;
+};
 
 /** One person's mail: rule ranking → stretch ranking → the model's (or the rules') choice. */
 async function pickFor(
@@ -135,6 +142,7 @@ async function pickFor(
     client: opts.ctx.client,
     model: opts.ctx.model,
     fallbackModel: opts.ctx.fallbackModel,
+    thinking: opts.ctx.thinking,
     log: opts.ctx.log,
   });
   return { pick, signals, ranked, stretchRanked };
@@ -268,13 +276,13 @@ export async function preparePicks(
 export async function previewPersonas(
   db: ServiceClient,
   personas: Persona[],
-  opts: { log: (line: string) => void; size: number; stretchSize?: number; now?: Date },
+  opts: { log: (line: string) => void; size: number; stretchSize?: number; now?: Date; thinking?: PickThinking },
 ): Promise<(PickDetail & { label: string })[]> {
   const now = opts.now ?? new Date();
   const pool = await loadCandidatePool(db);
   const llm = await fastModelConfig();
   const client: MessagesClient | null = llm ? pacedClient(createAnthropic(llm) as unknown as MessagesClient, createPacer(llmRequestsPerMinute())) : null;
-  const ctx: ModelContext = { client, model: pickModel(llm?.model), fallbackModel: llm?.model ?? null, log: opts.log };
+  const ctx: ModelContext = { client, model: pickModel(llm?.model), fallbackModel: llm?.model ?? null, log: opts.log, thinking: opts.thinking };
   return Promise.all(
     personas.map(async (p) => {
       const r = await pickFor(p.profile, pool, { size: opts.size, stretchSize: opts.stretchSize ?? STRETCH_SIZE, now, ctx });

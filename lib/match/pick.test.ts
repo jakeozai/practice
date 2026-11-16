@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ProfileSchema } from "../profile/parse";
 import { buildSignals, rankForProfile } from "./fit";
-import { choosePicks, parsePick, pickMessage, ruleSubject, type PickJob } from "./pick";
+import { choosePicks, parsePick, parseThinking, pickMessage, ruleSubject, thinkingParam, type PickJob } from "./pick";
 import type { MessagesClient } from "../llm/extractJob";
 
 const NOW = new Date("2026-11-15T00:00:00Z");
@@ -201,4 +201,29 @@ test("a subject in another form becomes the fixed sentence", async () => {
   const client = fakeClient(JSON.stringify({ picks: [{ id: "c1", reason_ko: "맞아요", today_ko: "오늘 입찰해요" }], subject_ko: "오늘의 추천 일감 안내" }));
   const r = await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m" });
   assert.equal(r.subject, "영상 편집 실력으로 해볼 만한 일감 1개 가져왔어요");
+});
+
+test("thinking switch: unset leaves the request alone; off and a cap map to the Anthropic-style field", async () => {
+  assert.deepEqual(thinkingParam(undefined), {});
+  assert.deepEqual(thinkingParam("off"), { thinking: { type: "disabled" } });
+  assert.deepEqual(thinkingParam(1024), { thinking: { type: "enabled", budget_tokens: 1024 } });
+  assert.equal(parseThinking("off"), "off");
+  assert.equal(parseThinking("1024"), 1024);
+  for (const v of [null, "", "on", "-5", "1.5", "999999"]) assert.equal(parseThinking(v), undefined);
+
+  const seen: Record<string, unknown>[] = [];
+  const client: MessagesClient = {
+    messages: {
+      create: async (params) => {
+        seen.push(params);
+        return { content: [{ type: "text", text: JSON.stringify({ picks: [], subject_ko: "" }) }] };
+      },
+    },
+  };
+  await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m" });
+  const defaultCalls = seen.splice(0);
+  await choosePicks(ranked, profile, { size: 3, now: NOW, client, model: "m", thinking: "off" });
+  assert.ok(defaultCalls.length > 0 && seen.length > 0);
+  assert.ok(defaultCalls.every((p) => !("thinking" in p)), "real mail keeps the model's default");
+  assert.ok(seen.every((p) => JSON.stringify(p.thinking) === JSON.stringify({ type: "disabled" })));
 });

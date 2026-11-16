@@ -2,6 +2,7 @@ import { connection, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { previewPersonas } from "@/lib/workers/picks";
 import { PERSONAS } from "@/lib/match/personas";
+import { parseThinking } from "@/lib/match/pick";
 import { appEnv } from "@/lib/env";
 import { cronLogger, isCronRequest } from "@/lib/cron";
 
@@ -15,12 +16,21 @@ export const maxDuration = 300;
  * that personalization holds for every kind of person, not only the first
  * users. Nothing stored, no mail. Callable through
  * private.call_app_cron('/api/cron/picks-personas') (0015).
+ *
+ * Experiments: `?only=translator,designer` limits the personas and
+ * `?thinking=off|<tokens>` changes how much the model thinks before answering
+ * (real mail keeps the model's default).
  */
 export async function GET(request: Request) {
   await connection(); // request-time only, never prerendered
   const db = createAdminClient();
   if (!(await isCronRequest(request, db))) return NextResponse.json({ ok: false }, { status: 401 });
+  const params = new URL(request.url).searchParams;
+  const only = new Set((params.get("only") ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+  const thinking = parseThinking(params.get("thinking"));
+  const personas = only.size ? PERSONAS.filter((p) => only.has(p.id)) : PERSONAS;
   const { lines, log } = cronLogger();
-  const personas = await previewPersonas(db, PERSONAS, { log, size: appEnv().DIGEST_SIZE });
-  return NextResponse.json({ ok: true, personas, log: lines.slice(-40) });
+  const started = Date.now();
+  const result = await previewPersonas(db, personas, { log, size: appEnv().DIGEST_SIZE, thinking });
+  return NextResponse.json({ ok: true, thinking: thinking ?? "default", ms: Date.now() - started, personas: result, log: lines.slice(-40) });
 }

@@ -190,6 +190,23 @@ export function ruleSubject(profile: Profile, count: number): string {
   return focus ? trimTo(`${focus} 실력으로 해볼 만한 일감 ${count}개 가져왔어요`, SUBJECT_MAX) : `오늘 해볼 만한 일감 ${count}개 가져왔어요`;
 }
 
+/** See choosePicks `thinking`. */
+export type PickThinking = "off" | number;
+
+/** Anthropic-style thinking setting; AI Gateway maps it to the provider's own (Gemini: thinking budget). */
+export function thinkingParam(t: PickThinking | undefined): Record<string, unknown> {
+  if (t === undefined) return {};
+  if (t === "off") return { thinking: { type: "disabled" } };
+  return { thinking: { type: "enabled", budget_tokens: t } };
+}
+
+/** `off` or a token cap such as `1024` (operator query string); anything else = the model's default. */
+export function parseThinking(v: string | null): PickThinking | undefined {
+  if (v === "off") return "off";
+  const n = Number(v);
+  return v && Number.isInteger(n) && n > 0 && n <= 24_576 ? n : undefined;
+}
+
 export async function choosePicks(
   ranked: Ranked<PickJob>[],
   profile: Profile,
@@ -203,6 +220,12 @@ export async function choosePicks(
     /** AI-stretch candidates, best first (lib/match/stretch.ts, already pooled). */
     stretch?: StretchRanked<PickJob>[];
     stretchSize?: number;
+    /**
+     * Operator experiments only (picks-personas dry run): "off" asks the model
+     * to answer without thinking first, a number caps the thinking tokens.
+     * Unset = the model's default, which is what real mail uses.
+     */
+    thinking?: PickThinking;
     log?: (line: string) => void;
   },
 ): Promise<PickResult> {
@@ -225,6 +248,7 @@ export async function choosePicks(
           system: digestPickPrompt(),
           messages: [{ role: "user", content: pickMessage(profile, pool, now, sPool) }],
           output_config: { format: zodOutputFormat(PickWire) },
+          ...thinkingParam(opts.thinking),
         });
         const text = firstText(message);
         parsed = parsePick(text, pool.length, opts.size, sPool.length, stretchSize);
