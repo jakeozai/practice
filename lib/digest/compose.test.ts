@@ -120,6 +120,13 @@ test("personal picks: reason, today's first step and own subject", async () => {
   }
 });
 
+test("rule picks (no model): still a personal list, without reason or first step", async () => {
+  const mail = await composeDigestEmail({ ...input, personal: true, subject: "영상 편집 실력으로 해볼 만한 일감 1개 가져왔어요" });
+  assert.ok(mail.html.includes("오늘의 맞춤 일감"));
+  assert.ok(mail.html.includes("내 AI가 분석한 프로필에 딱 맞는"));
+  assert.doesNotMatch(mail.html, /오늘 할 일/);
+});
+
 test("AI stretches get their own section and chip", async () => {
   const stretchJob = { ...job, id: "1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d", title: "Logo for a cafe", title_ko: "카페 로고 디자인" };
   const mail = await composeDigestEmail({

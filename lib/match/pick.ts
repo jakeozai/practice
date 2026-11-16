@@ -29,6 +29,12 @@ import type { StretchRanked } from "./stretch";
  * jobs are in play and the model only chooses among the strongest and writes.
  */
 export const PICK_POOL = 6;
+/**
+ * Per-subscriber model call (2026-11-16 user decision: cost first). Off: the
+ * rules pick the top fits by score, and the mail shows no reason or first
+ * step. The persona dry run can still turn it on (?model=on) to compare.
+ */
+export const PICK_WITH_MODEL = false;
 /** (제안값) How many AI-stretch candidates (lib/match/stretch.ts) the model chooses from. */
 export const STRETCH_POOL = 6;
 export const REASON_MAX = 90;

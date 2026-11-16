@@ -70,7 +70,9 @@ export function digestIdempotencyKey(userId: string, sendDate: string): string {
 export async function composeDigestEmail(input: {
   recipient: { user_id: string; email: string };
   jobs: DigestJob[];
-  /** Per-job recommendation line (personal picks). */
+  /** A personal list (from the subscriber's profile); defaults to "has reasons". */
+  personal?: boolean;
+  /** Per-job recommendation line (personal picks written by the model). */
   reasons?: Map<string, string>;
   /** Per-job first step for today (personal picks). */
   todays?: Map<string, string>;
@@ -88,7 +90,7 @@ export async function composeDigestEmail(input: {
 }): Promise<OutgoingEmail> {
   const { recipient, jobs, reasons, todays, subject, stretchIds, stats, nudge, sendDate, appUrl, linkSecret } = input;
   const stretchCount = jobs.filter((j) => stretchIds?.has(j.id)).length;
-  const personal = Boolean(reasons?.size);
+  const personal = input.personal ?? Boolean(reasons?.size);
   // Issue time pinned to the send date keeps the payload identical on reruns.
   const issuedAt = seoulDayStartUtc(sendDate);
   const uid = recipient.user_id;
