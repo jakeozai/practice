@@ -205,14 +205,14 @@ export async function sendDigest(
     let messageId: string;
     try {
       const pick = picks.get(recipient.user_id);
-      // Reason and first step only when the model wrote them; rule picks go out as a plain list
-      // (2026-11-16 user decision, PICK_WITH_MODEL).
+      // Every personal pick carries its reason (the rules word it from the profile when no model ran,
+      // 2026-11-16 user decision); the first step for today only when the model wrote it.
       const written = pick?.method === "llm" ? pick : undefined;
       const mail = await composeDigestEmail({
         recipient,
         jobs: item.jobIds.map((id) => jobById.get(id)!),
         personal: Boolean(pick),
-        reasons: written ? new Map(item.jobIds.flatMap((id) => (written.notes[id] ? [[id, written.notes[id].reason] as const] : []))) : undefined,
+        reasons: pick ? new Map(item.jobIds.flatMap((id) => (pick.notes[id]?.reason ? [[id, pick.notes[id].reason] as const] : []))) : undefined,
         todays: written ? new Map(item.jobIds.flatMap((id) => (written.notes[id] ? [[id, written.notes[id].today] as const] : []))) : undefined,
         subject: pick?.subject ?? null,
         stretchIds: pick ? new Set(item.jobIds.filter((id) => pick.notes[id]?.kind === "stretch")) : undefined,

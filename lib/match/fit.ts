@@ -100,6 +100,12 @@ const EMPLOYMENT_ROLE = /founding\s+(?:engineer|developer|designer|member|team)|
 
 /** (제안값) A job in the person's own specialty outranks general work their profile also covers. */
 const SPECIALTY_BONUS = 1.5;
+/**
+ * (제안값) A match found only in the summary, not the title, says less about what the job is:
+ * a coding-evaluation job whose summary mentions translation isn't translation work, and an AI
+ * training job for "small business owners" isn't accounting work (2026-11-16 rules-only review).
+ */
+export const SUMMARY_ONLY_FACTOR = 0.7;
 /** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
 const TINY_BUDGET_USD = 50;
 
@@ -265,22 +271,25 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   // Software work counts only in a language the person uses (no Java trainer jobs for a Next.js developer).
   const jobCode = codeLanguages(text);
   const codeFits = jobCode.size === 0 || [...jobCode].some((l) => sig.code.has(l));
-  const hits = [
+  const found = [
     ...CONCEPTS.flatMap((c: Concept) => {
       const h = sig.concepts.get(c.id);
       if (!h || !c.job.test(text)) return [];
-      return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [h];
+      return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [{ hit: h, inTitle: c.job.test(title) }];
     }),
     // The profile's own search terms reach work the concept list doesn't name.
-    ...sig.keywords.filter((k) => k.re.test(text)).map((k) => k.hit),
+    ...sig.keywords.filter((k) => k.re.test(text)).map((k) => ({ hit: k.hit, inTitle: k.re.test(title) })),
   ]
     // In craft work a specialty only adds to a craft match.
-    .filter((h, _, all) => !(DOMAIN_CONCEPTS.has(h.id) && job.category && CRAFT_CATEGORIES.has(job.category) && !all.some((o) => !DOMAIN_CONCEPTS.has(o.id))))
+    .filter(({ hit: h }, _, all) => !(DOMAIN_CONCEPTS.has(h.id) && job.category && CRAFT_CATEGORIES.has(job.category) && !all.some((o) => !DOMAIN_CONCEPTS.has(o.hit.id))));
+  // Whether the job is related at all counts every match; how well it fits weighs the title more.
+  if (Math.max(0, ...found.map((f) => f.hit.weight)) < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
+  const hits = found
+    .map(({ hit, inTitle }) => (inTitle ? hit : { ...hit, weight: Math.round(hit.weight * SUMMARY_ONLY_FACTOR * 100) / 100 }))
     .sort((a, b) => b.weight - a.weight);
-  const best = hits[0]?.weight ?? 0;
+  const best = hits[0].weight;
   const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
   const relevance = best + Math.min(0.35 * rest, 3);
-  if (best < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
 
   // Specialist work (AI training or review for experts) only in the person's own specialty:
   // a chemistry trainer job isn't for a generalist AI evaluator.
@@ -367,11 +376,12 @@ export type PickNote = { reason: string; today: string };
  */
 export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Date()): PickNote {
   const top = r.hits[0];
-  const tool = r.tools[0] ? ` · ${toolLabel(r.tools[0], profile.skills)} 그대로` : "";
+  const tool = r.tools[0] ? ` (${toolLabel(r.tools[0], profile.skills)} 사용)` : "";
+  // Worded so no particle depends on the quoted profile text ('그대로', '에' fit after any word).
   const reason =
     top.section === "keywords"
-      ? shorten(`AI 분석의 검색어 ‘${shorten(top.trigger, 24)}’에 딱 맞는 일${tool}`, 80)
-      : shorten(`AI 분석의 ‘${shorten(top.trigger, 22)}’와 맞는 ${top.label} 일${tool}`, 80);
+      ? shorten(`내 분석의 검색어 ‘${shorten(top.trigger, 24)}’에 맞는 일이에요${tool}`, 80)
+      : shorten(`내 분석의 ‘${shorten(top.trigger, 22)}’ 그대로 할 수 있는 ${top.label} 일이에요${tool}`, 80);
 
   const ageHours = (now.getTime() - new Date(r.job.first_seen_at).getTime()) / 3_600_000;
   let today: string;

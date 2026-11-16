@@ -69,7 +69,58 @@ const BIG_SCOPE =
 /** (제안값) Fixed-price budgets under this (USD) aren't worth a first try. */
 const STRETCH_MIN_BUDGET_USD = 50;
 
-export type StretchRanked<J extends FitJob> = { job: J; score: number; kind: string; kindLabel: string; aiHow: string };
+/**
+ * (제안값) How close each kind of try is to what the profile shows (concept id → share), so the
+ * two tries differ by person instead of being the day's newest for everyone (2026-11-16: 7 of
+ * 10 personas got the same chatbot job). A translator leans to generative-AI content, a
+ * marketer to graphics, anyone who codes with AI to web and bots.
+ */
+export const KIND_AFFINITY: Record<string, Record<string, number>> = {
+  logo_graphics: { logo_brand: 1, thumbnail_graphics: 1, ui_ux: 0.6, photo: 0.6, marketing: 0.5, web_builder: 0.4, short_form: 0.3 },
+  three_d: { three_d: 1, motion: 0.8, genai_media: 0.4, engineering: 0.3 },
+  web_bot: { web_fullstack: 1, automation_ai: 1, data_scraping: 1, web_builder: 1, ai_eval_code: 0.7, ui_ux: 0.5, finance: 0.3 },
+  ai_content: {
+    genai_media: 1,
+    video_edit: 0.6,
+    short_form: 0.6,
+    voice_tts: 0.6,
+    ai_eval_media: 0.6,
+    writing: 0.6,
+    marketing: 0.5,
+    edu_content: 0.5,
+    english_media: 0.4,
+    translation: 0.4,
+    ai_eval_text: 0.4,
+    language_eval: 0.3,
+    labeling: 0.3,
+  },
+};
+/** Anyone who writes code (or builds with an AI coding tool) is this close to web and bot work. */
+const CODER_WEB_AFFINITY = 0.8;
+/** (제안값) Score added for a kind the profile is fully close to. */
+const AFFINITY_BONUS = 3;
+/** Weight of the strongest profile section (fields[0]); affinities scale against it. */
+const TOP_WEIGHT = 5;
+
+/** 0–1: how close a kind of try is to this person's profile. */
+export function kindAffinity(kindId: string, sig: ProfileSignals): number {
+  let best = kindId === "web_bot" && sig.code.size > 0 ? CODER_WEB_AFFINITY : 0;
+  for (const [concept, share] of Object.entries(KIND_AFFINITY[kindId] ?? {})) {
+    const h = sig.concepts.get(concept);
+    if (h) best = Math.max(best, share * Math.min(h.weight / TOP_WEIGHT, 1));
+  }
+  return best;
+}
+
+export type StretchRanked<J extends FitJob> = {
+  job: J;
+  score: number;
+  kind: string;
+  kindLabel: string;
+  aiHow: string;
+  /** Profile wording the job is near (its strongest shared concept), for the reason line. */
+  link?: string;
+};
 
 export function stretchKindOf(job: FitJob): StretchKind | null {
   if (!job.category || !STRETCH_CATEGORIES.has(job.category)) return null;
@@ -83,7 +134,7 @@ export function stretchKindOf(job: FitJob): StretchKind | null {
   return null;
 }
 
-/** Stretch candidates, best first; `exclude` holds the jobs already offered as profile fits. */
+/** Stretch candidates, best first; `exclude` holds the jobs that already fit the profile (they are not a stretch). */
 export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, now: Date = new Date(), exclude: Set<string> = new Set()): StretchRanked<J>[] {
   const out: StretchRanked<J>[] = [];
   for (const job of jobs) {
@@ -95,12 +146,15 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
     const text = jobText(job);
 
     let score = 3 - limits.penalty;
-    // Closer to what the person already does is an easier first try (thumbnails → social graphics, web dev → landing pages).
-    const near = CONCEPTS.reduce((best, c) => {
+    // Closer to what the person already does is an easier first try (thumbnails → social graphics, web dev → landing pages,
+    // a nurse → a clinic's website).
+    let near: { weight: number; trigger: string } | null = null;
+    for (const c of CONCEPTS) {
       const h = sig.concepts.get(c.id);
-      return h && c.job.test(text) ? Math.max(best, h.weight) : best;
-    }, 0);
-    score += Math.min(near * 0.4, 2);
+      if (h && c.job.test(text) && h.weight > (near?.weight ?? 0)) near = { weight: h.weight, trigger: h.trigger };
+    }
+    score += Math.min((near?.weight ?? 0) * 0.4, 2);
+    score += AFFINITY_BONUS * kindAffinity(kind.id, sig);
     if (kind.id === "web_bot") {
       const langs = codeLanguages(text);
       if (langs.size > 0 && ![...langs].some((l) => sig.code.has(l))) score -= 1.5;
@@ -119,7 +173,7 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
     if (SMALL_DELIVERABLE.test(text)) score += 1;
     if (BIG_SCOPE.test(text)) score -= 1.5;
 
-    out.push({ job, score: Math.round(score * 100) / 100, kind: kind.id, kindLabel: kind.label, aiHow: kind.aiHow });
+    out.push({ job, score: Math.round(score * 100) / 100, kind: kind.id, kindLabel: kind.label, aiHow: kind.aiHow, ...(near ? { link: near.trigger } : {}) });
   }
   return out.sort((a, b) => b.score - a.score || b.job.first_seen_at.localeCompare(a.job.first_seen_at));
 }

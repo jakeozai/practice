@@ -136,8 +136,8 @@ test("rule note cites the profile and suits the way to apply", () => {
   });
   const [r] = rankForProfile([gig], sig, NOW);
   const note = ruleNote(r, profile, NOW);
-  assert.match(note.reason, /AI 분석의 ‘생성형 AI 영상 제작’/);
-  assert.match(note.reason, /Premiere 그대로/);
+  assert.match(note.reason, /^내 분석의 ‘생성형 AI 영상 제작’ 그대로 할 수 있는 영상 편집 일이에요/);
+  assert.match(note.reason, /\(Premiere 사용\)$/);
   assert.match(note.today, /견적 입찰/);
 });
 
@@ -223,4 +223,13 @@ test("a video call is not video editing; student-only roles are out", () => {
   const callFit = assessJob(call, sig, NOW);
   assert.ok(!callFit.ok || !callFit.hits.some((h) => h.id === "video_edit"), "a video call doesn't count as editing");
   assert.equal((assessJob(ambassador, sig, NOW) as { why: string }).why, "student");
+});
+
+test("a match only in the summary ranks below one in the title", () => {
+  const inTitle = job({ id: "t", title: "Edit YouTube Shorts", category: "video", summary_ko: ["쇼츠 편집"], first_seen_at: "2026-11-14T12:00:00Z" });
+  const inSummary = job({ id: "s", title: "Korean coding evaluator", category: "other", summary_ko: ["AI가 쓴 코드를 평가하고 쇼츠 편집 경험이 있으면 우대"], first_seen_at: "2026-11-14T12:00:00Z" });
+  const ranked = rankForProfile([inSummary, inTitle], sig, NOW);
+  assert.deepEqual(ranked.map((r) => r.job.id), ["t", "s"], "both stay related, the title match first");
+  const s = ranked.find((r) => r.job.id === "s")!;
+  assert.ok(s.hits.every((h) => h.weight < 5), "summary-only weight is discounted");
 });

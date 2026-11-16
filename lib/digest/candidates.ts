@@ -160,6 +160,6 @@ export async function exampleMailJobs(db: Db, userId: string): Promise<ExampleJo
   const now = new Date();
   const ranked = rankForProfile(fresh, signals, now);
   // The model's candidate list is the top six fits (lib/match/pick.ts PICK_POOL); stretches come from outside it.
-  const stretch = stretchPool(rankStretch(fresh, signals, now, new Set(ranked.slice(0, 6).map((r) => r.job.id))), 6).slice(0, 2);
+  const stretch = stretchPool(rankStretch(fresh, signals, now, new Set(ranked.map((r) => r.job.id))), 6).slice(0, 2);
   return [...ranked.slice(0, 3).map((r) => row(r.job, false)), ...stretch.map((r) => row(r.job, true))];
 }

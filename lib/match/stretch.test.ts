@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ProfileSchema } from "../profile/parse";
 import { buildSignals, type FitJob } from "./fit";
-import { rankStretch, stretchKindOf, stretchPool } from "./stretch";
+import { kindAffinity, rankStretch, stretchKindOf, stretchPool } from "./stretch";
 
 const NOW = new Date("2026-11-15T00:00:00Z");
 const sig = buildSignals(
@@ -121,4 +121,31 @@ test("people's time isn't an AI stretch, whatever the title says; the pool cover
   );
   const pool = stretchPool(ranked, 3);
   assert.deepEqual(new Set(pool.map((r) => r.kind)), new Set(["logo_graphics", "three_d", "web_bot"]));
+});
+
+test("the two tries follow the person: same jobs, different first choice by profile", () => {
+  const person = (fields: string[], skills: string[] = []) =>
+    buildSignals(ProfileSchema.parse({ languages: [{ code: "ko", level: "native" }, { code: "en", level: "conversational" }], fields, skills, avoid: [] }));
+  const translator = person(["영→한 번역(게임·IT)"]);
+  const marketer = person(["SNS 마케팅·광고 운영"]);
+  const coder = person(["업무 자동화"], ["Python"]);
+  const logo = job({ title: "Logo for a bakery" });
+  const bot = job({ title: "Chatbot for a website", category: "dev" });
+  const aiVideo = job({ title: "AI generated video ads", category: "video" });
+  const first = (sig: ReturnType<typeof person>) => rankStretch([logo, bot, aiVideo], sig, NOW)[0].kind;
+  assert.equal(first(translator), "ai_content");
+  assert.equal(first(marketer), "logo_graphics");
+  assert.equal(first(coder), "web_bot");
+  assert.equal(kindAffinity("three_d", translator), 0, "no closeness is invented");
+});
+
+test("a try names the profile only when it shares a concept with it", () => {
+  const nurse = buildSignals(
+    ProfileSchema.parse({ languages: [{ code: "ko", level: "native" }, { code: "en", level: "conversational" }], fields: ["병동 간호 7년(의료·보건)"], avoid: [] }),
+  );
+  const clinic = job({ title: "Website for a small clinic", category: "dev", summary_ko: ["병원 웹사이트 제작"] });
+  const logo = job({ title: "Logo for a bakery" });
+  const [a, b] = [clinic, logo].map((j) => rankStretch([j], nurse, NOW)[0]);
+  assert.ok(a.link, "clinic site links to nursing");
+  assert.equal(b.link, undefined);
 });

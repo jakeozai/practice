@@ -20,7 +20,7 @@ import { createAnthropic, fastModelConfig } from "../llm/client";
 import type { MessagesClient } from "../llm/extractJob";
 import { createPacer, llmRequestsPerMinute, pacedClient, type Pacer } from "../llm/pace";
 import { buildSignals, exclusionSummary, rankForProfile, type ProfileSignals, type Ranked } from "../match/fit";
-import { choosePicks, PICK_POOL, PICK_WITH_MODEL, STRETCH_POOL, type PickKind, type PickResult, type PickThinking } from "../match/pick";
+import { choosePicks, PICK_WITH_MODEL, STRETCH_POOL, type PickKind, type PickResult, type PickThinking } from "../match/pick";
 import { rankStretch, stretchPool, type StretchRanked } from "../match/stretch";
 import type { Persona } from "../match/personas";
 import { loadCandidatePool, type DigestJob } from "../digest/candidates";
@@ -133,7 +133,7 @@ async function pickFor(
 ): Promise<{ pick: PickResult; signals: ProfileSignals; ranked: Ranked<DigestJob>[]; stretchRanked: StretchRanked<DigestJob>[] }> {
   const signals = buildSignals(profile);
   const ranked = rankForProfile(jobs, signals, opts.now);
-  const stretchRanked = rankStretch(jobs, signals, opts.now, new Set(ranked.slice(0, PICK_POOL).map((r) => r.job.id)));
+  const stretchRanked = rankStretch(jobs, signals, opts.now, new Set(ranked.map((r) => r.job.id)));
   const pick = await choosePicks(ranked, profile, {
     size: opts.size,
     stretch: stretchPool(stretchRanked, STRETCH_POOL),

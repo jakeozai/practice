@@ -190,8 +190,10 @@ export function parsePick(text: string, poolSize: number, size: number, stretchP
 
 /** Reason and first step for a stretch the model didn't write. */
 export function ruleStretchNote(r: StretchRanked<PickJob>): PickNote {
+  // A link to the profile only when the job shares a concept with it; never a made-up one.
+  const howTo = `AI로 하는 법: ${r.aiHow}`;
   return {
-    reason: trimTo(`${r.kindLabel}: ${r.aiHow}로 도전해 볼 만해요`, REASON_MAX),
+    reason: trimTo(r.link ? `내 분석의 ‘${trimTo(r.link, 18)}’에서 이어지는 일 · ${howTo}` : howTo, REASON_MAX),
     today: isBiddingGig(r.job.url) ? "오늘 1시간: AI로 시안 1개를 만들어 첨부하고 견적 입찰해요" : "오늘 1시간: AI로 샘플 1개를 만들어 지원서에 붙여 제출해요",
   };
 }

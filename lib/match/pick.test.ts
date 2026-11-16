@@ -194,7 +194,7 @@ test("AI stretches come after the profile fits, from their own list", async () =
   const down = await choosePicks(ranked, profile, { size: 3, now: NOW, client: null, stretch, stretchSize: 2 });
   assert.equal(down.jobIds.length, 5, "without a model the rules fill both lists");
   assert.deepEqual(down.jobIds.slice(3), ["x1", "x2"]);
-  assert.match(down.notes.x1.reason, /로고·그래픽 디자인/);
+  assert.match(down.notes.x1.reason, /^AI로 하는 법: /, "no profile link is made up when none is shared");
 });
 
 test("a subject in another form becomes the fixed sentence", async () => {
