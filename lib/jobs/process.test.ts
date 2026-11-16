@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { boardCompany, buildJob, decideCompany, forbidsAi, isFullTime, luresOffPlatform, triage } from "./process";
 import { clipLocation, extractJob, isServiceFailure, LOCATION_MAX, parseExtraction, postingMessage, type JobExtract, type MessagesClient } from "../llm/extractJob";
+import { HIMALAYAS_NO_RESTRICTION } from "../sources/aggregators";
 
 const raw = {
   id: "raw-1",
@@ -64,6 +65,20 @@ test("permanent staff hiring → rejected as out of scope (scope C: work without
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, ai_related: false }, sameTitleCount: 1 }).review_state, "approved");
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "permanent" }, sameTitleCount: 1 }).review_state, "rejected");
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "part_time" }, sameTitleCount: 1 }).review_state, "approved");
+});
+
+test("Himalayas (searched for Korea): unclear location counts as open, a stated restriction still wins", () => {
+  const himalayas = { name: "Himalayas", trusted: true, kind: "himalayas" };
+  const open = { ...raw, location_raw: HIMALAYAS_NO_RESTRICTION };
+  const unclear = buildJob({ raw: open, source: himalayas, extraction: { ...extraction, korea_eligible: null }, sameTitleCount: 1 });
+  assert.equal(unclear.korea_eligible, true);
+  assert.equal(unclear.review_state, "approved");
+  const usOnly = buildJob({ raw: { ...open, title: "Video Editor (US Only)" }, source: himalayas, extraction: { ...extraction, korea_eligible: null, title: "Video Editor (US Only)", summary_ko: ["영상 편집", "주 10시간", "시간당 20달러"] }, sameTitleCount: 1 });
+  assert.equal(usOnly.review_state, "rejected");
+  const llmSaysNo = buildJob({ raw: open, source: himalayas, extraction: { ...extraction, korea_eligible: false }, sameTitleCount: 1 });
+  assert.equal(llmSaysNo.review_state, "rejected");
+  const otherBoard = buildJob({ raw: { ...raw, location_raw: "Remote" }, source: trusted, extraction: { ...extraction, korea_eligible: null }, sameTitleCount: 1 });
+  assert.equal(otherBoard.review_state, "pending", "other boards keep asking a person");
 });
 
 test("not open to Korea residents → rejected (it could never be mailed)", () => {

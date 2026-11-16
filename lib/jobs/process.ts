@@ -125,6 +125,15 @@ export function triage(raw: RawForProcessing, opts: { preselected?: boolean } = 
   return "candidate";
 }
 
+/**
+ * Himalayas is searched with country=KR, so it only lists jobs it considers open to Korea. When
+ * neither the location nor the extraction can tell, that filter decides (2026-11-16 user decision);
+ * a posting that says "U.S. based" or similar is still excluded above.
+ */
+export function boardFilteredForKorea(source: SourceInfo): true | null {
+  return source.kind === "himalayas" ? true : null;
+}
+
 export function buildJob(input: {
   raw: RawForProcessing;
   source: SourceInfo;
@@ -138,7 +147,7 @@ export function buildJob(input: {
   // The posting's own words win over a generic "Remote" location: "US residents only" isn't for Korea.
   const korea = residentsOnlyElsewhere([raw.title, x?.title, ...(x?.summary_ko ?? [])])
     ? false
-    : decideKoreaEligible(raw.location_raw, x?.korea_eligible);
+    : (decideKoreaEligible(raw.location_raw, x?.korea_eligible) ?? boardFilteredForKorea(source));
   const scam = scamScore(x?.scam_signals ?? []);
   const requiresCredential = x?.requires_credential ?? false;
 
