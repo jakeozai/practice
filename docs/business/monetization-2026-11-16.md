@@ -26,7 +26,7 @@
 
 **모든 모델에 해당하는 것**
 - **무료 메일의 성격이 바뀐다.** 수익이 생기면 "무료·무광고 정보 메일"이라는 기존 판단(`docs/legal/privacy-research-2026-11-09.md`)이 약해진다. 그래서 프리미엄 홍보는 웹에서 하거나 광고 동의자에게만 보낸다.
-- **Freelancer 데이터:** 이 데이터가 들어간 메일을 유료화하거나 광고를 붙이기 전에 API 약관의 상업적 이용 조항을 확인해야 한다 [미확인]. Jobicy와 Himalayas는 확인을 마쳤다(`docs/supply-check-2026-11-14.md`).
+- **Freelancer 데이터 (11/16 확인):** API 약관은 유료 앱 운영을 허용한다("You may charge for your Application"). 하지만 일반 이용약관 4·33조는 다른 사이트 공고와 함께 표시하는 것과 API 자동 접근에 서면 허락을 요구한다. 허락을 받기 전에는 Freelancer 공고가 든 메일에 유료화·광고를 붙이지 않는다(`docs/legal/freelancer-terms-2026-11-16.md`). Jobicy와 Himalayas는 확인을 마쳤다(`docs/supply-check-2026-11-14.md`).
 
 ## 벤치마크
 - **유료 전환율**

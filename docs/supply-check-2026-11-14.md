@@ -34,7 +34,11 @@
 - 이미 직접 수집하는 회사(Welo, TransPerfect, Invisible 등)의 재게시는 건너뛴다. 목록을 다 못 읽은 실행에서는 공고를 닫지 않는다.
 - 회사명은 공고에 적힌 회사, 메일 카드에 "출처: Jobicy/Himalayas" 표시, 제목의 "U.S. Based"는 미국 거주자 한정으로 본다.
 
-## Himalayas 확인 메일 초안 (hi@himalayas.app)
+## Himalayas 확인 메일 (hi@himalayas.app)
+
+- 2026-11-16 발송(보낸 사람 hello@duckjob.app, 답장·숨은 참조는 문의 주소 CONTACT_EMAIL). Resend 상태 delivered. 첫 항목만 실제 동작에 맞춰 "하루 1회, 초당 약 1회로 페이지를 넘긴다"로 고쳐 보냈다.
+- 같은 날 `HIMALAYAS_API_KEY`를 Vercel Production에 등록하고 재배포했다. 답장이 "이메일은 안 된다"면 `sources.active = false`로 Himalayas만 끈다.
+- 첫 수집 480건을 낮에 미리 처리하려고 임시 pg_cron `duckjob-process-catchup-tmp`(6분마다, 11/16 02~09시 UTC)를 걸었다. `duckjob-catchup-cleanup-tmp`가 11/16 09:58 UTC에 둘 다 지운다.
 
 Subject: Using the Himalayas Jobs API in a daily email digest
 
