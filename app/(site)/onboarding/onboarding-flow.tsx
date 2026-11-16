@@ -323,11 +323,16 @@ function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
     };
   }, []);
 
-  // Five rows always: this person's candidates first, then the landing page's examples.
-  const rows = [
-    ...(jobs ?? []).map((j) => ({ key: j.id, title: j.headline, meta: j.meta, pay: j.pay ?? "원문 확인" })),
-    ...EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay })),
-  ].slice(0, 5);
+  // Five rows always: this person's candidates first, then the landing page's examples. With a
+  // profile the mail is 3 fits + 2 AI tries (2026-11-16), so each group is filled on its own.
+  const real = (jobs ?? []).map((j) => ({ key: j.id, title: j.headline, meta: j.meta.replace(/^AI로 도전 · /, ""), pay: j.pay ?? "원문 확인", tryIt: j.stretch }));
+  const examples = EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay, tryIt: j.kind === "try" }));
+  const rows = personal
+    ? [
+        ...[...real.filter((r) => !r.tryIt), ...examples.filter((r) => !r.tryIt)].slice(0, 3),
+        ...[...real.filter((r) => r.tryIt), ...examples.filter((r) => r.tryIt)].slice(0, 2),
+      ]
+    : [...real, ...examples.map((r) => ({ ...r, tryIt: false }))].slice(0, 5);
 
   return (
     <div>
@@ -353,18 +358,24 @@ function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
         ) : (
           <ul>
             {rows.map((r, i) => (
-              <li
-                key={r.key}
-                className="flex items-baseline justify-between gap-3 py-2.5"
-                style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--paper-line)" : undefined }}
-              >
-                <span className="min-w-0">
-                  <span className="block text-[15px] font-semibold">{r.title}</span>
-                  <span className="mt-0.5 block text-[13px]" style={{ color: "var(--paper-muted)" }}>
-                    {r.meta}
+              <li key={r.key} style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--paper-line)" : undefined }}>
+                {r.tryIt && !rows[i - 1]?.tryIt && (
+                  <p className="flex items-center gap-1.5 pt-2.5 text-xs font-extrabold" style={{ color: "var(--accent)" }}>
+                    <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+                      AI로 도전
+                    </span>
+                    AI로 도전해 볼 {rows.filter((x) => x.tryIt).length}개
+                  </p>
+                )}
+                <div className="flex items-baseline justify-between gap-3 py-2.5">
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold">{r.title}</span>
+                    <span className="mt-0.5 block text-[13px]" style={{ color: "var(--paper-muted)" }}>
+                      {r.meta}
+                    </span>
                   </span>
-                </span>
-                <span className="whitespace-nowrap text-[15px] font-extrabold">{r.pay}</span>
+                  <span className="whitespace-nowrap text-[15px] font-extrabold">{r.pay}</span>
+                </div>
               </li>
             ))}
           </ul>
