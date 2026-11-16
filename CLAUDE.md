@@ -30,6 +30,7 @@
 - 그 뒤에 **AI로 도전해 볼 일감 2개**(같은 날 사용자 결정): 해 본 적은 없지만 AI 도구로 오늘 시안을 만들어 지원할 수 있는 일(로고·그래픽, 3D 모델, 웹·봇·자동화, 생성형 AI 작업). 인테리어·건축 디자인, 기계 CAD, SEO·영업·재무 같은 비슷해 보이는 일은 제외(`lib/match/stretch.ts`). 지역·언어·영어·avoid·시간·시급 규칙은 그대로, 자격 필수는 제외. 메일에서 별도 칸·칩으로 구분하고, 이유는 "어떤 AI 도구로 어떻게"를 쓰되 해 봤다고 쓰지 않는다. 맞춤 3개가 0개인 날은 도전 2개만 따로 보내지 않는다.
 - 규칙(`lib/match/fit.ts`, 사전 `lib/match/concepts.ts`): 작업 언어·영어 수준·피하고 싶은 일·가용 시간·최저 시급·자격 요건으로 제외 → fields 순서·AI 추천(notes_ko)·전문 분야·기술·경력 순 가중치로 점수.
 - 선택(`lib/match/pick.ts`, `prompts/digest-pick.md`): 모델이 규칙 상위 6개에서 3개를 고르고 이유·오늘 할 일·제목을 쓴다. 최종 순서는 규칙 점수 순. 모델은 `ANTHROPIC_MODEL_PICK`(google/gemini-2.5-flash, 쓸 수 없으면 `ANTHROPIC_MODEL_FAST`로 자동 전환). 오늘 할 일에 금액·회사 내부 자료 첨부를 쓰지 않는다. 결과는 `digest_picks`(0012)에 저장해 같은 날 재실행에도 같은 메일이 나간다.
+- 추천 모델의 생각(thinking)은 끄지 않는다(2026-11-16 사용자 결정). 끄면 비용은 1/5이지만, 가상 구독자 10명 비교에서 프롬프트 예시를 베껴 해 본 적 없는 경력을 쓰고 맞지 않는 공고로 3개를 채웠다(`docs/experiments/pick-thinking-2026-11-16.md`). 비교 실험은 `/api/cron/picks-personas?thinking=off|<토큰 수>&only=<id,…>`(저장·발송 없음).
 - 일정: 05:30~05:50 KST 처리 실행이 먼저 picks를 만들고(`/api/cron/process`), 06:00 발송이 빠진 사람만 채운다. 점검은 `select private.call_app_cron('/api/cron/picks')`(다음 발송분 dry run, 저장 안 함, 0014).
 
 ## 하지 않기로 한 것 (2026-11-14 사용자 결정)
