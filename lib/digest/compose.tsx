@@ -4,7 +4,7 @@
  * produces the same payload and Resend's idempotency key dedupes it.
  */
 import { render } from "@react-email/components";
-import DailyFive, { dailyFiveSubject, type DailyFiveJob } from "../../emails/DailyFive";
+import DailyFive, { dailyFiveLine, type DailyFiveJob } from "../../emails/DailyFive";
 import { CATEGORY_CHIP_KO, compactPay, isBiddingGig, jobFacts, sourceCredit, statusBadge } from "../jobs/format";
 import { mailAssets } from "../../emails/theme";
 import { signLink } from "../links";
@@ -44,6 +44,19 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     stretch,
     detailUrl,
   };
+}
+
+/**
+ * "☀️ 영상 편집 실력으로 해볼 만한 일감 5개 가져왔어요 (11/16)" (2026-11-16 user
+ * decision: friendly, and the number is the mail's real count). The model
+ * writes its line about the three fits, so any "N개" in it is set to the
+ * number of jobs actually in the mail; the date keeps each day its own
+ * thread in the inbox.
+ */
+export function digestSubject(line: string | null | undefined, count: number, sendDate: string): string {
+  const base = (line?.trim() || dailyFiveLine(count)).replace(/\d+\s*개/, `${count}개`);
+  const [, month, day] = sendDate.split("-").map(Number);
+  return `☀️ ${base} (${month}/${day})`;
 }
 
 export function digestIdempotencyKey(userId: string, sendDate: string): string {
@@ -115,7 +128,7 @@ export async function composeDigestEmail(input: {
 
   return {
     to: recipient.email,
-    subject: subject ? `${subject} · ${dateLabel}` : dailyFiveSubject(cards.length, dateLabel),
+    subject: digestSubject(subject, cards.length, sendDate),
     html: await render(element),
     text: await render(element, { plainText: true }),
     headers: unsubscribeHeaders(unsubscribeUrl),

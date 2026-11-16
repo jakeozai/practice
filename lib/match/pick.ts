@@ -184,10 +184,10 @@ export function ruleStretchNote(r: StretchRanked<PickJob>): PickNote {
   };
 }
 
-/** Subject line when the model didn't write one. */
+/** Subject line when the model didn't write one: conversational, the whole mail's count. */
 export function ruleSubject(profile: Profile, count: number): string {
   const focus = profile.fields[0]?.split(/[·(,]/)[0]?.trim();
-  return focus ? trimTo(`${focus}에 맞춘 오늘의 일감 ${count}개`, SUBJECT_MAX) : `오늘의 일감 ${count}개`;
+  return focus ? trimTo(`${focus} 실력으로 해볼 만한 일감 ${count}개 가져왔어요`, SUBJECT_MAX) : `오늘 해볼 만한 일감 ${count}개 가져왔어요`;
 }
 
 export async function choosePicks(
@@ -271,7 +271,7 @@ export async function choosePicks(
       ...chosen.map((c) => [c.r.job.id, { ...c.note, score: c.r.score, kind: "core" as const }]),
       ...stretched.map((c) => [c.r.job.id, { ...c.note, score: c.r.score, kind: "stretch" as const }]),
     ]),
-    subject: parsed?.subject ?? ruleSubject(profile, chosen.length),
+    subject: parsed?.subject ?? ruleSubject(profile, chosen.length + stretched.length),
     method: parsed && parsed.picks.length > 0 ? "llm" : "rules",
   };
 }

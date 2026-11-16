@@ -116,7 +116,7 @@ test("model failure or no model: rule picks, rule notes, rule subject", async ()
     ranked.slice(0, 3).map((x) => x.job.id),
   );
   assert.equal(r.subject, ruleSubject(profile, 3));
-  assert.equal(r.subject, "영상 편집에 맞춘 오늘의 일감 3개");
+  assert.equal(r.subject, "영상 편집 실력으로 해볼 만한 일감 3개 가져왔어요");
 
   const none = await choosePicks([], profile, { size: 3, now: NOW });
   assert.deepEqual(none.jobIds, []);

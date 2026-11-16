@@ -58,6 +58,11 @@ export type DailyFiveProps = {
   contactEmail: string | null;
 };
 
+/** The shared mail's line (no profile); the composer adds the sun and the date (lib/digest/compose.tsx digestSubject). */
+export function dailyFiveLine(count: number): string {
+  return `오늘 해볼 만한 일감 ${count}개 가져왔어요`;
+}
+
 export function dailyFiveSubject(count: number, dateLabel: string): string {
   return `오늘의 일감 ${count}개 · ${dateLabel}`;
 }
