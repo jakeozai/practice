@@ -8,6 +8,7 @@ import { decideStatus } from "../status";
 import { isScamRejected, scamScore } from "../scam";
 import { normalizeTitle } from "./format";
 import { matchesJobKeywords } from "./keywords";
+import { withNamedLanguages } from "./language";
 import type { JobExtract } from "../llm/extractJob";
 import type { Database } from "../supabase/database.types";
 
@@ -166,7 +167,9 @@ export function buildJob(input: {
     url: raw.url,
     summary_ko: x?.summary_ko ?? [],
     category: x?.category ?? null,
-    languages: x?.languages ?? [],
+    // A language the title names ("AI Trainers Network - Odia") is a work language even when the
+    // extraction kept only "en"; personal mail leaves out languages the profile doesn't list.
+    languages: withNamedLanguages(x?.languages ?? [], [raw.title, x?.title, x?.title_ko]),
     requires_credential: requiresCredential,
     korea_eligible: korea,
     eligibility_note: x?.location_raw ?? raw.location_raw,

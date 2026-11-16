@@ -86,10 +86,11 @@ test("keyword filter looks at title and body", () => {
   assert.equal(matchesJobKeywords("Senior Photoshop Retoucher", ""), true);
 });
 
-test("work language is display-only", async () => {
+test("work language names in Korean, code as is when unknown", async () => {
   const { languageNameKo } = await import("./jobs/language");
   assert.equal(languageNameKo("ja"), "일본어");
-  assert.equal(languageNameKo("lt"), "LT");
+  assert.equal(languageNameKo("lt"), "리투아니아어");
+  assert.equal(languageNameKo("kha"), "KHA");
 });
 
 test("residents of another country only: summary or title says so", () => {

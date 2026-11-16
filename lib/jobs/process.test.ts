@@ -60,6 +60,17 @@ test("credentials and work language don't block approval", () => {
   assert.equal(expert.requires_credential, true, "kept as information");
 });
 
+test("a language the title names is stored even when the extraction kept only English", () => {
+  const odia = { ...raw, title: "AI Trainers Network - Odia", body: "Join our network of Odia speakers." };
+  const odiaX = { ...extraction, title: "AI Trainers Network - Odia", title_ko: "오디아 AI 학습 데이터 전문가", languages: ["en"] };
+  assert.deepEqual(buildJob({ raw: odia, source: trusted, extraction: odiaX, sameTitleCount: 1 }).languages, ["or", "en"]);
+  // No extraction (LLM down or failed): the raw title still counts.
+  assert.deepEqual(buildJob({ raw: odia, source: trusted, extraction: null, sameTitleCount: 1 }).languages, ["or"]);
+  // Nothing named: the extraction is kept as it is.
+  assert.deepEqual(buildJob({ raw: { ...raw, title: "Video annotation" }, source: trusted, extraction: { ...extraction, title: "Video annotation", title_ko: "영상 라벨링", languages: ["en"] }, sameTitleCount: 1 }).languages, ["en"]);
+  assert.deepEqual(buildJob({ raw, source: trusted, extraction, sameTitleCount: 1 }).languages, ["ko", "en"]);
+});
+
 test("permanent staff hiring → rejected as out of scope (scope C: work without AI is in)", () => {
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, ai_related: false }, sameTitleCount: 1 }).review_state, "approved");
   assert.equal(buildJob({ raw, source: trusted, extraction: { ...extraction, engagement: "permanent" }, sameTitleCount: 1 }).review_state, "rejected");
