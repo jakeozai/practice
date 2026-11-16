@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
+    "@aws-sdk/client-sesv2": "^3.1170.0",
     "@react-email/components": "^1.0.12",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",

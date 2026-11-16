@@ -28,9 +28,18 @@ const LinkEnv = z.object({
 
 const EmailEnv = z.object({
   EMAIL_FROM: z.string().min(3),
-  /** "resend" (default) sends for real; "file" writes rendered mail to .outbox/ for local checks. */
-  EMAIL_TRANSPORT: z.enum(["resend", "file"]).default("resend"),
+  /**
+   * "resend" (default) or "ses" (Amazon SES, docs/email/ses-switch.md) sends for real;
+   * "file" writes rendered mail to .outbox/ for local checks.
+   */
+  EMAIL_TRANSPORT: z.enum(["resend", "ses", "file"]).default("resend"),
   RESEND_API_KEY: z.string().optional(),
+  /** Amazon SES. Not AWS_*: Vercel reserves those names for its own runtime. */
+  SES_REGION: z.string().default("ap-northeast-2"),
+  SES_ACCESS_KEY_ID: z.string().optional(),
+  SES_SECRET_ACCESS_KEY: z.string().optional(),
+  /** Configuration set whose event destination (SNS) reports bounces and complaints to /api/webhooks/ses. */
+  SES_CONFIGURATION_SET: z.string().optional(),
 });
 
 function parseGroup<T extends z.ZodType>(schema: T, group: string): z.output<T> {
@@ -73,6 +82,9 @@ export function emailEnv() {
   const env = parseGroup(EmailEnv, "email");
   if (env.EMAIL_TRANSPORT === "resend" && !env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is required when EMAIL_TRANSPORT=resend.");
+  }
+  if (env.EMAIL_TRANSPORT === "ses" && (!env.SES_ACCESS_KEY_ID || !env.SES_SECRET_ACCESS_KEY)) {
+    throw new Error("SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY are required when EMAIL_TRANSPORT=ses.");
   }
   return env;
 }
