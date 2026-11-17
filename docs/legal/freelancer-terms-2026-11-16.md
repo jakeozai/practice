@@ -56,3 +56,13 @@ If you would prefer that we stop, we will remove all Freelancer data within 24 h
 Thank you,
 [이름]
 덕잡 (www.duckjob.app) · everydayfriday247@gmail.com
+
+## 발송 기록 (2026-11-17)
+
+- support@freelancer.com으로 보냈다. 이 주소는 freelancer.com/contact에 공식 연락처로 나와 있고, API 허락 전용 주소는 따로 없다. Resend 상태는 delivered.
+- 보낸 사람은 `duckjob <hello@duckjob.app>`이다. 답장과 숨은 참조는 문의 주소(everydayfriday247@gmail.com)로 받고, 운영자 메일로도 숨은 참조를 보냈다.
+- 초안과 달라진 점:
+  - 서명을 "duckjob"으로 했다.
+  - 수익화 문단에 "clearly labelled sponsored listings"를 더했다. 스폰서 공고를 붙일 계획이 있어서다.
+- 회신이 오면 이 문서에 붙이고, 허락 범위에 맞춰 CLAUDE.md 규칙 12를 고친다.
+- 2주 안에 답이 없으면 freelancer.com/support의 문의 양식으로 한 번 더 보낸다.
