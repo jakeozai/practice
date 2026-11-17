@@ -594,6 +594,10 @@ export default function Home(props: PageProps<"/">) {
           {contact ? `문의 ${contact} · ` : ""}© 2026 duckjob
         </p>
         <p style={{ margin: 0, flexBasis: "100%", fontSize: 13 }}>
+          <Link href="/terms" style={{ color: "var(--muted)", textDecoration: "underline" }}>
+            이용약관
+          </Link>
+          <span style={{ margin: "0 8px" }}>·</span>
           <Link href="/privacy" style={{ color: "var(--muted)", textDecoration: "underline" }}>
             개인정보 처리방침
           </Link>

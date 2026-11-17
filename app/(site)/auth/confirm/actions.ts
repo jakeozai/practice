@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { ensureProfile } from "@/lib/profile/store";
+import { ensureProfile, recordTermsAgreement } from "@/lib/profile/store";
 import { getCurrentUser, safeNextPath } from "@/lib/auth";
 
 const Input = z.object({
@@ -12,8 +12,25 @@ const Input = z.object({
   next: z.string().optional(),
 });
 
-/** The button on /auth/confirm: spends the one-time token, creates the profile row, moves on. */
+/** Back to the same link with a note: the token is still unused. */
+function backWithoutAgreement(formData: FormData): never {
+  const q = new URLSearchParams();
+  for (const k of ["token_hash", "type", "next"]) {
+    const v = formData.get(k);
+    if (typeof v === "string" && v) q.set(k, v);
+  }
+  q.set("agree", "missing");
+  redirect(`/auth/confirm?${q.toString()}`);
+}
+
+/**
+ * The button on /auth/confirm: checks the required box (age 14+ and the
+ * terms), spends the one-time token, creates the profile row, records which
+ * terms were agreed to, moves on.
+ */
 export async function confirmLogin(formData: FormData) {
+  // The box is `required` in the page too; this is for browsers that skip it.
+  if (formData.get("agree") !== "1") backWithoutAgreement(formData);
   const parsed = Input.safeParse({
     token_hash: formData.get("token_hash"),
     type: formData.get("type"),
@@ -36,6 +53,7 @@ export async function confirmLogin(formData: FormData) {
 
   try {
     await ensureProfile(user.id, user.email);
+    await recordTermsAgreement(user.id);
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);
   }

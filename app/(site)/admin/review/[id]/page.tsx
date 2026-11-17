@@ -8,6 +8,7 @@ import { jobToFormValues } from "@/lib/jobs/manual";
 import { AdminNav, NotAdmin } from "../../admin-nav";
 import { JobForm } from "../../jobs/new/job-form";
 import { approveJob, rejectJob } from "../actions";
+import { REPORT_REASONS, type ReportReason } from "@/lib/feedback";
 
 export const metadata = { title: "공고 검수 — 덕잡" };
 
@@ -28,6 +29,12 @@ async function Review({ params }: { params: PageProps<"/admin/review/[id]">["par
   const { data: source } = raw
     ? await db.from("sources").select("name, kind, endpoint").eq("id", raw.source_id).maybeSingle()
     : { data: null };
+  const { data: reports } = await db.from("reports").select("id, reason, created_at").eq("job_id", job.id).order("created_at", { ascending: false }).limit(50);
+  const reasonLabel = (r: string | null) => {
+    const [key, ...note] = (r ?? "").split(": ");
+    const label = REPORT_REASONS[key as ReportReason] ?? key;
+    return note.length ? `${label} — ${note.join(": ")}` : label;
+  };
 
   return (
     <div className="space-y-6">
@@ -48,12 +55,26 @@ async function Review({ params }: { params: PageProps<"/admin/review/[id]">["par
         </a>
       </div>
 
+      {(reports?.length ?? 0) > 0 && (
+        <section className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+          <p className="font-semibold">회원 신고 {reports!.length}건</p>
+          <ul className="mt-1 list-disc pl-5">
+            {reports!.map((r) => (
+              <li key={r.id}>
+                {new Date(r.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })} · {reasonLabel(r.reason)}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2">사기이거나 사기로 의심할 만하면 아래에서 반려하세요(이용약관 제7조 제5항). 반려하면 모든 회원에게 더 보내지 않아요.</p>
+        </section>
+      )}
+
       <JobForm action={approveJob.bind(null, job.id)} initial={jobToFormValues(job)} submitLabel="저장하고 승인" />
 
       <form action={rejectJob}>
         <input type="hidden" name="id" value={job.id} />
         <button type="submit" className="text-sm text-red-600 underline">
-          이 공고 반려
+          이 공고 반려 (모든 회원에게 더 보내지 않아요)
         </button>
       </form>
     </div>

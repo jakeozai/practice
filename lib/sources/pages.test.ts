@@ -130,3 +130,10 @@ test("page site patterns match real URL shapes", async () => {
   for (const [host, url] of ok) assert.ok(PAGE_SITES[host].jobUrl.test(url), url);
   assert.ok(!PAGE_SITES["work.mercor.com"].jobUrl.test("https://work.mercor.com/jobs/apply/interview-scheduled"));
 });
+
+test("sites whose terms forbid automated collection are not collected (2026-11-17)", async () => {
+  const { PAGE_SITES } = await import("./pages");
+  assert.match(PAGE_SITES["work.mercor.com"].blockedByTerms ?? "", /scraping/);
+  assert.match(PAGE_SITES["www.opentrain.ai"].blockedByTerms ?? "", /written consent/);
+  assert.equal(PAGE_SITES["www.oneforma.com"].blockedByTerms, undefined);
+});

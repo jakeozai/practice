@@ -18,20 +18,33 @@ export type PageSite = {
   sitemaps: string[];
   /** Which sitemap URLs are work pages. */
   jobUrl: RegExp;
+  /**
+   * Set when the site's terms forbid automated collection: the collector
+   * skips it even if its `sources` row is active again
+   * (docs/legal/page-sources-terms-2026-11-17.md). Kept for the record and
+   * for the day the site gives written permission.
+   */
+  blockedByTerms?: string;
 };
 
-/** Keyed by sources.endpoint for kind = 'page'. Checked 2026-11-07 (docs/supply-check-2026-11-07.md). */
+/**
+ * Keyed by sources.endpoint for kind = 'page'. Checked 2026-11-07
+ * (docs/supply-check-2026-11-07.md); terms checked 2026-11-17: only OneForma
+ * is collected.
+ */
 export const PAGE_SITES: Record<string, PageSite> = {
   "work.mercor.com": {
     name: "Mercor",
     sitemaps: ["https://work.mercor.com/sitemap.xml"],
     jobUrl: /^https:\/\/work\.mercor\.com\/jobs\/list_[A-Za-z0-9_-]+\/[a-z0-9-]+$/,
+    blockedByTerms: "Mercor Terms of Service (Service Restrictions): no copying or derivative works by automated or non-automated scraping",
   },
   "www.opentrain.ai": {
     name: "OpenTrain AI",
     // English sitemap only; the per-language sitemaps list translations of the same jobs.
     sitemaps: ["https://www.opentrain.ai/sitemap-jobs.xml"],
     jobUrl: /^https:\/\/www\.opentrain\.ai\/jobs\/[a-z0-9-]+$/,
+    blockedByTerms: "OpenTrain Terms of Service 15.5: no scraping, harvesting or automated data collection without prior written consent",
   },
   "www.oneforma.com": {
     name: "OneForma",

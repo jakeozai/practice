@@ -154,6 +154,8 @@ export type Database = {
           last_opened_at: string | null;
           raw_consent_at: string | null;
           raw_consent_version: string | null;
+          terms_agreed_at: string | null;
+          terms_version: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -175,6 +177,8 @@ export type Database = {
           last_opened_at?: string | null;
           raw_consent_at?: string | null;
           raw_consent_version?: string | null;
+          terms_agreed_at?: string | null;
+          terms_version?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -194,6 +194,7 @@ async function alertAdmins(source: CollectSource, failCount: number, message: st
 async function collectPageSource(db: ServiceClient, source: CollectSource, userAgent: string, now: string, opts: RunOptions) {
   const site = PAGE_SITES[source.endpoint];
   if (!site) throw new Error(`no page site config for ${source.endpoint}`);
+  if (site.blockedByTerms) throw new Error(`not collected (terms): ${site.blockedByTerms}`);
   const get = (u: string) => fetchText(u, { userAgent });
   const robots = await loadRobots(source.endpoint, get);
   const listed = await listJobUrls(source.endpoint, site, robots, get);
@@ -310,6 +311,10 @@ export async function collectSources(
       continue;
     }
     if (s.kind === "page" && s.endpoint && PAGE_SITES[s.endpoint]) {
+      if (PAGE_SITES[s.endpoint].blockedByTerms) {
+        opts.log(`  - skip ${s.name}: ${PAGE_SITES[s.endpoint].blockedByTerms}`);
+        continue;
+      }
       sources.push({ ...s, kind: "page", endpoint: s.endpoint });
       continue;
     }
