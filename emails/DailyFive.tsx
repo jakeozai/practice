@@ -358,6 +358,7 @@ export default function DailyFive(props: DailyFiveProps) {
             <Text style={s.boxTitle}>지원 전에 확인하세요</Text>
             <Text style={s.boxText}>· 지원 가능 국가와 마감은 원문 공고 기준이에요.</Text>
             <Text style={s.boxText}>· 돈을 먼저 내라거나 메신저로만 연락하자는 곳은 지원하지 마세요.</Text>
+            <Text style={s.boxText}>· 한국어 제목과 요약은 AI가 원문을 바탕으로 만들었어요. 원문과 다를 수 있으니 지원 전에 원문을 확인하세요.</Text>
           </Section>
 
           {props.rateUrls && (

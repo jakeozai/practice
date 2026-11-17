@@ -11,12 +11,14 @@
  * contact to a company is asked separately, per offer (제17조) — this switch
  * never covers that. Bump the version when the text below changes.
  */
-export const RAW_CONSENT_VERSION = "2026-11-17.2";
+export const RAW_CONSENT_VERSION = "2026-11-17.3";
 
 export const RAW_CONSENT = {
   benefit: "기업이 먼저 일감을 제안해요",
   badge: "준비 중",
-  pitch: "켜 두면 서비스가 열리는 대로 내 분석에 맞는 기업 제안을 먼저 받아요. 이를 위해 AI 답변 원문(이력서 포함)을 보관해요.",
+  /** Visible right under the switch: what is kept and every use of it (the law asks for clear notice of important parts). */
+  pitch:
+    "켜 두면 서비스가 열리는 대로 내 분석에 맞는 기업 제안을 먼저 받아요. 이를 위해 AI 답변 원문(이력서 포함)을 보관하고, 추천과 서비스 개발(추천 AI 포함)에도 써요. 만 14세 이상만 켤 수 있어요.",
   title: "(선택) 기업 제안 받기와 AI 분석 원문 수집·이용 동의",
   items: "붙여넣은 AI 답변 전체 (스펙 요약, 한글·영어 이력서 내용 포함)",
   purpose:

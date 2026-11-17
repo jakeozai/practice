@@ -187,3 +187,8 @@ test("fewer jobs than a full mail: the 'today this is our best' note", async () 
   const full = await composeDigestEmail({ ...input, fullCount: 1 });
   assert.doesNotMatch(full.html, /오늘은 이게 최선이에요/);
 });
+
+test("AI-made summaries are labelled in the mail (AI기본법 제31조)", async () => {
+  const mail = await composeDigestEmail(input);
+  assert.match(mail.html, /한국어 제목과 요약은 AI가 원문을 바탕으로 만들었어요/);
+});
