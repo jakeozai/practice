@@ -67,6 +67,7 @@ const expectations: Record<string, { gets: string[]; never: string[] }> = {
   copywriter: { gets: ["blog"], never: ["logo", "render", "nurse", "chem"] },
   "3d_artist": { gets: ["render"], never: ["video", "logo", "loc", "acct"] },
   accountant: { gets: ["acct"], never: ["nurse", "chem", "video", "logo"] },
+  office_worker: { gets: ["ko_eval"], never: ["video", "logo", "render", "nurse", "chem", "acct", "scrape"] },
 };
 
 test("every kind of person gets the work their own AI described, and nothing else", () => {

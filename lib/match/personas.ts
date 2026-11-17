@@ -214,6 +214,27 @@ const raw: { id: string; label: string; profile: Record<string, unknown> }[] = [
       notes_ko: "회계·재무 전문 AI 평가 일을 먼저 추천.",
     },
   },
+  {
+    id: "office_worker",
+    label: "경영지원 사무직 회사원",
+    profile: {
+      languages: [
+        { code: "ko", level: "native" },
+        { code: "en", level: "conversational" },
+      ],
+      fields: ["한국어 AI 답변 평가", "엑셀·보고서 작성", "사내 교육 PPT 제작"],
+      skills: ["Excel", "PowerPoint", "ChatGPT"],
+      domain_expertise: [],
+      experience_summary_ko: "중소기업 경영지원팀에서 8년 일했어요. 매출 자료를 엑셀로 정리하고 보고서와 사내 교육 PPT를 만들어요. ChatGPT로 메일 초안과 보고서 요약을 자주 해요.",
+      job_keywords: ["korean ai evaluator", "ai chatbot evaluation", "business ai trainer", "translation quality rater"],
+      portfolio_ko: [],
+      weekly_hours: 6,
+      preferred_time: "evening",
+      min_hourly_usd: 15,
+      avoid: ["전화 영업"],
+      notes_ko: "퇴근 후 할 수 있는 한국어 AI 평가 일을 먼저 추천.",
+    },
+  },
 ];
 
 export const PERSONAS: Persona[] = raw.map((p) => ({ id: p.id, label: p.label, profile: ProfileSchema.parse(p.profile) }));

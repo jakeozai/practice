@@ -6,14 +6,16 @@
 export type ExampleRow = { title: string; meta: string; pay: string; kind: "fit" | "try" };
 
 /**
- * One made-up subscriber (a video editor), laid out like the real mail
- * (2026-11-16): three fits from their profile, then two "AI로 도전" tries.
- * All overseas, like the real supply.
+ * One made-up subscriber, the most common one: an office worker (경영지원·사무직)
+ * who uses ChatGPT at work (2026-11-17 user decision). Laid out like the real
+ * mail: three AI jobs their work experience qualifies them for, then two
+ * "AI로 도전" document jobs. All are kinds of postings in the real supply
+ * (Productive Playhouse, Invisible, Appen, Freelancer.com, 2026-11-16).
  */
 export const EXAMPLE_JOBS: ExampleRow[] = [
-  { kind: "fit", title: "숏폼 영상 5편 편집", meta: "영상 · 견적 입찰", pay: "$100" },
-  { kind: "fit", title: "유튜브 영상 한국어 자막", meta: "영상 · 해외 원격", pay: "$90" },
-  { kind: "fit", title: "AI 영상 결과물 평가", meta: "AI 평가 · 주 10시간부터", pay: "시간당 $25" },
-  { kind: "try", title: "카페 로고 시안 3종", meta: "로고·그래픽 · 해외 원격", pay: "$120" },
-  { kind: "try", title: "제품 3D 모델 1개", meta: "3D · 해외 원격", pay: "$150" },
+  { kind: "fit", title: "한국어 AI 챗봇 답변 평가", meta: "AI 평가 · 영어는 읽기 수준", pay: "시간당 $20" },
+  { kind: "fit", title: "관리자 경험으로 AI 답변 평가", meta: "AI 트레이너 · 업무 경력이 자격", pay: "시간당 $20~100" },
+  { kind: "fit", title: "AI 번역 결과 품질 평가", meta: "AI 평가 · 하루 2시간부터", pay: "건별 지급" },
+  { kind: "try", title: "AI로 PDF 표를 엑셀로 정리", meta: "AI 문서 작업 · 견적 입찰", pay: "$140~420" },
+  { kind: "try", title: "AI로 영업 제안서 PPT 만들기", meta: "AI 문서 작업 · 견적 입찰", pay: "£250~750" },
 ];

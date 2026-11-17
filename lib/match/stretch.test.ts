@@ -157,3 +157,31 @@ test("a role is not a try, and a summary word doesn't change what the job is", (
   assert.equal(stretchKindOf(podcast), null, "video work isn't a graphics try because the summary mentions a banner");
   assert.equal(stretchKindOf(job({ title: "Logo for a bakery" }))?.id, "logo_graphics");
 });
+
+test("AI document work: PDFs, sheets and slides are a try, ongoing data entry isn't", () => {
+  const sheets = job({ title: "Precise PDF-to-Sheets Conversion", category: "dev", url: "https://www.freelancer.com/projects/data-entry/pdf-sheets" });
+  assert.equal(stretchKindOf(sheets)?.id, "office_docs", "a data-entry project with a clear document deliverable");
+  assert.equal(stretchKindOf(job({ title: "Sales Pitch Deck Design", category: "design" }))?.id, "office_docs");
+  assert.equal(stretchKindOf(job({ title: "200-Page PDF to Word Conversion", category: "writing" }))?.id, "office_docs");
+  assert.equal(stretchKindOf(job({ title: "Daily data entry for an online store", category: "other", url: "https://www.freelancer.com/projects/data-entry/x" })), null);
+  assert.equal(stretchKindOf(job({ title: "Logo for a bakery", url: "https://www.freelancer.com/projects/data-entry/y" })), null, "only document work from those projects");
+  assert.equal(stretchKindOf(job({ title: "Virtual assistant: Excel and email", category: "other" })), null);
+});
+
+test("an office worker's first try is document work", () => {
+  const office = buildSignals(
+    ProfileSchema.parse({
+      languages: [{ code: "ko", level: "native" }, { code: "en", level: "conversational" }],
+      fields: ["한국어 AI 답변 평가", "엑셀·보고서 작성"],
+      skills: ["Excel", "PowerPoint"],
+      avoid: [],
+    }),
+  );
+  const tries = rankStretch(
+    [job({ title: "Logo for a bakery" }), job({ title: "Chatbot for a website", category: "dev" }), job({ title: "Precise PDF-to-Sheets Conversion", category: "dev" })],
+    office,
+    NOW,
+  );
+  assert.equal(tries[0].kind, "office_docs");
+  assert.equal(kindAffinity("office_docs", office), 1);
+});

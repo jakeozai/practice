@@ -98,6 +98,10 @@ const STUDENT_ONLY =
   /student\s+ambassador|campus\s+(?:ambassador|rep(?:resentative)?)|currently\s+enrolled|enrolled\s+students?\s+only|학생\s*앰버서더|캠퍼스\s*(?:앰버서더|대사)|(?:대학생|재학생)\s*(?:대상|만|한정|모집)/i;
 const EMPLOYMENT_ROLE = /founding\s+(?:engineer|developer|designer|member|team)|co-?founder|공동\s*창업|창립\s*(?:멤버|엔지니어|팀)|\bcto\b|equity[- ](?:only|based)|지분\s*(?:보상|으로)/i;
 
+/** Office document work in a profile (2026-11-16: the most common subscriber is an office worker). */
+const OFFICE_DOCS_PROFILE =
+  /엑셀|excel|스프레드시트|spreadsheet|구글\s*(?:시트|문서)|google\s*(?:sheets|docs)|파워\s*포인트|powerpoint|\bppt\b|보고서|기획서|제안서|문서\s*(?:작성|정리)|사무|경영\s*지원|총무|노션|notion/i;
+
 /** (제안값) A job in the person's own specialty outranks general work their profile also covers. */
 const SPECIALTY_BONUS = 1.5;
 /**
@@ -135,6 +139,8 @@ export type ProfileSignals = {
   tools: string[];
   avoid: Set<string>;
   performer: boolean;
+  /** The profile does office document work (Excel, reports, slides): AI document tries suit them first. */
+  officeDocs: boolean;
   /** Programming languages the profile shows (CODE_LANGUAGES ids). */
   code: Set<string>;
   weeklyHours: number | null;
@@ -202,6 +208,7 @@ export function buildSignals(profile: Profile): ProfileSignals {
     tools: toolTokens(profile.skills),
     avoid: new Set(AVOID_RULES.filter((r) => profile.avoid.some((a) => r.avoid.test(a))).map((r) => r.id)),
     performer: PERFORMER_PROFILE.test(everything),
+    officeDocs: OFFICE_DOCS_PROFILE.test(everything),
     code: AI_CODING.test(everything) ? new Set([...codeLanguages(everything), ...AI_CODING_LANGUAGES]) : codeLanguages(everything),
     weeklyHours: profile.weekly_hours,
     minHourlyUsd: profile.min_hourly_usd,
