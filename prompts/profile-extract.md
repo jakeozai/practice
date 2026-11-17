@@ -32,6 +32,16 @@
   "preferred_time": "morning|daytime|evening|night|any",
   "min_hourly_usd": null,
   "has_desktop": true,
+  "work_status": "employed|freelancer|self_employed|student|job_seeking|homemaker|other",
+  "job_role": "지금(최근) 직무, 예: 경영지원",
+  "industry": "업종, 예: 제조",
+  "career_years": null,
+  "education_level": "high_school|associate|bachelor|master|doctorate",
+  "licenses": ["자격증·면허 이름만"],
+  "ai_tools": ["자주 쓰는 AI 도구"],
+  "ai_level": "beginner|daily|builder",
+  "wanted_work": ["하고 싶은 일 종류(아래 코드)"],
+  "pay_preference": "hourly|project|any",
   "avoid": ["하기 싫은 일, 예: 음성 녹음, 얼굴 촬영"],
   "notes_ko": "덕잡이 먼저 추천하면 좋을 일과 이유 1~2문장"
 }
@@ -40,6 +50,8 @@
 - fields는 공고 제목처럼 구체적으로: "유튜브 영상 편집", "영→한 번역", "로고 디자인", "Claude Code로 만드는 웹앱 개발". "IT"·"콘텐츠" 같은 넓은 말은 쓰지 마.
 - job_keywords는 "video editing", "korean translation", "logo design"처럼. "AI", "design" 같은 한 단어는 쓰지 마.
 - portfolio_ko에 회사 안에서 만든 자료는 넣지 마.
+- career_years는 fields 쪽 경력 연수(숫자). ai_level: beginner 써 본 정도, daily 업무에 매일, builder AI로 결과물을 만듦.
+- wanted_work 코드: language 번역·언어 평가, domain 전문 분야 AI 평가, labeling 데이터 라벨링, video, design, motion_3d, dev 개발·자동화, writing, office 문서·엑셀 작업.
 
 [2] 내 스펙 요약 (5줄 이내, 보통 글로)
 잘하는 일, AI로 할 수 있는 일, 언어 수준, 일할 수 있는 시간, 먼저 노려 볼 일감.

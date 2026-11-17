@@ -11,6 +11,7 @@
  * count as a stretch.
  */
 import { CONCEPTS, codeLanguages } from "./concepts";
+import type { WantedWork } from "../profile/parse";
 import { jobText, personalLimits, SUMMARY_ONLY_FACTOR, toUsd, type FitJob, type ProfileSignals } from "./fit";
 
 export type StretchKind = {
@@ -130,6 +131,17 @@ export const KIND_AFFINITY: Record<string, Record<string, number>> = {
     labeling: 0.3,
   },
 };
+/** Kinds of work the person says they want (profile wanted_work) → closeness to a kind of try. */
+const WANTED_KIND: Record<string, Partial<Record<string, number>>> = {
+  logo_graphics: { design: 0.8 },
+  three_d: { motion_3d: 0.8 },
+  web_bot: { dev: 0.8 },
+  office_docs: { office: 1 },
+  ai_content: { video: 0.6, writing: 0.5 },
+};
+/** (제안값) Someone who has only tried AI shouldn't get a coding try first, unless they code. */
+const BEGINNER_WEB_PENALTY = 2;
+
 /** Anyone who writes code (or builds with an AI coding tool) is this close to web and bot work. */
 const CODER_WEB_AFFINITY = 0.8;
 /** (제안값) Score added for a kind the profile is fully close to. */
@@ -143,6 +155,9 @@ export function kindAffinity(kindId: string, sig: ProfileSignals): number {
   for (const [concept, share] of Object.entries(KIND_AFFINITY[kindId] ?? {})) {
     const h = sig.concepts.get(concept);
     if (h) best = Math.max(best, share * Math.min(h.weight / TOP_WEIGHT, 1));
+  }
+  for (const [wanted, share] of Object.entries(WANTED_KIND[kindId] ?? {})) {
+    if (sig.wantedWork.has(wanted as WantedWork)) best = Math.max(best, share ?? 0);
   }
   return best;
 }
@@ -198,6 +213,7 @@ export function rankStretch<J extends FitJob>(jobs: J[], sig: ProfileSignals, no
     }
     score += Math.min((near?.weight ?? 0) * 0.4, 2);
     score += AFFINITY_BONUS * kindAffinity(kind.id, sig);
+    if (kind.id === "web_bot" && sig.aiLevel === "beginner" && sig.code.size === 0) score -= BEGINNER_WEB_PENALTY;
     if (kind.id === "web_bot") {
       const langs = codeLanguages(text);
       if (langs.size > 0 && ![...langs].some((l) => sig.code.has(l))) score -= 1.5;

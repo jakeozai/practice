@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { BRAND, contactEmail } from "@/lib/brand";
+import { RAW_CONSENT } from "@/lib/profile/consent";
 
 export const metadata = { title: `개인정보 처리방침 — ${BRAND.name}` };
 
@@ -10,7 +11,7 @@ export const metadata = { title: `개인정보 처리방침 — ${BRAND.name}` }
  * history table whenever vendors, items or purposes change (e.g. OpenAI
  * embeddings in Phase 2, the English application draft, referral rewards).
  */
-const POLICY_VERSION = { version: "1.0", effective: "2026년 11월 9일" };
+const POLICY_VERSION = { version: "1.1", effective: "2026년 11월 17일" };
 
 const VENDORS = [
   {
@@ -19,7 +20,7 @@ const VENDORS = [
     work: "데이터베이스 보관, 이메일 로그인(인증) 처리",
     country: "대한민국(서울 리전)에 저장. 운영·장애 대응 과정에서 미국 등에서 접근될 수 있음",
     when: "가입·이용할 때 수시로, 암호화된 네트워크로 전송",
-    items: "회원 정보, 프로필, 메일 서비스 기록, 로그인 기록",
+    items: "회원 정보, 프로필, 메일 서비스 기록, 로그인 기록, (선택 동의 시) AI 분석 원문",
     period: "탈퇴 시 또는 위탁 계약 종료 시까지",
   },
   {
@@ -28,7 +29,7 @@ const VENDORS = [
     work: "웹사이트·서버 기능 운영(서울 리전), 매일 수집·발송 작업 실행",
     country: "대한민국(서울 리전)에서 처리. 접속 기록과 운영 지원은 미국에서 처리될 수 있음",
     when: "웹사이트에 접속하거나 매일 발송 작업이 실행될 때, 암호화된 네트워크로 전송",
-    items: "접속 기록(IP 주소, 브라우저 정보, 요청 주소·시각), 처리 과정에서 일시적으로 다루는 이메일·프로필 항목",
+    items: "접속 기록(IP 주소, 브라우저 정보, 요청 주소·시각), 처리 과정에서 일시적으로 다루는 이메일·프로필 항목과 붙여넣은 AI 답변",
     period: "요청 처리 즉시 삭제. 접속 기록은 Vercel의 로그 보관 기간이 지나면 자동 삭제",
   },
   {
@@ -44,6 +45,10 @@ const VENDORS = [
 
 function H2({ children }: { children: React.ReactNode }) {
   return <h2 className="mt-10 text-lg font-bold">{children}</h2>;
+}
+
+function H3({ children }: { children: React.ReactNode }) {
+  return <h3 className="mt-6 text-base font-bold">{children}</h3>;
 }
 
 function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
@@ -110,9 +115,9 @@ export default function PrivacyPage() {
       <Table
         head={["구분", "내용"]}
         rows={[
-          ["처리하는 정보", "이메일 주소, (선택) 프로필 항목, 메일·서비스 이용 기록"],
+          ["처리하는 정보", "이메일 주소, (선택) 프로필 항목, 메일·서비스 이용 기록, (선택 동의 시) AI 분석 원문"],
           ["처리 목적", "매일 아침 일감 메일 발송, 맞춤 추천, 문의 응대"],
-          ["처리 근거", "서비스 이용계약 이행 등 (동의를 근거로 처리하는 정보 없음)"],
+          ["처리 근거", "서비스 이용계약 이행 등. AI 분석 원문만 이용자의 선택 동의로 처리"],
           ["보유 기간", "탈퇴할 때까지 (일부 기록은 1일~3개월)"],
           ["제3자 제공", "하지 않음"],
           ["처리 위탁·국외 이전", "Supabase, Vercel, Resend (모두 미국 기업)"],
@@ -126,14 +131,15 @@ export default function PrivacyPage() {
         <li>가입과 로그인: 이메일로 보내는 로그인 링크로 본인을 확인하고 회원을 관리해요.</li>
         <li>일일 메일 서비스: 매일 아침 일감을 보내고, 같은 공고를 다시 보내지 않도록 관리하며, 수신거부와 반송을 처리해요.</li>
         <li>맞춤 추천(프로필을 저장한 경우): 프로필과 일감을 비교해 추천해요.</li>
-        <li>서비스 개선: 클릭 수 같은 통계를 개인을 알아볼 수 없는 형태로 집계해요.</li>
+        <li>서비스 개선: 프로필 항목과 클릭·평가 같은 이용 기록을 개인을 알아볼 수 없는 형태로 집계해 통계로 써요.</li>
+        <li>(선택 동의한 경우) AI 분석 원문: {RAW_CONSENT.purpose}.</li>
         <li>보안과 문의 응대: 부정 이용을 막고 문의·권리행사 요청에 답해요.</li>
       </ul>
 
       <H2>2. 처리하는 개인정보 항목과 처리 근거</H2>
       <p>
-        {b}은 동의를 근거로 처리하는 개인정보가 없어요. 아래 정보는 모두 「개인정보 보호법」(이하 &quot;법&quot;) 제15조 제1항에 따라 동의
-        없이 처리할 수 있는 정보이며, 법 제22조 제3항에 따라 항목과 법적 근거를 알려 드려요.
+        아래 표의 정보는 「개인정보 보호법」(이하 &quot;법&quot;) 제15조 제1항에 따라 동의 없이 처리할 수 있는 정보이며, 법 제22조 제3항에
+        따라 항목과 법적 근거를 알려 드려요. AI 분석 원문만 이용자가 따로 동의한 경우에 처리해요(아래 2-1).
       </p>
       <Table
         head={["구분", "항목", "수집 방법", "처리 근거"]}
@@ -147,7 +153,7 @@ export default function PrivacyPage() {
           ],
           [
             "프로필(선택)",
-            "잘하는 분야, 사용하는 도구, 사용 언어·영어 수준, 주당 가능 시간, 희망 시급(USD), 피하고 싶은 일, 짧은 경력 요약",
+            "잘하는 분야, 사용하는 도구, 사용 언어·영어 수준, 주당 가능 시간, 희망 시급(USD), 피하고 싶은 일, 짧은 경력 요약, 지금 상태(직장인·학생 등), 직무, 업종, 경력 연수, 최종 학력 수준(학교 이름 없이), 자격증·면허 이름, 자주 쓰는 AI 도구, AI 활용 수준, 하고 싶은 일 종류, 선호 보수 방식",
             "이용자가 자신의 AI 분석 결과를 붙여넣고 확인한 뒤 저장",
             "법 제15조 제1항 제4호(이용자가 요청한 맞춤 추천)",
           ],
@@ -161,13 +167,30 @@ export default function PrivacyPage() {
         ]}
       />
       <ul>
-        <li>붙여넣은 AI 분석 결과 원문은 저장하지 않아요. 서버에서 위 프로필 항목만 뽑아낸 뒤 원문은 바로 버리고, 이용자가 확인한 항목만 저장해요.</li>
+        <li>
+          프로필 항목은 모두 일감을 고르는 데 써요. 예를 들어 경력 연수·학력·자격증은 공고의 자격 요건과, 지금 상태는 학생 대상 공고와,
+          하고 싶은 일·선호 보수는 추천 순서와 맞춰 봐요.
+        </li>
+        <li>붙여넣은 AI 분석 결과 원문은 이용자가 아래 2-1의 선택 동의를 한 경우에만 저장해요. 동의하지 않으면 서버에서 위 프로필 항목만 뽑아낸 뒤 원문은 바로 버려요.</li>
         <li>
           {b}은 이용자의 ChatGPT·Claude·Gemini 계정이나 대화 기록에 접근하지 않아요. 이용자가 자신의 AI에게 분석을 요청하는 것은 이용자와
           해당 AI 서비스 사이의 일이며, 그 서비스의 개인정보 처리방침이 적용돼요.
         </li>
         <li>프로필에 건강·종교·정치적 견해 같은 민감한 정보나 주민등록번호를 넣지 마세요. 들어온 것을 알게 되면 바로 삭제해요.</li>
-        <li>{b}은 이름, 전화번호, 주소, 주민등록번호, 결제 정보를 받지 않아요.</li>
+        <li>
+          {b}은 동의 없이 이름, 전화번호, 주소, 주민등록번호, 결제 정보를 받지 않아요. 원문 저장에 동의하면 AI가 쓴 이력서에 이름·연락처가
+          들어 있을 수 있어요. 주소·주민등록번호는 넣지 마세요.
+        </li>
+      </ul>
+
+      <H3>2-1. 동의를 받아 처리하는 정보 (선택)</H3>
+      <Table
+        head={["항목", "이용 목적", "보유 기간"]}
+        rows={[[RAW_CONSENT.items, RAW_CONSENT.purpose, RAW_CONSENT.retention]]}
+      />
+      <ul>
+        <li>근거: 법 제15조 제1항 제1호(정보주체의 동의). 분석 결과를 확인하는 화면에서 따로 체크해야 동의돼요(처음에는 체크되어 있지 않아요).</li>
+        <li>{RAW_CONSENT.refusal}</li>
       </ul>
 
       <H2>3. 개인정보의 처리 및 보유 기간</H2>
@@ -176,6 +199,7 @@ export default function PrivacyPage() {
         rows={[
           ["회원 정보, 메일 서비스 기록, 수신 상태", "회원 탈퇴 시까지 (탈퇴하면 지체 없이 삭제)"],
           ["프로필", "이용자가 프로필을 지우거나 탈퇴할 때까지"],
+          ["AI 분석 원문(선택 동의)", "동의를 철회하거나 탈퇴할 때까지 (철회하면 지체 없이 삭제)"],
           ["로그인 메일 요청 기록", "1일"],
           ["로그인 기록(IP 주소 등)", "인증 사업자(Supabase)의 보관 기간에 따름, 탈퇴 시 함께 삭제"],
           ["웹사이트 접속 기록", "호스팅 사업자(Vercel)의 로그 보관 기간이 지나면 자동 삭제"],
@@ -262,8 +286,8 @@ export default function PrivacyPage() {
       <ul>
         <li>이용자는 언제든 자신의 개인정보 열람(법 제35조), 정정·삭제(법 제36조), 처리정지(법 제37조)를 요구할 수 있어요.</li>
         <li>
-          직접 할 수 있는 것: <a href="/account" className="underline underline-offset-2">내 정보</a>에서 메일 그만 받기와 탈퇴(모든 정보
-          삭제), <a href="/onboarding" className="underline underline-offset-2">분석 결과</a>에서 프로필 확인·수정, 메일 하단 [메일 그만
+          직접 할 수 있는 것: <a href="/account" className="underline underline-offset-2">내 정보</a>에서 메일 그만 받기, AI 분석 원문
+          저장 동의 철회(저장한 원문 삭제), 탈퇴(모든 정보 삭제), <a href="/onboarding" className="underline underline-offset-2">분석 결과</a>에서 프로필 확인·수정, 메일 하단 [메일 그만
           받기]로 바로 수신거부.
         </li>
         <li>이메일로 요청하기: 가입한 이메일 주소에서 문의 이메일로 보내 주세요. 받은 날부터 10일 안에 조치하고 결과를 알려 드려요.</li>
@@ -291,7 +315,17 @@ export default function PrivacyPage() {
         내용을 바꾸면 시행 7일 전에 이 페이지에 알려요. 수집 항목, 이용 목적, 위탁·국외 이전처럼 중요한 변경은 시행 30일 전에 알리고 메일로도
         안내해요.
       </p>
-      <Table head={["버전", "시행일", "주요 내용"]} rows={[[POLICY_VERSION.version, POLICY_VERSION.effective, "최초 제정"]]} />
+      <Table
+        head={["버전", "시행일", "주요 내용"]}
+        rows={[
+          ["1.0", "2026년 11월 9일", "최초 제정"],
+          [
+            "1.1",
+            "2026년 11월 17일",
+            "프로필 항목 추가(지금 상태, 직무, 업종, 경력 연수, 학력 수준, 자격증, AI 도구·활용 수준, 하고 싶은 일, 선호 보수), (선택) AI 분석 원문 수집·이용 동의 신설, 메일 평가·의견 추가",
+          ],
+        ]}
+      />
     </article>
   );
 }

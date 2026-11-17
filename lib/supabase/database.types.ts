@@ -152,6 +152,8 @@ export type Database = {
           has_desktop: boolean | null;
           embedding: string | null;
           last_opened_at: string | null;
+          raw_consent_at: string | null;
+          raw_consent_version: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -171,6 +173,8 @@ export type Database = {
           has_desktop?: boolean | null;
           embedding?: string | null;
           last_opened_at?: string | null;
+          raw_consent_at?: string | null;
+          raw_consent_version?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -295,6 +299,12 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["reviews"]["Insert"]>;
+        Relationships: [];
+      };
+      profile_raw: {
+        Row: { id: string; user_id: string; raw_text: string; consent_version: string; created_at: string };
+        Insert: { id?: string; user_id: string; raw_text: string; consent_version: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["profile_raw"]["Insert"]>;
         Relationships: [];
       };
       mail_feedback: {

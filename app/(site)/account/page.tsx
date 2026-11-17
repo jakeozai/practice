@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { deleteAccount, setDigest, signOutHere } from "./actions";
+import { deleteAccount, setDigest, signOutHere, withdrawRawConsent } from "./actions";
+import { RAW_CONSENT } from "@/lib/profile/consent";
 import { AccountAccess } from "./access";
 
 export const metadata = { title: "내 정보 — 덕잡", robots: { index: false } };
@@ -14,7 +15,8 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
   if (!user) return <AccountAccess next={typeof params.next === "string" ? params.next : undefined} />;
 
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("digest_status, profile_json").eq("user_id", user.id).maybeSingle();
+  const { data } = await supabase.from("profiles").select("digest_status, profile_json, raw_consent_at").eq("user_id", user.id).maybeSingle();
+  const consentDay = data?.raw_consent_at ? new Date(data.raw_consent_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" }) : null;
   const active = data?.digest_status === "active";
 
   return (
@@ -40,6 +42,30 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
         <Link href="/onboarding" className="btn-primary mt-4">
           {data?.profile_json ? "분석 결과 보기·고치기" : "AI로 1분 분석하기"}
         </Link>
+      </div>
+
+      <div className="card">
+        <p className="text-lg font-bold">AI 분석 원문 저장</p>
+        <p className="mt-1 text-sm text-muted">
+          {consentDay
+            ? `${consentDay}에 동의했어요. 분석할 때 붙여넣은 AI 답변 전체를 저장하고 있어요.`
+            : "동의하지 않았어요. 확인한 분석 항목만 저장하고, AI 답변 원문은 저장하지 않아요."}
+        </p>
+        <p className="mt-2 text-xs text-muted">이용 목적: {RAW_CONSENT.purpose}</p>
+        {consentDay ? (
+          <form action={withdrawRawConsent} className="mt-4">
+            <button type="submit" className="btn-secondary">
+              동의 철회하고 원문 지우기
+            </button>
+          </form>
+        ) : (
+          <p className="mt-2 text-xs text-muted">원하면 다음에 AI로 분석할 때 선택할 수 있어요.</p>
+        )}
+        {params.saved === "raw" && (
+          <p className="mt-3 text-sm" role="status">
+            동의를 철회했고, 저장한 원문을 모두 지웠어요.
+          </p>
+        )}
       </div>
 
       <details className="card">

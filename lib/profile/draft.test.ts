@@ -43,3 +43,22 @@ test("filling the missing fields clears `missing`", () => {
   assert.deepEqual(filled.fields, ["라벨링", "번역", "전사"]);
   assert.equal(filled.weekly_hours, 8);
 });
+
+test("structured items survive the edit form round trip", () => {
+  const p = ProfileSchema.parse({
+    work_status: "employed",
+    job_role: "경영지원",
+    industry: "제조",
+    career_years: 8,
+    education_level: "bachelor",
+    licenses: ["컴퓨터활용능력 1급"],
+    ai_tools: ["ChatGPT"],
+    ai_level: "daily",
+    wanted_work: ["office", "language"],
+    pay_preference: "hourly",
+  });
+  const back = ProfileSchema.parse(fromDraft(toDraft(p), p));
+  for (const key of ["work_status", "job_role", "industry", "career_years", "education_level", "licenses", "ai_tools", "ai_level", "wanted_work", "pay_preference"] as const) {
+    assert.deepEqual(back[key], p[key], key);
+  }
+});

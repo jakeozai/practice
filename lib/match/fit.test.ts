@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ProfileSchema } from "../profile/parse";
-import { assessJob, buildSignals, quoteProfile, rankForProfile, ruleNote, toUsd, type FitJob } from "./fit";
+import { assessJob, buildSignals, quoteProfile, rankForProfile, requiredDegree, requiredYears, ruleNote, toUsd, type FitJob } from "./fit";
 import { toolTokens } from "./concepts";
 
 const NOW = new Date("2026-11-15T00:00:00Z");
@@ -257,4 +257,43 @@ test("expert AI training ranks by the specialty its title names", () => {
     summary_ko: ["소상공인 사업주를 위한 AI 교육 프로젝트", "사업 운영, 전략, 재무 계획 시나리오의 AI 답변 평가", "시간당 20~100달러"],
   });
   assert.deepEqual(rankForProfile([owner, finance], accountant, NOW).map((r) => r.job.id), ["f", "o"]);
+});
+
+test("structured items in matching: years, degree, student roles, wanted work, pay", () => {
+  const base = { languages: [{ code: "ko", level: "native" }, { code: "en", level: "business" }], fields: ["한국어 언어 평가", "한국어 AI 답변 평가"], avoid: [] };
+  const T = "Korean linguist for AI response evaluation";
+  const why = (j: FitJob, sig: ReturnType<typeof buildSignals>) => {
+    const f = assessJob(j, sig, NOW);
+    return f.ok ? "ok" : f.why.split(":")[0];
+  };
+  const junior = buildSignals(ProfileSchema.parse({ ...base, career_years: 2, education_level: "bachelor", work_status: "employed" }));
+  const eval5y = job({ id: "y", title: T, category: "language", summary_ko: ["한국어 AI 답변 평가", "경력 5년 이상"] });
+  const phd = job({ id: "d", title: `${T} (PhD)`, category: "language", summary_ko: ["한국어 AI 답변 평가"] });
+  const phdPlus = job({ id: "p", title: T, category: "language", summary_ko: ["한국어 AI 답변 평가", "석박사 학위 우대"] });
+  const student = job({ id: "s", title: `Student Ambassador - ${T}`, category: "language", summary_ko: ["대학생 대상 한국어 AI 답변 평가"] });
+  const unknown = buildSignals(ProfileSchema.parse(base));
+  assert.equal(why(eval5y, unknown), "ok", "no years in the profile: no exclusion");
+  assert.equal(why(eval5y, junior), "experience", "5 years asked, 2 given");
+  assert.equal(why(phd, junior), "degree", "PhD asked, bachelor given");
+  assert.equal(why(phdPlus, junior), "ok", "a preferred degree doesn't count");
+  assert.equal(why(student, junior), "student");
+  assert.equal(why(student, buildSignals(ProfileSchema.parse({ ...base, work_status: "student" }))), "ok", "students get student roles");
+
+  const hourly = job({ id: "h", title: T, category: "language", pay_unit: "hour", pay_max: 20, summary_ko: ["한국어 AI 답변 평가"] });
+  const wants = buildSignals(ProfileSchema.parse({ ...base, wanted_work: ["language"], pay_preference: "hourly" }));
+  const a = assessJob(hourly, wants, NOW);
+  const b = assessJob(hourly, unknown, NOW);
+  assert.ok(a.ok && b.ok && a.score > b.score, "wanted work and pay type rank it higher");
+
+  assert.equal(requiredYears("3+ years of experience in QA"), 3);
+  assert.equal(requiredYears("주 10시간, 시간당 $20"), null);
+  assert.equal(requiredDegree(["Master's degree in linguistics required"]), "master");
+  assert.equal(requiredDegree(["석박사 우대"]), null);
+});
+
+test("a licence or job role in the profile reaches matching", () => {
+  const nurse = buildSignals(ProfileSchema.parse({ languages: [{ code: "ko", level: "native" }, { code: "en", level: "business" }], fields: [], licenses: ["간호사 면허"], avoid: [] }));
+  assert.ok(nurse.concepts.has("medical"));
+  const office = buildSignals(ProfileSchema.parse({ languages: [{ code: "ko", level: "native" }], fields: [], job_role: "경영지원", avoid: [] }));
+  assert.equal(office.officeDocs, true);
 });

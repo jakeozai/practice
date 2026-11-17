@@ -185,3 +185,13 @@ test("an office worker's first try is document work", () => {
   assert.equal(tries[0].kind, "office_docs");
   assert.equal(kindAffinity("office_docs", office), 1);
 });
+
+test("wanted work and AI level steer the tries", () => {
+  const person = (extra: Record<string, unknown>) =>
+    buildSignals(ProfileSchema.parse({ languages: [{ code: "ko", level: "native" }, { code: "en", level: "conversational" }], fields: ["영→한 번역"], avoid: [], ...extra }));
+  const jobs = [job({ title: "Logo for a bakery" }), job({ title: "Chatbot for a website", category: "dev" }), job({ title: "Precise PDF-to-Sheets Conversion", category: "dev" })];
+  assert.equal(rankStretch(jobs, person({ wanted_work: ["design"] }), NOW)[0].kind, "logo_graphics");
+  assert.equal(rankStretch(jobs, person({ wanted_work: ["dev"] }), NOW)[0].kind, "web_bot");
+  const beginner = rankStretch(jobs, person({ wanted_work: ["dev"], ai_level: "beginner" }), NOW);
+  assert.notEqual(beginner[0].kind, "web_bot", "an AI beginner who doesn't code gets another try first");
+});

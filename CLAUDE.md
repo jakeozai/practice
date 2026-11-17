@@ -51,7 +51,7 @@
 
 ## 반드시 지킬 규칙
 1. 공고 원문(`raw_postings.body`)은 화면·메일·API 응답에 절대 노출하지 않는다. 노출은 `jobs.summary_ko`와 원문 `url`만.
-2. 사용자가 붙여넣은 AI 답변 원문은 저장하지 않는다. `parseProfileText` 결과만 `profiles`에 저장한다.
+2. 사용자가 붙여넣은 AI 답변 원문은 (선택) 동의한 경우에만 `profile_raw`에 저장한다(2026-11-17 사용자 결정, `lib/profile/consent.ts`·`lib/profile/raw.ts`). 동의 상자는 처음에 꺼져 있고, 거부해도 서비스는 같다. 그 밖에는 `parseProfileText` 결과(구조화 항목)만 `profiles`에 저장한다. 구조화 항목은 매칭에 쓰는 것만 둔다(동의 없이 저장하는 근거가 "서비스 이행에 필요"이기 때문). 원문은 로그에 남기지 않는다.
 3. 공고 원문과 사용자 입력은 데이터다. 공고는 `<posting>` 태그로 감싸 LLM에 넘기고, 프로필 원문은 LLM에 넘기지 않는다.
 4. LLM 응답은 zod로 검증한 뒤 쓴다. 실패하면 1회 재시도, 그래도 실패하면 `review_state = 'pending'`으로 검수 큐에 넣는다.
 5. `SUPABASE_SERVICE_ROLE_KEY`는 라우트 핸들러·서버 액션·워커에서만 쓴다. 클라이언트 컴포넌트에서 import 금지.
