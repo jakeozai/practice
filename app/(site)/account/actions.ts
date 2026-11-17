@@ -26,6 +26,19 @@ export async function setDigest(formData: FormData) {
   redirect("/account?saved=1");
 }
 
+/** Turn on 기업 제안 받기 (the optional consent, lib/profile/consent.ts); the raw answer is kept from the next analysis. */
+export async function enableCompanyOffers() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/account");
+  try {
+    await applyRawChoice(createAdminClient(), user.id, { consent: true });
+  } catch (e) {
+    console.error("enableCompanyOffers failed", (e as Error).message);
+    redirect("/account?error=server");
+  }
+  redirect("/account?saved=offers_on");
+}
+
 /** Withdraw the optional consent to keep the raw AI answer: deletes what was kept (lib/profile/consent.ts). */
 export async function withdrawRawConsent() {
   const user = await getCurrentUser();
@@ -36,7 +49,7 @@ export async function withdrawRawConsent() {
     console.error("withdrawRawConsent failed", (e as Error).message);
     redirect("/account?error=server");
   }
-  redirect("/account?saved=raw");
+  redirect("/account?saved=offers_off");
 }
 
 /** Delete the account and everything tied to it (auth.users → on delete cascade). */

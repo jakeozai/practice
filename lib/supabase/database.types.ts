@@ -301,6 +301,41 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["reviews"]["Insert"]>;
         Relationships: [];
       };
+      job_engagement: {
+        Row: {
+          job_id: string;
+          category: string | null;
+          source_kind: string | null;
+          first_sent_on: string | null;
+          sent_core: number;
+          sent_stretch: number;
+          sent_shared: number;
+          clicks: number;
+          unique_clicks: number;
+          last_clicked_at: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["job_engagement"]["Row"]> & { job_id: string };
+        Update: Partial<Database["public"]["Tables"]["job_engagement"]["Row"]>;
+        Relationships: [];
+      };
+      category_daily_stats: {
+        Row: {
+          day: string;
+          category: string;
+          source_kind: string;
+          new_postings: number;
+          open_postings: number;
+          sent: number;
+          sent_stretch: number;
+          clicked: number;
+          clicked_stretch: number;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["category_daily_stats"]["Row"]> & { day: string; category: string; source_kind: string };
+        Update: Partial<Database["public"]["Tables"]["category_daily_stats"]["Row"]>;
+        Relationships: [];
+      };
       profile_raw: {
         Row: { id: string; user_id: string; raw_text: string; consent_version: string; created_at: string };
         Insert: { id?: string; user_id: string; raw_text: string; consent_version: string; created_at?: string };
@@ -348,6 +383,14 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      record_job_sends: {
+        Args: { p_job_ids: string[]; p_kinds: string[]; p_send_date: string };
+        Returns: undefined;
+      };
+      record_job_click: {
+        Args: { p_job_id: string; p_first: boolean };
+        Returns: undefined;
+      };
       verify_cron_token: {
         Args: { p_token: string };
         Returns: boolean;

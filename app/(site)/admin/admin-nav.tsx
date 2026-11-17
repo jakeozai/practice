@@ -16,6 +16,9 @@ export function AdminNav({ email }: { email: string }) {
         <Link href="/admin/feedback" className="hover:underline">
           메일 피드백
         </Link>
+        <Link href="/admin/stats" className="hover:underline">
+          반응 통계
+        </Link>
       </nav>
       <span className="text-xs text-zinc-500">{email}</span>
     </div>

@@ -320,7 +320,7 @@ function PasteStep(props: { onBack: () => void; onSkip: () => void; onParsed: (p
           {error}
         </p>
       )}
-      <p className="text-xs text-muted">🔒 확인한 분석 항목만 저장해요. 원문까지 저장할지는 다음 화면에서 직접 고를 수 있어요(선택).</p>
+      <p className="text-xs text-muted">🔒 확인한 분석 항목만 저장해요. 원문은 다음 화면의 ‘기업 제안 받기’를 켠 경우에만 보관해요(선택).</p>
     </StepCard>
   );
 }
@@ -438,19 +438,37 @@ function saveBody(profile: unknown, c: RawChoiceProps) {
   return JSON.stringify({ profile, raw: c.consent ? c.raw : null, rawConsent: c.consent });
 }
 
-/** (선택) AI 분석 원문 수집·이용 동의: off unless the person ticks it; the four notices under 자세히. */
-function RawConsentBox({ c }: { c: RawChoiceProps }) {
+/**
+ * "기업이 먼저 일감을 제안해요 (준비 중) [켜기]": the optional consent shown as the benefit it is
+ * (lib/profile/consent.ts). Off unless switched on; what it keeps is said right under it, the four
+ * notices are under 자세히 보기.
+ */
+function CompanyOffersSwitch({ c }: { c: RawChoiceProps }) {
   return (
-    <div className="rounded-2xl border border-[var(--line-2)] px-4 py-3 text-sm">
-      <label className="flex cursor-pointer items-start gap-2.5">
-        <input type="checkbox" checked={c.consent} onChange={(e) => c.setConsent(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-        <span>
-          <span className="font-semibold text-[var(--ink)]">{RAW_CONSENT.title}</span>
-          <span className="mt-0.5 block text-xs text-muted">AI 답변 전체(이력서 포함)를 저장해 추천과 서비스 개선·개발에 써요. 동의하지 않아도 똑같이 쓸 수 있어요.</span>
-        </span>
-      </label>
-      <details className="mt-2 pl-6 text-xs text-muted">
-        <summary className="cursor-pointer">자세히 보기</summary>
+    <div className="rounded-2xl bg-[var(--surface-2)] px-4 py-4">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold text-[var(--ink)]">
+            {RAW_CONSENT.benefit}
+            <span className="ml-2 rounded-full border border-[var(--line-2)] px-2 py-0.5 align-middle text-[11px] font-semibold text-muted">{RAW_CONSENT.badge}</span>
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">{RAW_CONSENT.pitch}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={c.consent}
+          aria-label={RAW_CONSENT.title}
+          onClick={() => c.setConsent(!c.consent)}
+          className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            c.consent ? "bg-[var(--accent)] text-[var(--on-accent)]" : "border-2 border-[var(--accent)] text-[var(--accent)]"
+          }`}
+        >
+          {c.consent ? "켜짐 ✓" : "켜기"}
+        </button>
+      </div>
+      <details className="mt-3 text-xs text-muted">
+        <summary className="cursor-pointer">자세히 보기 · {RAW_CONSENT.title}</summary>
         <dl className="mt-2 space-y-1">
           <div>
             <dt className="inline font-semibold">수집 항목: </dt>
@@ -469,6 +487,7 @@ function RawConsentBox({ c }: { c: RawChoiceProps }) {
             <dd className="inline">{RAW_CONSENT.refusal}</dd>
           </div>
         </dl>
+        <p className="mt-2">{RAW_CONSENT.sharing}</p>
         <a href="/privacy" className="mt-2 inline-block underline">
           개인정보 처리방침
         </a>
@@ -557,7 +576,7 @@ function ConfirmCard(props: {
         <p className="mt-3 text-xs text-muted">빈 칸은 그대로 둬도 돼요. 위 항목은 일감을 고르는 데 써요(학교·회사 이름은 저장하지 않아요).</p>
 
         <div className="mt-4">
-          <RawConsentBox c={props.rawChoice} />
+          <CompanyOffersSwitch c={props.rawChoice} />
         </div>
 
         {error && (
@@ -775,7 +794,7 @@ function EditForm(props: { base: Profile; rawChoice: RawChoiceProps; onCancel: (
           </select>
         </Field>
       </div>
-      <RawConsentBox c={props.rawChoice} />
+      <CompanyOffersSwitch c={props.rawChoice} />
       {error && (
         <p className="alert-error" role="alert">
           {error}

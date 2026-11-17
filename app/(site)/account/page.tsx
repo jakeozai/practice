@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { deleteAccount, setDigest, signOutHere, withdrawRawConsent } from "./actions";
+import { deleteAccount, enableCompanyOffers, setDigest, signOutHere, withdrawRawConsent } from "./actions";
 import { RAW_CONSENT } from "@/lib/profile/consent";
 import { AccountAccess } from "./access";
 
@@ -45,25 +45,44 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
       </div>
 
       <div className="card">
-        <p className="text-lg font-bold">AI 분석 원문 저장</p>
-        <p className="mt-1 text-sm text-muted">
-          {consentDay
-            ? `${consentDay}에 동의했어요. 분석할 때 붙여넣은 AI 답변 전체를 저장하고 있어요.`
-            : "동의하지 않았어요. 확인한 분석 항목만 저장하고, AI 답변 원문은 저장하지 않아요."}
-        </p>
-        <p className="mt-2 text-xs text-muted">이용 목적: {RAW_CONSENT.purpose}</p>
-        {consentDay ? (
-          <form action={withdrawRawConsent} className="mt-4">
-            <button type="submit" className="btn-secondary">
-              동의 철회하고 원문 지우기
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-bold">
+              {RAW_CONSENT.benefit}
+              <span className="ml-2 rounded-full border border-[var(--line-2)] px-2 py-0.5 align-middle text-[11px] font-semibold text-muted">{RAW_CONSENT.badge}</span>
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {consentDay ? `${consentDay}부터 켜져 있어요. 분석할 때 붙여넣은 AI 답변 원문(이력서 포함)을 보관하고 있어요.` : RAW_CONSENT.pitch}
+            </p>
+          </div>
+          <form action={consentDay ? withdrawRawConsent : enableCompanyOffers}>
+            <button
+              type="submit"
+              role="switch"
+              aria-checked={Boolean(consentDay)}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${consentDay ? "bg-[var(--accent)] text-[var(--on-accent)]" : "border-2 border-[var(--accent)] text-[var(--accent)]"}`}
+            >
+              {consentDay ? "켜짐 ✓" : "켜기"}
             </button>
           </form>
-        ) : (
-          <p className="mt-2 text-xs text-muted">원하면 다음에 AI로 분석할 때 선택할 수 있어요.</p>
-        )}
-        {params.saved === "raw" && (
+        </div>
+        <details className="mt-3 text-xs text-muted">
+          <summary className="cursor-pointer">자세히 보기 · {RAW_CONSENT.title}</summary>
+          <p className="mt-2">수집 항목: {RAW_CONSENT.items}</p>
+          <p>이용 목적: {RAW_CONSENT.purpose}</p>
+          <p>보유 기간: {RAW_CONSENT.retention}</p>
+          <p>거부할 권리: {RAW_CONSENT.refusal}</p>
+          <p className="mt-1">{RAW_CONSENT.sharing}</p>
+          {consentDay && <p className="mt-1">끄면(켜짐 버튼) 동의가 철회되고, 보관한 원문은 바로 지워져요.</p>}
+        </details>
+        {params.saved === "offers_on" && (
           <p className="mt-3 text-sm" role="status">
-            동의를 철회했고, 저장한 원문을 모두 지웠어요.
+            켰어요. 다음에 AI로 분석하면 원문을 함께 보관하고, 기업 제안이 열리면 먼저 알려 드릴게요.
+          </p>
+        )}
+        {params.saved === "offers_off" && (
+          <p className="mt-3 text-sm" role="status">
+            껐어요. 동의를 철회했고, 보관한 원문을 모두 지웠어요.
           </p>
         )}
       </div>

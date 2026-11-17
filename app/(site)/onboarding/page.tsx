@@ -32,7 +32,7 @@ async function Onboarding() {
 export default function OnboardingPage() {
   return (
     <div className="space-y-6">
-      <p className="text-xs text-muted">확인한 분석 결과만 저장해요. AI 답변 원문은 따로 동의한 경우에만 저장해요.</p>
+      <p className="text-xs text-muted">확인한 분석 결과만 저장해요. AI 답변 원문은 ‘기업 제안 받기’를 켠 경우에만 보관해요.</p>
       <Suspense fallback={<p className="text-sm text-muted">불러오는 중…</p>}>
         <Onboarding />
       </Suspense>

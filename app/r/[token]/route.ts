@@ -25,10 +25,13 @@ export async function GET(_request: Request, ctx: RouteContext<"/r/[token]">) {
   if (!v.expired) {
     const now = new Date().toISOString();
     const [click, opened] = await Promise.all([
-      db.from("matches").update({ clicked_at: now }).eq("user_id", uid).eq("job_id", jobId).is("clicked_at", null),
+      db.from("matches").update({ clicked_at: now }).eq("user_id", uid).eq("job_id", jobId).is("clicked_at", null).select("job_id"),
       db.from("profiles").update({ last_opened_at: now }).eq("user_id", uid),
     ]);
     if (click.error || opened.error) console.error("click record failed", click.error?.message ?? opened.error?.message);
+    // Reaction data (0020): every click on this job, and whether it was this person's first.
+    const { error } = await db.rpc("record_job_click", { p_job_id: jobId, p_first: (click.data?.length ?? 0) > 0 });
+    if (error) console.error("record_job_click failed", error.message);
   }
 
   if (!job || job.review_state !== "approved") return home;
