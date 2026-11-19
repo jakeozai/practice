@@ -6,6 +6,7 @@
  * NEXT_PUBLIC_ prefix (CLAUDE.md rule 5).
  */
 import { z } from "zod";
+import { policyCoversSes } from "./privacy/vendors";
 
 const SupabasePublicEnv = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -85,6 +86,10 @@ export function emailEnv() {
   }
   if (env.EMAIL_TRANSPORT === "ses" && (!env.SES_ACCESS_KEY_ID || !env.SES_SECRET_ACCESS_KEY)) {
     throw new Error("SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY are required when EMAIL_TRANSPORT=ses.");
+  }
+  // Mail through a processor the privacy policy doesn't name would break it (§6, §7).
+  if (env.EMAIL_TRANSPORT === "ses" && !policyCoversSes()) {
+    throw new Error("EMAIL_TRANSPORT=ses needs Amazon Web Services in the privacy policy first (lib/privacy/vendors.ts, docs/email/ses-switch.md step 0).");
   }
   return env;
 }

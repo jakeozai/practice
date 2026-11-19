@@ -2,46 +2,20 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { BRAND, contactEmail } from "@/lib/brand";
 import { RAW_CONSENT } from "@/lib/profile/consent";
+import { PRIVACY_VENDORS } from "@/lib/privacy/vendors";
 
 export const metadata = { title: `개인정보 처리방침 — ${BRAND.name}` };
 
 /**
  * 개인정보 처리방침 (개인정보 보호법 제30조, 시행령 제31조).
  * Based on docs/legal/privacy-research-2026-11-09.md. Update this page and the
- * history table whenever vendors, items or purposes change (e.g. OpenAI
+ * history table whenever vendors, items or purposes change (vendors live in
+ * lib/privacy/vendors.ts; e.g. Amazon SES, OpenAI
  * embeddings in Phase 2, the English application draft, referral rewards).
  */
 const POLICY_VERSION = { version: "1.1", effective: "2026년 11월 17일" };
 
-const VENDORS = [
-  {
-    name: "Supabase, Inc.",
-    contact: "privacy@supabase.com",
-    work: "데이터베이스 보관, 이메일 로그인(인증) 처리",
-    country: "대한민국(서울 리전)에 저장. 운영·장애 대응 과정에서 미국 등에서 접근될 수 있음",
-    when: "가입·이용할 때 수시로, 암호화된 네트워크로 전송",
-    items: "회원 정보, 프로필, 메일 서비스 기록, 로그인 기록, (선택 동의 시) AI 분석 원문",
-    period: "탈퇴 시 또는 위탁 계약 종료 시까지",
-  },
-  {
-    name: "Vercel Inc.",
-    contact: "privacy@vercel.com",
-    work: "웹사이트·서버 기능 운영(서울 리전), 매일 수집·발송 작업 실행",
-    country: "대한민국(서울 리전)에서 처리. 접속 기록과 운영 지원은 미국에서 처리될 수 있음",
-    when: "웹사이트에 접속하거나 매일 발송 작업이 실행될 때, 암호화된 네트워크로 전송",
-    items: "접속 기록(IP 주소, 브라우저 정보, 요청 주소·시각), 처리 과정에서 일시적으로 다루는 이메일·프로필 항목과 붙여넣은 AI 답변",
-    period: "요청 처리 즉시 삭제. 접속 기록은 Vercel의 로그 보관 기간이 지나면 자동 삭제",
-  },
-  {
-    name: "Plus Five Five, Inc. (Resend)",
-    contact: "support@resend.com",
-    work: "로그인 메일과 일일 메일 발송, 반송·스팸 신고 처리",
-    country: "미국",
-    when: "메일을 보낼 때, 암호화된 네트워크로 전송",
-    items: "이메일 주소, 메일 본문(추천 공고, 수신거부·프로필 링크), 발송 결과",
-    period: "발송 후 Resend의 기록 보관 기간이 지나면 삭제",
-  },
-] as const;
+const VENDORS = PRIVACY_VENDORS;
 
 function H2({ children }: { children: React.ReactNode }) {
   return <h2 className="mt-10 text-lg font-bold">{children}</h2>;
@@ -120,7 +94,7 @@ export default function PrivacyPage() {
           ["처리 근거", "서비스 이용계약 이행 등. AI 분석 원문만 이용자의 선택 동의로 처리"],
           ["보유 기간", "탈퇴할 때까지 (일부 기록은 1일~3개월)"],
           ["제3자 제공", "하지 않음"],
-          ["처리 위탁·국외 이전", "Supabase, Vercel, Resend (모두 미국 기업)"],
+          ["처리 위탁·국외 이전", `${VENDORS.map((v) => v.short).join(", ")} (모두 미국 기업)`],
           ["문의", contact],
         ]}
       />

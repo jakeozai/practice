@@ -19,8 +19,14 @@
 | 처음 상태 | 바로 발송 | **샌드박스**: 인증한 주소에만 보낼 수 있음. 해제 신청 후 승인돼야 구독자에게 보낼 수 있음 |
 
 ## 전환 순서
-**사용자가 할 일**은 1, 3, 4, 6이고, **Claude가 할 일**은 2, 5, 7이다.
+**사용자가 할 일**은 1, 3, 4, 6이고, **Claude가 할 일**은 0, 2, 5, 7이다.
 
+0. **처리방침에 Amazon Web Services 추가 (전환 30일 전)**
+   - 메일을 보내는 수탁자가 바뀌는 것은 처리방침 제16조의 "중요한 변경"이다. 시행 **30일 전에 공지하고 메일로도 안내**한다고 약속했다. 그래서 전환 목표(구독자 약 80명)보다 앞서, **구독자 약 50명일 때** 시작한다.
+   - `lib/privacy/vendors.ts`의 `SES_VENDOR`를 `PRIVACY_VENDORS`에 넣는다. 연락처는 AWS 개인정보 고지에서 다시 확인한다. Resend 행은 Resend 계정을 닫을 때까지 둔다(지난 발송 기록이 남아 있다).
+   - 처리방침의 버전·시행일(`POLICY_VERSION`)을 올리고, 변경 이력 표에 "메일 발송 수탁자 추가(Amazon Web Services: SES·SNS)"를 적는다. 시행일은 공지일로부터 30일 뒤다.
+   - 아침 메일 안내 상자로 구독자에게 알린다.
+   - **안전장치:** 처리방침에 Amazon Web Services가 없으면 `EMAIL_TRANSPORT=ses`로 바꿔도 메일이 나가지 않고 오류가 난다(`lib/env.ts`). 처리방침보다 먼저 SES로 보내는 일을 막기 위해서다. 시행일 전에 환경변수를 바꾸지 않는다.
 1. **AWS 계정 만들기** (카드 필요). 리전은 서울 `ap-northeast-2`.
 2. **도메인 인증** (SES 콘솔 → Identities → Create identity → Domain `duckjob.app`, Easy DKIM RSA 2048)
    - SES가 CNAME 3개(`<토큰>._domainkey`)를 준다. 값을 알려 주면 Vercel DNS에 추가한다.
@@ -34,7 +40,7 @@
    - SNS 토픽 `duckjob-ses-events`를 만들고 HTTPS 구독 `https://www.duckjob.app/api/webhooks/ses`를 건다.
    - SES Configuration set `duckjob-events`를 만들고, event destination을 SNS 토픽으로 정한다(Bounce, Complaint).
    - 구독 확인은 앱이 자동으로 한다.
-6. **Vercel 환경변수**를 넣고 재배포한다.
+6. **Vercel 환경변수**를 넣고 재배포한다. 0단계 처리방침의 시행일이 지난 뒤에 한다.
 
    | 이름 | 값 |
    |---|---|
