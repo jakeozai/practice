@@ -21,7 +21,7 @@
  * experience), the profile's own search terms (job_keywords) matched directly,
  * plus named tools (small), then pay, freshness and small penalties.
  */
-import { ENGLISH_LEVELS, type Profile } from "../profile/parse";
+import { ENGLISH_LEVELS, type AiLevel, type EducationLevel, type PayPreference, type Profile, type WantedWork, type WorkStatus } from "../profile/parse";
 import { residentsOnlyElsewhere } from "../eligibility";
 import { isBiddingGig } from "../jobs/format";
 import { isFullTime } from "../jobs/process";
@@ -93,18 +93,42 @@ const AI_CODING_LANGUAGES = ["js", "python"];
 const CRAFT_CATEGORIES = new Set(["dev", "design", "video", "motion_3d"]);
 
 /** Joining a company rather than taking a gig: founding roles, equity pay. */
-/** Roles only for enrolled students ("Student Ambassador", "대학생 대상"): profiles don't say who is one. */
+/** Roles only for enrolled students ("Student Ambassador", "대학생 대상"): only for profiles whose work_status says student. */
 const STUDENT_ONLY =
   /student\s+ambassador|campus\s+(?:ambassador|rep(?:resentative)?)|currently\s+enrolled|enrolled\s+students?\s+only|학생\s*앰버서더|캠퍼스\s*(?:앰버서더|대사)|(?:대학생|재학생)\s*(?:대상|만|한정|모집)/i;
 const EMPLOYMENT_ROLE = /founding\s+(?:engineer|developer|designer|member|team)|co-?founder|공동\s*창업|창립\s*(?:멤버|엔지니어|팀)|\bcto\b|equity[- ](?:only|based)|지분\s*(?:보상|으로)/i;
 
+/** Office document work in a profile (2026-11-16: the most common subscriber is an office worker). */
+const OFFICE_DOCS_PROFILE =
+  /엑셀|excel|스프레드시트|spreadsheet|구글\s*(?:시트|문서)|google\s*(?:sheets|docs)|파워\s*포인트|powerpoint|\bppt\b|보고서|기획서|제안서|문서\s*(?:작성|정리)|사무|경영\s*지원|총무|노션|notion/i;
+
 /** (제안값) A job in the person's own specialty outranks general work their profile also covers. */
 const SPECIALTY_BONUS = 1.5;
+/**
+ * (제안값) A match found only in the summary, not the title, says less about what the job is:
+ * a coding-evaluation job whose summary mentions translation isn't translation work, and an AI
+ * training job for "small business owners" isn't accounting work (2026-11-16 rules-only review).
+ */
+export const SUMMARY_ONLY_FACTOR = 0.7;
+/**
+ * (제안값) Expert AI-training work for someone with a specialty, whose title doesn't name it
+ * ("Small Business Owner" training for an accountant): ranked below the ones that do.
+ */
+const DOMAIN_NOT_IN_TITLE_PENALTY = 2;
 /** (제안값) Fixed-price budgets under this (USD) are too small to be worth a bid. */
 const TINY_BUDGET_USD = 50;
 
 export type ProfileSection = "field" | "notes" | "domain" | "keywords" | "skills" | "experience";
-export type ConceptHit = { id: string; label: string; weight: number; trigger: string; categories: string[]; section: ProfileSection };
+export type ConceptHit = {
+  id: string;
+  label: string;
+  weight: number;
+  trigger: string;
+  categories: string[];
+  section: ProfileSection;
+  /** Set on a job's hits: the match is in the job's title, not only its summary. */
+  inTitle?: boolean;
+};
 
 export type ProfileSignals = {
   langs: Set<string>;
@@ -115,6 +139,15 @@ export type ProfileSignals = {
   tools: string[];
   avoid: Set<string>;
   performer: boolean;
+  /** The profile does office document work (Excel, reports, slides): AI document tries suit them first. */
+  officeDocs: boolean;
+  // Structured items (2026-11-17), each used below.
+  workStatus: WorkStatus | null;
+  careerYears: number | null;
+  education: EducationLevel | null;
+  wantedWork: Set<WantedWork>;
+  payPreference: PayPreference | null;
+  aiLevel: AiLevel | null;
   /** Programming languages the profile shows (CODE_LANGUAGES ids). */
   code: Set<string>;
   weeklyHours: number | null;
@@ -155,6 +188,10 @@ export function buildSignals(profile: Profile): ProfileSignals {
     ...(profile.experience_summary_ko
       ? [{ text: profile.experience_summary_ko, weight: SECTION_WEIGHT.experience, cite: "clause" as const, section: "experience" as const }]
       : []),
+    // Structured items (2026-11-17): a role or industry counts like experience, a licence like expertise, AI tools like skills.
+    ...[profile.job_role, profile.industry].filter(Boolean).map((text) => ({ text, weight: SECTION_WEIGHT.experience, cite: "item" as const, section: "experience" as const })),
+    ...profile.licenses.map((text) => ({ text, weight: SECTION_WEIGHT.domain, cite: "item" as const, section: "domain" as const })),
+    ...profile.ai_tools.map((text) => ({ text, weight: SECTION_WEIGHT.skills, cite: "item" as const, section: "skills" as const })),
   ];
 
   const concepts = new Map<string, ConceptHit>();
@@ -173,15 +210,33 @@ export function buildSignals(profile: Profile): ProfileSignals {
     return re ? [{ re, hit: { id: `kw:${text.toLowerCase()}`, label: "검색어", weight: keywordWeight(i), trigger: text, categories: [], section: "keywords" as const } }] : [];
   });
 
-  const everything = [...profile.fields, ...profile.skills, ...profile.domain_expertise, ...profile.job_keywords, profile.notes_ko, profile.experience_summary_ko].join("\n");
+  const everything = [
+    ...profile.fields,
+    ...profile.skills,
+    ...profile.domain_expertise,
+    ...profile.job_keywords,
+    profile.notes_ko,
+    profile.experience_summary_ko,
+    profile.job_role,
+    profile.industry,
+    ...profile.licenses,
+    ...profile.ai_tools,
+  ].join("\n");
   return {
     langs,
     english,
     concepts,
     keywords,
-    tools: toolTokens(profile.skills),
+    tools: toolTokens([...profile.skills, ...profile.ai_tools]),
     avoid: new Set(AVOID_RULES.filter((r) => profile.avoid.some((a) => r.avoid.test(a))).map((r) => r.id)),
     performer: PERFORMER_PROFILE.test(everything),
+    officeDocs: OFFICE_DOCS_PROFILE.test(everything) || profile.wanted_work.includes("office"),
+    workStatus: profile.work_status,
+    careerYears: profile.career_years,
+    education: profile.education_level,
+    wantedWork: new Set(profile.wanted_work),
+    payPreference: profile.pay_preference,
+    aiLevel: profile.ai_level,
     code: AI_CODING.test(everything) ? new Set([...codeLanguages(everything), ...AI_CODING_LANGUAGES]) : codeLanguages(everything),
     weeklyHours: profile.weekly_hours,
     minHourlyUsd: profile.min_hourly_usd,
@@ -222,7 +277,13 @@ export function personalLimits(job: FitJob, sig: ProfileSignals): { ok: false; w
   if (isFullTime(text, job.hours_per_week_min)) return { ok: false, why: "fulltime" };
 
   if (EMPLOYMENT_ROLE.test(text)) return { ok: false, why: "fulltime" };
-  if (STUDENT_ONLY.test(text)) return { ok: false, why: "student" };
+  if (STUDENT_ONLY.test(text) && sig.workStatus !== "student") return { ok: false, why: "student" };
+
+  // What the posting requires and the profile says the person lacks (only when the profile says).
+  const years = requiredYears(text);
+  if (years !== null && sig.careerYears !== null && years > sig.careerYears) return { ok: false, why: `experience:${years}` };
+  const degree = requiredDegree([job.title, job.title_ko ?? "", ...job.summary_ko]);
+  if (degree && sig.education && EDUCATION_RANK[sig.education] < EDUCATION_RANK[degree]) return { ok: false, why: `degree:${degree}` };
 
   const named = [...namedLanguages(`${job.title}\n${job.title_ko ?? ""}`)];
   const foreign = [...new Set([...job.languages, ...named])].filter((l) => !sig.langs.has(l));
@@ -250,6 +311,44 @@ export function personalLimits(job: FitJob, sig: ProfileSignals): { ok: false; w
   return { ok: true, penalty };
 }
 
+const EDUCATION_RANK: Record<EducationLevel, number> = { high_school: 0, associate: 1, bachelor: 2, master: 3, doctorate: 4 };
+/** "3+ years of experience", "경력 5년 이상", "5년 이상 경력". */
+const YEARS_REQUIRED = [
+  /(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b[^.\n]{0,24}?\b(?:experience|exp)\b/gi,
+  /경력\s*(\d{1,2})\s*년\s*이상/g,
+  /(\d{1,2})\s*년\s*이상(?:의)?\s*(?:경력|경험|실무)/g,
+];
+/** Years a posting asks for (the most it names), or null. */
+export function requiredYears(text: string): number | null {
+  let most: number | null = null;
+  for (const re of YEARS_REQUIRED) {
+    for (const m of text.matchAll(re)) {
+      const n = Number(m[1]);
+      if (n > 0 && n <= 30) most = Math.max(most ?? 0, n);
+    }
+  }
+  return most;
+}
+const DEGREE_PREFERRED = /우대|선호|가산|preferred|a\s*plus|nice\s*to\s*have|bonus|ideally/i;
+const DEGREE_PATTERNS: [EducationLevel, RegExp][] = [
+  ["master", /master'?s|\bmsc\b|석사|석\s*[·/]?\s*박사|graduate\s*degree|대학원/i],
+  ["doctorate", /\bph\.?\s?d\b|doctorate|doctoral|박사/i],
+  ["bachelor", /bachelor|학사\s*(?:학위|이상)|대졸|university\s*degree|college\s*degree/i],
+];
+/** The lowest degree a posting requires (a "preferred" mention doesn't count), or null. */
+export function requiredDegree(lines: string[]): EducationLevel | null {
+  let lowest: EducationLevel | null = null;
+  for (const line of lines) {
+    if (!line || DEGREE_PREFERRED.test(line)) continue;
+    const hit = DEGREE_PATTERNS.find(([, re]) => re.test(line))?.[0];
+    if (hit && (lowest === null || EDUCATION_RANK[hit] < EDUCATION_RANK[lowest])) lowest = hit;
+  }
+  return lowest;
+}
+/** (제안값) Ranking boosts from what the person says they want. */
+const WANTED_WORK_BONUS = 0.5;
+const PAY_PREFERENCE_BONUS = 0.3;
+
 export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date()): Fit {
   const text = jobText(job);
   const limits = personalLimits(job, sig);
@@ -265,22 +364,25 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   // Software work counts only in a language the person uses (no Java trainer jobs for a Next.js developer).
   const jobCode = codeLanguages(text);
   const codeFits = jobCode.size === 0 || [...jobCode].some((l) => sig.code.has(l));
-  const hits = [
+  const found = [
     ...CONCEPTS.flatMap((c: Concept) => {
       const h = sig.concepts.get(c.id);
       if (!h || !c.job.test(text)) return [];
-      return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [h];
+      return CODE_CONCEPTS.has(c.id) && !codeFits ? [] : [{ hit: h, inTitle: c.job.test(title) }];
     }),
     // The profile's own search terms reach work the concept list doesn't name.
-    ...sig.keywords.filter((k) => k.re.test(text)).map((k) => k.hit),
+    ...sig.keywords.filter((k) => k.re.test(text)).map((k) => ({ hit: k.hit, inTitle: k.re.test(title) })),
   ]
     // In craft work a specialty only adds to a craft match.
-    .filter((h, _, all) => !(DOMAIN_CONCEPTS.has(h.id) && job.category && CRAFT_CATEGORIES.has(job.category) && !all.some((o) => !DOMAIN_CONCEPTS.has(o.id))))
+    .filter(({ hit: h }, _, all) => !(DOMAIN_CONCEPTS.has(h.id) && job.category && CRAFT_CATEGORIES.has(job.category) && !all.some((o) => !DOMAIN_CONCEPTS.has(o.hit.id))));
+  // Whether the job is related at all counts every match; how well it fits weighs the title more.
+  if (Math.max(0, ...found.map((f) => f.hit.weight)) < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
+  const hits = found
+    .map(({ hit, inTitle }) => (inTitle ? { ...hit, inTitle } : { ...hit, weight: Math.round(hit.weight * SUMMARY_ONLY_FACTOR * 100) / 100, inTitle }))
     .sort((a, b) => b.weight - a.weight);
-  const best = hits[0]?.weight ?? 0;
+  const best = hits[0].weight;
   const rest = hits.slice(1).reduce((sum, h) => sum + h.weight, 0);
   const relevance = best + Math.min(0.35 * rest, 3);
-  if (best < MIN_RELEVANCE) return { ok: false, why: "unrelated" };
 
   // Specialist work (AI training or review for experts) only in the person's own specialty:
   // a chemistry trainer job isn't for a generalist AI evaluator.
@@ -303,8 +405,8 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
 
   let bonus = 0;
   if (job.category && hits[0].categories.includes(job.category)) bonus += 0.5;
-  // The person's own specialty (nursing, accounting, law…) is the most specific fit there is.
-  if (hits.some((h) => DOMAIN_CONCEPTS.has(h.id))) bonus += SPECIALTY_BONUS;
+  // The person's own specialty (nursing, accounting, law…) named in the title is the most specific fit there is.
+  if (hits.some((h) => h.inTitle && DOMAIN_CONCEPTS.has(h.id))) bonus += SPECIALTY_BONUS;
   if (payUsd !== null) {
     if (job.pay_unit === "hour" && sig.minHourlyUsd !== null) bonus += payUsd >= sig.minHourlyUsd * 1.5 ? 1 : 0.5;
     else if (job.pay_unit === "hour") bonus += 0.5;
@@ -315,6 +417,17 @@ export function assessJob(job: FitJob, sig: ProfileSignals, now: Date = new Date
   if (ageHours <= 36) bonus += 1;
   else if (ageHours <= 96) bonus += 0.5;
   if (job.status === "pool") penalty += 1;
+  // Expert work (by category, or because the summary names the person's specialty) whose title names
+  // another line of work: "Small Business Owner AI trainer" mentions finance but is for business owners.
+  const specialtyInTitle = hits.some((h) => h.inTitle && DOMAIN_CONCEPTS.has(h.id));
+  const expertWork = job.category === "domain" || hits.some((h) => DOMAIN_CONCEPTS.has(h.id));
+  if (expertWork && !specialtyInTitle && [...sig.concepts.keys()].some((id) => DOMAIN_CONCEPTS.has(id))) {
+    penalty += DOMAIN_NOT_IN_TITLE_PENALTY;
+  }
+
+  if (job.category && sig.wantedWork.has(job.category as WantedWork)) bonus += WANTED_WORK_BONUS;
+  if (sig.payPreference === "hourly" && job.pay_unit === "hour") bonus += PAY_PREFERENCE_BONUS;
+  if (sig.payPreference === "project" && (job.pay_unit === "project" || job.pay_unit === "task")) bonus += PAY_PREFERENCE_BONUS;
 
   // Named tools confirm a match but never outweigh the order of the person's fields.
   const toolBonus = tools.length === 0 ? 0 : tools.length === 1 ? 1 : 1.5;
@@ -350,13 +463,22 @@ function shorten(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
 }
 
-/** Display name of a matched tool token ("next.js" → "Next.js"), taken from the profile's own spelling. */
+/** Display name of a matched tool ("after" → "After Effects"): the profile's own skill when short, else the word. */
 function toolLabel(token: string, skills: string[]): string {
   for (const s of skills) {
     const m = new RegExp(escapeRe(token), "i").exec(s);
-    if (m) return m[0];
+    if (m) return s.trim().length <= 20 ? s.trim() : m[0];
   }
   return token;
+}
+
+/** Profile wording for a quote: cut at a natural break (·, comma, bracket) before cutting mid-word. */
+export function quoteProfile(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  const head = t.slice(0, max);
+  const cut = Math.max(...["·", ",", "(", "/", "、"].map((c) => head.lastIndexOf(c)));
+  return cut >= 6 ? head.slice(0, cut).trim() : shorten(t, max);
 }
 
 export type PickNote = { reason: string; today: string };
@@ -366,12 +488,18 @@ export type PickNote = { reason: string; today: string };
  * didn't make). Cites the profile wording that matched.
  */
 export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Date()): PickNote {
-  const top = r.hits[0];
-  const tool = r.tools[0] ? ` · ${toolLabel(r.tools[0], profile.skills)} 그대로` : "";
+  // Cite what the job itself is about: a match in its title, and the craft (translation) over the
+  // specialty (medicine) when both are there.
+  const top = r.hits.find((h) => h.inTitle && !DOMAIN_CONCEPTS.has(h.id)) ?? r.hits.find((h) => h.inTitle) ?? r.hits[0];
+  const tool = r.tools[0] ? ` (${toolLabel(r.tools[0], profile.skills)} 사용)` : "";
+  // Worded so no particle depends on the quoted profile text ('그대로', '에', fixed '경험과').
+  const quote = quoteProfile(top.trigger, 26);
   const reason =
     top.section === "keywords"
-      ? shorten(`AI 분석의 검색어 ‘${shorten(top.trigger, 24)}’에 딱 맞는 일${tool}`, 80)
-      : shorten(`AI 분석의 ‘${shorten(top.trigger, 22)}’와 맞는 ${top.label} 일${tool}`, 80);
+      ? `내 분석의 검색어 ‘${quoteProfile(top.trigger, 24)}’에 맞는 일이에요${tool}`
+      : top.inTitle === false
+        ? `내 분석의 ‘${quote}’ 경험과 가까운 일이에요${tool}`
+        : `내 분석의 ‘${quote}’ 그대로 할 수 있는 ${top.label} 일이에요${tool}`;
 
   const ageHours = (now.getTime() - new Date(r.job.first_seen_at).getTime()) / 3_600_000;
   let today: string;
@@ -382,5 +510,5 @@ export function ruleNote(r: Ranked<FitJob>, profile: Profile, now: Date = new Da
   } else {
     today = "오늘 원문에서 조건 확인하고 바로 지원해 보세요";
   }
-  return { reason, today };
+  return { reason: shorten(reason, 90), today };
 }

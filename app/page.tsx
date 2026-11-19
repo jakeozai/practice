@@ -5,7 +5,7 @@ import { contactEmail } from "@/lib/brand";
 import { SubscribeForm } from "./subscribe-form";
 import { Reveal } from "./reveal";
 import { ScrollBackdrop } from "./scroll-backdrop";
-import { EXAMPLE_JOBS } from "@/lib/examples";
+import { EXAMPLE_JOBS, type ExampleRow } from "@/lib/examples";
 import "./landing.css";
 
 /**
@@ -74,6 +74,7 @@ const PROMISES: { title: ReactNode; text: string }[] = [
     ),
     text: "전 세계 공고를 살펴 한국에서 지원할 수 있고 최저시급 이상인 일감만 골라 한국어로 정리해요.",
   },
+  { title: "억지로 채우지 않아요", text: "꼭 맞는 일감이 적은 날은 그만큼만 보내요. 대신 매일 새 공고를 다시 살펴요." },
   { title: "모든 일감에 원문 링크", text: "지원은 원래 플랫폼에서 직접 해요." },
   {
     title: (
@@ -88,11 +89,23 @@ const PROMISES: { title: ReactNode; text: string }[] = [
 
 const FAQ = [
   { q: "정말 무료예요?", a: "네, 구독은 무료예요." },
+  {
+    q: "‘AI로 도전’ 일감은 뭐예요?",
+    a: "해 본 적은 없어도 AI 도구로 오늘 시안을 만들어 지원해 볼 만한 일이에요. 문서·엑셀 정리, 로고, 웹사이트 같은 일을 매일 2개씩, 맞춤 일감 3개 아래에 따로 보내요.",
+  },
   { q: "회사 다니면서도 할 수 있나요?", a: "AI로 몇 시간 안에 끝나는 일 위주라 퇴근 후나 주말에 하기 좋아요." },
   { q: "이력서 파일은 누가 만들어요?", a: "평소 쓰는 AI가 만들어요. 받은 한글·영문 이력서는 지원할 때 그대로 쓰면 돼요." },
   {
     q: "왜 해외 공고만 보내나요?",
     a: "AI로 하는 원격 일감은 해외에 훨씬 많아요. 영어로 흩어진 공고를 덕잡이 골라 한국어로 정리해 드려요.",
+  },
+  {
+    q: "추천이 마음에 안 들면요?",
+    a: "메일 맨 아래에서 오늘 일감이 어땠는지 피드백을 남길 수 있어요. 프로필에 더 넣고 싶은 내용은 평소 쓰는 AI에게 말해 다시 분석하면 돼요. 2주마다 다시 분석할 때가 됐다고 메일에서 알려 드려요.",
+  },
+  {
+    q: "제 정보는 어떻게 쓰이나요?",
+    a: "AI가 분석한 항목(잘하는 일, 쓰는 도구, 경력 연수 같은 것)만 저장해 일감을 고르는 데 써요. AI 답변 원문(이력서 포함)은 ‘기업 제안 받기(준비 중)’를 켠 경우에만 보관하고, 켜지 않아도 똑같이 쓸 수 있어요. 내 정보에서 언제든 끄거나 탈퇴할 수 있어요.",
   },
   { q: "영어를 잘 못해도 되나요?", a: "영어 지시문을 읽을 정도면 할 수 있는 일감이 많아요. 내 영어 수준에 맞는 일감만 골라 보내고, 지원할 땐 AI가 만든 영문 이력서를 쓰면 돼요." },
 ];
@@ -101,6 +114,55 @@ function AppIcon({ size }: { size: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- static SVG icon
     <img src="/brand/duckjob-appicon.svg" alt="" width={size} height={size} style={{ flex: "none", display: "block", width: size, height: size }} />
+  );
+}
+
+/** One labelled group of example rows in the hero mail (fits, then AI tries, like the real mail). */
+function ExampleGroup({ label, rows, start, tries = false }: { label: string; rows: ExampleRow[]; start: number; tries?: boolean }) {
+  return (
+    <>
+      <p
+        className="lp-rise"
+        style={{
+          ...delay(1000 + start * 110),
+          margin: start === 0 ? "10px 0 0" : "8px 0 0",
+          padding: start === 0 ? 0 : "10px 0 0",
+          borderTop: start === 0 ? undefined : "1px solid var(--paper-line)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+          fontWeight: 800,
+          color: tries ? accent : "var(--paper-muted)",
+        }}
+      >
+        {tries && <span aria-hidden="true">●</span>}
+        {label}
+      </p>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        {rows.map((j, i) => (
+          <li
+            key={j.title}
+            className="lp-rise"
+            style={{
+              ...delay(1000 + (start + i) * 110),
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              gap: 12,
+              padding: "9px 0",
+              borderBottom: i < rows.length - 1 ? "1px solid var(--paper-line)" : undefined,
+            }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 15, fontWeight: 600 }}>{j.title}</span>
+              <span style={{ display: "block", marginTop: 3, fontSize: 13, color: "var(--paper-muted)" }}>{j.meta}</span>
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap" }}>{j.pay}</span>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -229,7 +291,7 @@ export default function Home(props: PageProps<"/">) {
             <div aria-hidden="true" style={{ position: "absolute", left: 28, right: 28, bottom: -24, height: 60, borderRadius: 26, background: "var(--surface-3)" }} />
             <div aria-hidden="true" style={{ position: "absolute", left: 14, right: 14, bottom: -12, height: 60, borderRadius: 26, background: "var(--surface-2)" }} />
             <article
-              aria-label="예시 메일: 오늘 엄선한 해외 일감 5개"
+              aria-label="예시 메일: 오늘의 맞춤 일감 5개, 프로필에 맞는 3개와 AI로 도전해 볼 2개"
               className="lp-card"
               style={{ position: "relative", boxSizing: "border-box", padding: "18px 20px 8px", borderRadius: 26, background: "var(--paper)", color: "var(--paper-ink)" }}
             >
@@ -238,30 +300,9 @@ export default function Home(props: PageProps<"/">) {
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>duckjob</p>
                 <p style={{ margin: "0 0 0 auto", fontSize: 13, color: "var(--paper-muted)" }}>예시 · 오전 6:00</p>
               </div>
-              <p style={{ margin: "14px 0 4px", fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>오늘 엄선한 해외 일감 5개</p>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {EXAMPLE_JOBS.map((j, i) => (
-                  <li
-                    key={j.title}
-                    className="lp-rise"
-                    style={{
-                      ...delay(1000 + i * 110),
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "baseline",
-                      gap: 12,
-                      padding: "10px 0",
-                      borderBottom: i < EXAMPLE_JOBS.length - 1 ? "1px solid var(--paper-line)" : undefined,
-                    }}
-                  >
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 15, fontWeight: 600 }}>{j.title}</span>
-                      <span style={{ display: "block", marginTop: 3, fontSize: 13, color: "var(--paper-muted)" }}>{j.meta}</span>
-                    </span>
-                    <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap" }}>{j.pay}</span>
-                  </li>
-                ))}
-              </ul>
+              <p style={{ margin: "14px 0 0", fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>오늘의 맞춤 일감 5개</p>
+              <ExampleGroup label="내 프로필에 딱 맞는 3개" rows={EXAMPLE_JOBS.filter((j) => j.kind === "fit")} start={0} />
+              <ExampleGroup label="AI로 도전해 볼 2개" rows={EXAMPLE_JOBS.filter((j) => j.kind === "try")} start={3} tries />
             </article>
           </div>
         </div>
@@ -404,7 +445,7 @@ export default function Home(props: PageProps<"/">) {
               <rect x="4" y="11" width="16" height="10" rx="2" />
               <path d="M8 11V7a4 4 0 0 1 8 0v4" />
             </svg>
-            붙여넣은 내용은 공고를 고르는 데만 쓰고, 원문은 저장하지 않아요.
+            분석 항목만 저장해 공고를 고르는 데 써요. 원문 저장은 원할 때만 선택해요.
           </p>
 
           <DuckBubble>
@@ -442,7 +483,9 @@ export default function Home(props: PageProps<"/">) {
               </p>
               <h3 style={{ ...stepTitle, lineHeight: 1.4 }}>
                 매일 아침 6시,
-                <br />내 이력서에 맞춘 해외 공고 5개
+                <br />내 프로필에 맞춘 일감 3개와
+                <br />
+                <span style={{ color: accent }}>AI로 도전해 볼 일감 2개</span>
               </h3>
             </div>
           </DuckBubble>
@@ -551,6 +594,10 @@ export default function Home(props: PageProps<"/">) {
           {contact ? `문의 ${contact} · ` : ""}© 2026 duckjob
         </p>
         <p style={{ margin: 0, flexBasis: "100%", fontSize: 13 }}>
+          <Link href="/terms" style={{ color: "var(--muted)", textDecoration: "underline" }}>
+            이용약관
+          </Link>
+          <span style={{ margin: "0 8px" }}>·</span>
           <Link href="/privacy" style={{ color: "var(--muted)", textDecoration: "underline" }}>
             개인정보 처리방침
           </Link>

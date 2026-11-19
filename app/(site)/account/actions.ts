@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { appEnv, linkEnv } from "@/lib/env";
 import { claimLoginLink, composeAccountCodeEmail, generateAccountCode } from "@/lib/login-link";
 import { sendEmail } from "@/lib/email/send";
+import { applyRawChoice } from "@/lib/profile/raw";
 
 /** Stop or restart the daily mail (privacy policy §13: 처리정지). */
 export async function setDigest(formData: FormData) {
@@ -23,6 +24,32 @@ export async function setDigest(formData: FormData) {
     .neq("digest_status", "bounced");
   if (error) console.error("setDigest failed", error.message);
   redirect("/account?saved=1");
+}
+
+/** Turn on 기업 제안 받기 (the optional consent, lib/profile/consent.ts); the raw answer is kept from the next analysis. */
+export async function enableCompanyOffers() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/account");
+  try {
+    await applyRawChoice(createAdminClient(), user.id, { consent: true });
+  } catch (e) {
+    console.error("enableCompanyOffers failed", (e as Error).message);
+    redirect("/account?error=server");
+  }
+  redirect("/account?saved=offers_on");
+}
+
+/** Withdraw the optional consent to keep the raw AI answer: deletes what was kept (lib/profile/consent.ts). */
+export async function withdrawRawConsent() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/account");
+  try {
+    await applyRawChoice(createAdminClient(), user.id, { consent: false });
+  } catch (e) {
+    console.error("withdrawRawConsent failed", (e as Error).message);
+    redirect("/account?error=server");
+  }
+  redirect("/account?saved=offers_off");
 }
 
 /** Delete the account and everything tied to it (auth.users → on delete cascade). */

@@ -1,5 +1,5 @@
 /**
- * Signed tokens for links in emails (click tracking, feedback, unsubscribe).
+ * Signed tokens for links in emails (click tracking, feedback, unsubscribe, rating the mail).
  *
  * token = base64url(JSON payload) + "." + base64url(HMAC-SHA256(EMAIL_LINK_SECRET, payload part))
  *
@@ -9,7 +9,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-export const LINK_PURPOSES = ["click", "feedback", "unsub"] as const;
+export const LINK_PURPOSES = ["click", "feedback", "unsub", "rate"] as const;
 export type LinkPurpose = (typeof LINK_PURPOSES)[number];
 
 /** Link lifetime (spec §9: 30 days). */
@@ -19,6 +19,8 @@ const PayloadSchema = z.object({
   uid: z.uuid(),
   purpose: z.enum(LINK_PURPOSES),
   jobId: z.uuid().optional(),
+  /** Send date of the mail being rated ("rate" links), YYYY-MM-DD. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   /** Expiry, unix seconds. */
   exp: z.number().int().positive(),
 });
@@ -34,7 +36,7 @@ function hmac(secret: string, data: string): Buffer {
 }
 
 export function signLink(
-  input: { uid: string; purpose: LinkPurpose; jobId?: string },
+  input: { uid: string; purpose: LinkPurpose; jobId?: string; date?: string },
   secret: string,
   now: Date = new Date(),
 ): string {

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ProfileSchema } from "../profile/parse";
 import { buildSignals, rankForProfile } from "./fit";
-import { choosePicks, parsePick, parseThinking, pickMessage, ruleSubject, thinkingParam, type PickJob } from "./pick";
+import { choosePicks, parsePick, parseThinking, pickMessage, ruleSubject, subjectFocus, thinkingParam, type PickJob } from "./pick";
 import type { MessagesClient } from "../llm/extractJob";
 
 const NOW = new Date("2026-11-15T00:00:00Z");
@@ -194,7 +194,7 @@ test("AI stretches come after the profile fits, from their own list", async () =
   const down = await choosePicks(ranked, profile, { size: 3, now: NOW, client: null, stretch, stretchSize: 2 });
   assert.equal(down.jobIds.length, 5, "without a model the rules fill both lists");
   assert.deepEqual(down.jobIds.slice(3), ["x1", "x2"]);
-  assert.match(down.notes.x1.reason, /로고·그래픽 디자인/);
+  assert.match(down.notes.x1.reason, /^AI로 하는 법: /, "no profile link is made up when none is shared");
 });
 
 test("a subject in another form becomes the fixed sentence", async () => {
@@ -235,4 +235,22 @@ test("rule picks leave out a much weaker fit instead of filling the list", async
   assert.deepEqual(res.jobIds, ["x1", "x2"], "7.5 is under 80% of 10");
   const close = await choosePicks([r("y1", 8.75), r("y2", 8.5), r("y3", 7.1)], profile, { size: 3, now: NOW });
   assert.deepEqual(close.jobIds, ["y1", "y2", "y3"]);
+});
+
+test("subject names the first field briefly, the way the model did", () => {
+  const cases: [string, string][] = [
+    ["영상 편집", "영상 편집"],
+    ["로고 디자인", "로고 디자인"],
+    ["Claude Code로 만드는 모션그래픽 영상", "모션그래픽 영상"],
+    ["기업 교육·홍보 영상 편집", "기업 교육 영상 편집"],
+    ["회계·재무 전문 AI 답변 평가", "회계 AI 답변 평가"],
+    ["Python 데이터 스크래핑", "데이터 스크래핑"],
+    ["생성형 AI 영상·콘텐츠 제작", "생성형 AI 영상 제작"],
+    ["3D 제품 모델링·렌더링", "3D 제품 모델링"],
+    ["간호 지식 기반 의료 AI 답변 평가", "의료 AI 답변 평가"],
+    ["웹 앱 개발(바이브코딩)", "웹 앱 개발"],
+    ["영상 편집·후반작업", "영상 편집"],
+    ["블로그·SEO 글쓰기", "블로그 글쓰기"],
+  ];
+  for (const [field, want] of cases) assert.equal(subjectFocus(field), want, field);
 });

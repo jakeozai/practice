@@ -1,8 +1,10 @@
 /**
- * Thin wrapper around Resend with timeout, retry and an idempotency key.
+ * Thin wrapper around the mail service, with timeout and retry.
  *
- * EMAIL_TRANSPORT=file writes the rendered mail to .outbox/ instead of
- * sending, for local checks without a Resend account.
+ * EMAIL_TRANSPORT=resend (default) sends through Resend with an idempotency
+ * key; EMAIL_TRANSPORT=ses sends the same mail through Amazon SES
+ * (lib/email/ses.ts, docs/email/ses-switch.md); EMAIL_TRANSPORT=file writes
+ * the rendered mail to .outbox/ instead of sending, for local checks.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -10,6 +12,10 @@ import { Resend } from "resend";
 import { emailEnv } from "../env";
 import { SEND_MAX_ATTEMPTS, SEND_TIMEOUT_MS } from "./constants";
 import { contactEmail } from "../brand";
+import { EmailSendError } from "./errors";
+import { sendViaSes } from "./ses";
+
+export { EmailSendError };
 
 export type OutgoingEmail = {
   to: string;
@@ -20,17 +26,6 @@ export type OutgoingEmail = {
   /** Same key + same payload within 24h is delivered once by Resend. */
   idempotencyKey: string;
 };
-
-export class EmailSendError extends Error {
-  constructor(
-    message: string,
-    readonly code: string,
-    readonly retryable: boolean,
-  ) {
-    super(message);
-    this.name = "EmailSendError";
-  }
-}
 
 /** Resend error names worth retrying; everything else fails immediately. */
 const RETRYABLE = new Set(["rate_limit_exceeded", "concurrent_idempotent_requests", "internal_server_error", "application_error"]);
@@ -95,6 +90,17 @@ async function writeToOutbox(mail: OutgoingEmail, from: string): Promise<{ id: s
 export async function sendEmail(mail: OutgoingEmail): Promise<{ id: string }> {
   const env = emailEnv();
   if (env.EMAIL_TRANSPORT === "file") return writeToOutbox(mail, env.EMAIL_FROM);
+  if (env.EMAIL_TRANSPORT === "ses") {
+    // One call: the SDK retries throttling and server errors itself, and SES has no idempotency key.
+    return sendViaSes(mail, {
+      from: env.EMAIL_FROM,
+      replyTo: contactEmail(),
+      region: env.SES_REGION,
+      accessKeyId: env.SES_ACCESS_KEY_ID!,
+      secretAccessKey: env.SES_SECRET_ACCESS_KEY!,
+      configurationSet: env.SES_CONFIGURATION_SET ?? null,
+    });
+  }
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= SEND_MAX_ATTEMPTS; attempt++) {

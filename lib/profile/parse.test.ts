@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
+  ProfileSchema,
   parseProfileText,
   toProfileColumns,
   PROFILE_START,
@@ -160,4 +161,39 @@ test("search terms and portfolio are kept; template placeholders are dropped", (
   assert.deepEqual(r.profile.portfolio_ko, ["번역 샘플 3종"]);
   const old = parseProfileText(`<<AIJOB5_PROFILE_V1>>\n{"version":1,"fields":["영상 편집"]}\n<<END_AIJOB5_PROFILE>>`);
   assert.ok(old.ok && old.profile.job_keywords.length === 0, "profiles from before the new fields still parse");
+});
+
+test("structured items (2026-11-17): enums, numbers and lists are kept clean", () => {
+  const r = ProfileSchema.parse({
+    work_status: "Employed",
+    job_role: "경영지원",
+    industry: "제조",
+    career_years: "8",
+    education_level: "bachelor",
+    licenses: ["컴퓨터활용능력 1급", "컴퓨터활용능력 1급", ""],
+    ai_tools: ["ChatGPT", "Claude"],
+    ai_level: "daily",
+    wanted_work: ["office", "language", "astrology", "office"],
+    pay_preference: "hourly",
+  });
+  assert.equal(r.work_status, "employed");
+  assert.equal(r.career_years, 8);
+  assert.deepEqual(r.licenses, ["컴퓨터활용능력 1급"]);
+  assert.deepEqual(r.wanted_work, ["office", "language"]);
+  assert.equal(r.pay_preference, "hourly");
+});
+
+test("structured items left as the template become empty", () => {
+  const r = ProfileSchema.parse({
+    work_status: "employed|freelancer|self_employed|student|job_seeking|homemaker|other",
+    job_role: "지금(최근) 직무, 예: 경영지원",
+    licenses: ["자격증·면허 이름만"],
+    wanted_work: ["하고 싶은 일 종류(아래 코드)"],
+    ai_level: "beginner|daily|builder",
+  });
+  assert.equal(r.work_status, null);
+  assert.equal(r.job_role, "");
+  assert.deepEqual(r.licenses, []);
+  assert.deepEqual(r.wanted_work, []);
+  assert.equal(r.ai_level, null);
 });

@@ -77,17 +77,28 @@ export async function loadMatched(db: ServiceClient, userIds: string[]): Promise
 }
 
 async function recordSent(db: ServiceClient, userId: string, sendDate: string, jobIds: string[], messageId: string, pick?: StoredPick) {
-  const { error: mErr } = await db.from("matches").upsert(
-    jobIds.map((job_id, i) => ({
-      user_id: userId,
-      job_id,
-      send_date: sendDate,
-      rank: i + 1,
-      score: pick?.notes[job_id]?.score ?? 0,
-      reason_ko: pick?.notes[job_id]?.reason ?? null,
-    })),
-    { onConflict: "user_id,job_id", ignoreDuplicates: true },
-  );
+  const { data: inserted, error: mErr } = await db
+    .from("matches")
+    .upsert(
+      jobIds.map((job_id, i) => ({
+        user_id: userId,
+        job_id,
+        send_date: sendDate,
+        rank: i + 1,
+        score: pick?.notes[job_id]?.score ?? 0,
+        reason_ko: pick?.notes[job_id]?.reason ?? null,
+      })),
+      { onConflict: "user_id,job_id", ignoreDuplicates: true },
+    )
+    .select("job_id");
+  // Reaction data (0020, 2026-11-17): count each job once per person who got it, by how it was sent.
+  // Anonymous per-job numbers; a failure here never fails the send.
+  const fresh = (inserted ?? []).map((r) => r.job_id);
+  if (!mErr && fresh.length) {
+    const kinds = fresh.map((id) => pick?.notes[id]?.kind ?? "shared");
+    const { error } = await db.rpc("record_job_sends", { p_job_ids: fresh, p_kinds: kinds, p_send_date: sendDate });
+    if (error) console.error("record_job_sends failed", error.message);
+  }
   const { error: dErr } = await db.from("digest_sends").upsert(
     { user_id: userId, send_date: sendDate, status: "sent", job_count: jobIds.length, resend_message_id: messageId, error: null },
     { onConflict: "user_id,send_date" },
@@ -205,14 +216,13 @@ export async function sendDigest(
     let messageId: string;
     try {
       const pick = picks.get(recipient.user_id);
-      // Reason and first step only when the model wrote them; rule picks go out as a plain list
-      // (2026-11-16 user decision, PICK_WITH_MODEL).
+      // No reason line in the mail (2026-11-16 user decision); the first step for today only when the model wrote it.
       const written = pick?.method === "llm" ? pick : undefined;
       const mail = await composeDigestEmail({
         recipient,
         jobs: item.jobIds.map((id) => jobById.get(id)!),
         personal: Boolean(pick),
-        reasons: written ? new Map(item.jobIds.flatMap((id) => (written.notes[id] ? [[id, written.notes[id].reason] as const] : []))) : undefined,
+        fullCount: DIGEST_SIZE + STRETCH_SIZE,
         todays: written ? new Map(item.jobIds.flatMap((id) => (written.notes[id] ? [[id, written.notes[id].today] as const] : []))) : undefined,
         subject: pick?.subject ?? null,
         stretchIds: pick ? new Set(item.jobIds.filter((id) => pick.notes[id]?.kind === "stretch")) : undefined,

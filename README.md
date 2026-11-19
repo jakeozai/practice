@@ -82,7 +82,7 @@ AI잡5는 **AI가 필요한 단기 일감**(AI 학습·라벨링, 생성형 AI �
 
 - **채용 보드 API 15곳**(Greenhouse·Lever·Ashby·Recruitee): Invisible, Welo Data, RWS, TransPerfect 등 고용처의 공개 채용 API.
 - **국내 사람인 공식 Open API**(`saramin`): AI 키워드 × 단기 근무형태(계약직·아르바이트·파견·위촉·프리랜서·파트)로 검색. `SARAMIN_ACCESS_KEY`가 있어야 동작하고, 없으면 건너뜁니다. 이용 조건(이용자에게 대가를 받으면 안 됨)은 `docs/supply-check-2026-11-07.md` 참고.
-- **일감 플랫폼 페이지 3곳**(`page`): Mercor, OpenTrain AI, OneForma. 사이트 sitemap에서 일감 URL을 얻고, 새 페이지만 열어 schema.org `JobPosting` 데이터(지원 가능 국가·보수·게시일)를 읽습니다. robots.txt를 매번 확인하고, 요청 간격은 1초 이상입니다. 사이트 설정은 `lib/sources/pages.ts`의 `PAGE_SITES`.
+- **일감 플랫폼 페이지**(`page`): 지금은 OneForma만. Mercor·OpenTrain AI는 이용약관이 자동 수집을 금지해 2026-11-17에 멈췄다(`docs/legal/page-sources-terms-2026-11-17.md`, `PAGE_SITES`의 `blockedByTerms`). 사이트 sitemap에서 일감 URL을 얻고, 새 페이지만 열어 schema.org `JobPosting` 데이터(지원 가능 국가·보수·게시일)를 읽습니다. robots.txt를 매번 확인하고, 요청 간격은 1초 이상입니다. 사이트 설정은 `lib/sources/pages.ts`의 `PAGE_SITES`.
 
 ```bash
 npm run collect -- --dry-run   # DB 없이: 실제 API를 조회해 수집처별 공고 수만 보고

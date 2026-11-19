@@ -56,7 +56,19 @@ export type DailyFiveProps = {
   profileNudge?: "missing" | "stale" | null;
   /** Public contact (privacy policy §14); omitted until the service domain exists. */
   contactEmail: string | null;
+  /** 👍 😐 👎 links at the end (each opens /rate with that rating picked). Hidden when absent. */
+  rateUrls?: { good: string; soso: string; bad: string } | null;
+  /** A full mail's count (5): fewer gets a "오늘은 이게 최선이에요" note. */
+  fullCount?: number;
 };
+
+/** (2026-11-16 user decision) Shown when fewer jobs than a full mail fit: we don't fill the list with weak ones. */
+export function shortDayNote(count: number): { title: string; body: string } {
+  return {
+    title: `오늘은 ${count}개만 골랐어요`,
+    body: "꼭 맞는 일감만 보내려고 매일 새 공고를 샅샅이 살피고 있어요. 억지로 채우지 않았어요. 오늘은 이게 최선이에요!",
+  };
+}
 
 /** The shared mail's line (no profile); the composer adds the sun and the date (lib/digest/compose.tsx digestSubject). */
 export function dailyFiveLine(count: number): string {
@@ -151,6 +163,18 @@ const s = {
   boxText: { fontSize: 13, lineHeight: "21px", color: mailColor.inkSoft, margin: 0 },
   boxLink: { fontSize: 14, fontWeight: 800, color: mailColor.accent, textDecoration: "none" },
 
+  rateButton: {
+    display: "block",
+    textAlign: "center" as const,
+    backgroundColor: mailColor.paper,
+    color: mailColor.paperInk,
+    fontSize: 15,
+    fontWeight: 800,
+    borderRadius: 999,
+    padding: "11px 0",
+    textDecoration: "none",
+  },
+
   footer: { fontSize: 12, color: mailColor.muted, lineHeight: "19px", margin: "0 0 6px" },
   footerLink: { color: mailColor.muted, textDecoration: "underline" },
 } as const;
@@ -184,7 +208,6 @@ function JobCard({ job, index }: { job: DailyFiveJob; index: number }) {
         </tbody>
       </table>
 
-      {job.reason && <Text style={s.reason}>{job.reason}</Text>}
       {job.today && (
         <Text style={s.today}>
           <span style={s.todayDot}>●</span> <strong>오늘 할 일</strong> {job.today}
@@ -292,6 +315,13 @@ export default function DailyFive(props: DailyFiveProps) {
             {props.curation ?? "전 세계 공고 중 한국에서 할 수 있는 일감만 골라 한국어로 정리했어요."}
           </Text>
 
+          {jobs.length > 0 && jobs.length < (props.fullCount ?? 5) && (
+            <Section style={{ ...s.box, margin: "0 0 18px" }}>
+              <Text style={s.boxTitle}>{shortDayNote(jobs.length).title}</Text>
+              <Text style={s.boxText}>{shortDayNote(jobs.length).body}</Text>
+            </Section>
+          )}
+
           {jobs.length > 1 && <DayList jobs={jobs} title={title} iconUrl={props.iconUrl} brand={brand} />}
 
           {jobs.map((job, i) => (
@@ -328,7 +358,34 @@ export default function DailyFive(props: DailyFiveProps) {
             <Text style={s.boxTitle}>지원 전에 확인하세요</Text>
             <Text style={s.boxText}>· 지원 가능 국가와 마감은 원문 공고 기준이에요.</Text>
             <Text style={s.boxText}>· 돈을 먼저 내라거나 메신저로만 연락하자는 곳은 지원하지 마세요.</Text>
+            <Text style={s.boxText}>· 한국어 제목과 요약은 AI가 원문을 바탕으로 만들었어요. 원문과 다를 수 있으니 지원 전에 원문을 확인하세요.</Text>
           </Section>
+
+          {props.rateUrls && (
+            <Section style={{ ...s.box, padding: "20px 20px 18px" }}>
+              <Text style={s.boxTitle}>오늘 메일 어땠어요?</Text>
+              <Text style={{ ...s.boxText, margin: "0 0 14px" }}>누르면 한 줄 의견도 남길 수 있어요. 운영자가 직접 읽고 더 나은 추천에 반영해요.</Text>
+              <table role="presentation" cellPadding={0} cellSpacing={0} width="100%">
+                <tbody>
+                  <tr>
+                    {(
+                      [
+                        ["good", "👍 좋아요"],
+                        ["soso", "😐 쏘쏘"],
+                        ["bad", "👎 싫어요"],
+                      ] as const
+                    ).map(([key, label], i) => (
+                      <td key={key} width="33%" style={{ paddingLeft: i === 0 ? 0 : 4, paddingRight: i === 2 ? 0 : 4 }}>
+                        <Link href={props.rateUrls![key]} style={s.rateButton}>
+                          {label}
+                        </Link>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </Section>
+          )}
 
           {props.banners && <Img src={props.banners.blueHour} width="528" height="200" alt="내일 아침 6시" style={{ ...s.strip, margin: "28px 0 0" }} />}
           <Hr style={{ borderColor: mailColor.line, margin: "28px 0 16px" }} />
@@ -381,6 +438,7 @@ DailyFive.PreviewProps = {
   unsubscribeUrl: "http://localhost:3000/api/email/unsubscribe?t=preview",
   privacyUrl: "http://localhost:3000/privacy",
   contactEmail: null,
+  rateUrls: { good: "http://localhost:3000/rate?t=preview&r=good", soso: "http://localhost:3000/rate?t=preview&r=soso", bad: "http://localhost:3000/rate?t=preview&r=bad" },
   jobs: [
     {
       id: "1",

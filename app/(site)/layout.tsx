@@ -18,6 +18,10 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       </header>
       <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-10">{children}</main>
       <footer className="mx-auto w-full max-w-2xl border-t border-[var(--line)] px-5 pb-10 pt-6 text-xs leading-relaxed text-muted">
+        <Link href="/terms" className="font-semibold underline">
+          이용약관
+        </Link>
+        <span className="mx-2">·</span>
         <Link href="/privacy" className="font-semibold underline">
           개인정보 처리방침
         </Link>

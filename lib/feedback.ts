@@ -40,3 +40,28 @@ export function formToObject(form: FormData): Record<string, string> {
   }
   return out;
 }
+
+/**
+ * Rating a whole daily mail (2026-11-16 user decision): three buttons at the end
+ * of the mail open /rate with one preselected; the page POSTs to /api/rate with
+ * an optional comment. Stored in mail_feedback, one row per mail.
+ */
+export const MAIL_RATINGS = {
+  good: { emoji: "👍", label: "좋아요" },
+  soso: { emoji: "😐", label: "쏘쏘" },
+  bad: { emoji: "👎", label: "싫어요" },
+} as const;
+export type MailRating = keyof typeof MAIL_RATINGS;
+export const MAIL_RATING_KEYS = Object.keys(MAIL_RATINGS) as [MailRating, ...MailRating[]];
+
+/** (제안값) Longest comment kept (mail_feedback.comment allows 1000). */
+export const RATE_COMMENT_MAX = 1000;
+
+export const RateFormSchema = z.object({
+  rating: z.enum(MAIL_RATING_KEYS),
+  comment: z.string().trim().max(RATE_COMMENT_MAX).optional().default(""),
+});
+
+export function isMailRating(v: unknown): v is MailRating {
+  return typeof v === "string" && v in MAIL_RATINGS;
+}

@@ -87,6 +87,8 @@ export async function composeDigestEmail(input: {
   sendDate: string;
   appUrl: string;
   linkSecret: string;
+  /** A full mail's count; fewer gets the "오늘은 이게 최선이에요" note (default 5). */
+  fullCount?: number;
 }): Promise<OutgoingEmail> {
   const { recipient, jobs, reasons, todays, subject, stretchIds, stats, nudge, sendDate, appUrl, linkSecret } = input;
   const stretchCount = jobs.filter((j) => stretchIds?.has(j.id)).length;
@@ -96,6 +98,9 @@ export async function composeDigestEmail(input: {
   const uid = recipient.user_id;
 
   const unsubscribeUrl = `${appUrl}/api/email/unsubscribe?t=${signLink({ uid, purpose: "unsub" }, linkSecret, issuedAt)}`;
+  // One token per mail; the button only picks the preselected rating on /rate (nothing is saved on GET).
+  const rateToken = signLink({ uid, purpose: "rate", date: sendDate }, linkSecret, issuedAt);
+  const rateUrl = (r: "good" | "soso" | "bad") => `${appUrl}/rate?t=${rateToken}&r=${r}`;
 
   const cards: DailyFiveJob[] = jobs.map((job) => ({
     ...digestCard(
@@ -129,6 +134,8 @@ export async function composeDigestEmail(input: {
       privacyUrl={`${appUrl}/privacy`}
       contactEmail={contactEmail()}
       profileNudge={nudge ?? null}
+      rateUrls={{ good: rateUrl("good"), soso: rateUrl("soso"), bad: rateUrl("bad") }}
+      fullCount={input.fullCount ?? 5}
     />
   );
 

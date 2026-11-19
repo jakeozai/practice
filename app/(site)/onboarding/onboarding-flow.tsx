@@ -4,12 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { BRAND } from "@/lib/brand";
 import { ProfileSchema, type Profile } from "@/lib/profile/parse";
 import {
+  AI_LEVEL_OPTIONS,
+  EDUCATION_OPTIONS,
   ENGLISH_LEVEL_OPTIONS,
+  PAY_PREFERENCE_OPTIONS,
   PREFERRED_TIME_OPTIONS,
+  WANTED_WORK_OPTIONS,
+  WORK_STATUS_OPTIONS,
   fromDraft,
+  optionLabel,
   toDraft,
   type ProfileDraft,
 } from "@/lib/profile/draft";
+import { RAW_CONSENT } from "@/lib/profile/consent";
 import { AI_ASSISTANTS, assistantUrl } from "@/lib/profile/prefill";
 import { EXAMPLE_JOBS } from "@/lib/examples";
 
@@ -35,10 +42,16 @@ export function OnboardingFlow(props: {
   saved: Profile | null;
   /** "내일 아침 6시" */
   nextMail: string;
+  /** The optional consent to keep the raw AI answer, as given before. */
+  rawConsent: boolean;
 }) {
   const [step, setStep] = useState<Step>(props.saved ? "confirm" : "copy");
   const [profile, setProfile] = useState<Profile | null>(props.saved);
   const [isSaved, setIsSaved] = useState(Boolean(props.saved));
+  // The pasted answer stays in memory only until saving, and is sent only with the consent ticked.
+  const [raw, setRaw] = useState<string | null>(null);
+  const [consent, setConsent] = useState(props.rawConsent);
+  const rawChoice = { raw, consent, setConsent, clear: () => setRaw(null) };
   const skip = () => setStep("skipped");
 
   if (step === "copy") return <CopyStep prompt={props.prompt} onNext={() => setStep("ai")} onSkip={skip} />;
@@ -48,8 +61,9 @@ export function OnboardingFlow(props: {
       <PasteStep
         onBack={() => setStep("ai")}
         onSkip={skip}
-        onParsed={(p) => {
+        onParsed={(p, text) => {
           setProfile(p);
+          setRaw(text);
           setIsSaved(false);
           setStep("confirm");
         }}
@@ -61,6 +75,7 @@ export function OnboardingFlow(props: {
       <ConfirmCard
         profile={profile}
         isSaved={isSaved}
+        rawChoice={rawChoice}
         onSaved={() => {
           setIsSaved(true);
           setStep("done");
@@ -73,6 +88,7 @@ export function OnboardingFlow(props: {
     return (
       <EditForm
         base={profile}
+        rawChoice={rawChoice}
         onCancel={() => setStep("confirm")}
         onSaved={(p) => {
           setProfile(p);
@@ -233,7 +249,7 @@ function AiStep(props: { prompt: string; onBack: () => void; onNext: () => void;
 }
 
 // ── 3/3 paste the answer back ────────────────────────────────────────────
-function PasteStep(props: { onBack: () => void; onSkip: () => void; onParsed: (p: Profile) => void }) {
+function PasteStep(props: { onBack: () => void; onSkip: () => void; onParsed: (p: Profile, text: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const pasteRef = useRef<HTMLTextAreaElement>(null);
@@ -256,8 +272,8 @@ function PasteStep(props: { onBack: () => void; onSkip: () => void; onParsed: (p
         setError(data.message ?? "분석 결과를 읽지 못했어요. 다시 시도해 주세요.");
         return;
       }
-      if (pasteRef.current) pasteRef.current.value = ""; // the raw AI answer is not kept
-      props.onParsed(ProfileSchema.parse(data.profile));
+      if (pasteRef.current) pasteRef.current.value = ""; // kept in memory only; saved only with the optional consent
+      props.onParsed(ProfileSchema.parse(data.profile), text);
     } catch {
       setError("네트워크 오류예요. 다시 시도해 주세요.");
     } finally {
@@ -304,7 +320,7 @@ function PasteStep(props: { onBack: () => void; onSkip: () => void; onParsed: (p
           {error}
         </p>
       )}
-      <p className="text-xs text-muted">🔒 붙여넣은 내용은 공고를 고르는 데만 쓰고, 원문은 저장하지 않아요.</p>
+      <p className="text-xs text-muted">🔒 확인한 분석 항목만 저장해요. 원문은 다음 화면의 ‘기업 제안 받기’를 켠 경우에만 보관해요(선택).</p>
     </StepCard>
   );
 }
@@ -323,11 +339,16 @@ function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
     };
   }, []);
 
-  // Five rows always: this person's candidates first, then the landing page's examples.
-  const rows = [
-    ...(jobs ?? []).map((j) => ({ key: j.id, title: j.headline, meta: j.meta, pay: j.pay ?? "원문 확인" })),
-    ...EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay })),
-  ].slice(0, 5);
+  // Five rows always: this person's candidates first, then the landing page's examples. With a
+  // profile the mail is 3 fits + 2 AI tries (2026-11-16), so each group is filled on its own.
+  const real = (jobs ?? []).map((j) => ({ key: j.id, title: j.headline, meta: j.meta.replace(/^AI로 도전 · /, ""), pay: j.pay ?? "원문 확인", tryIt: j.stretch }));
+  const examples = EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay, tryIt: j.kind === "try" }));
+  const rows = personal
+    ? [
+        ...[...real.filter((r) => !r.tryIt), ...examples.filter((r) => !r.tryIt)].slice(0, 3),
+        ...[...real.filter((r) => r.tryIt), ...examples.filter((r) => r.tryIt)].slice(0, 2),
+      ]
+    : [...real, ...examples.map((r) => ({ ...r, tryIt: false }))].slice(0, 5);
 
   return (
     <div>
@@ -353,18 +374,24 @@ function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
         ) : (
           <ul>
             {rows.map((r, i) => (
-              <li
-                key={r.key}
-                className="flex items-baseline justify-between gap-3 py-2.5"
-                style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--paper-line)" : undefined }}
-              >
-                <span className="min-w-0">
-                  <span className="block text-[15px] font-semibold">{r.title}</span>
-                  <span className="mt-0.5 block text-[13px]" style={{ color: "var(--paper-muted)" }}>
-                    {r.meta}
+              <li key={r.key} style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--paper-line)" : undefined }}>
+                {r.tryIt && !rows[i - 1]?.tryIt && (
+                  <p className="flex items-center gap-1.5 pt-2.5 text-xs font-extrabold" style={{ color: "var(--accent)" }}>
+                    <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+                      AI로 도전
+                    </span>
+                    AI로 도전해 볼 {rows.filter((x) => x.tryIt).length}개
+                  </p>
+                )}
+                <div className="flex items-baseline justify-between gap-3 py-2.5">
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold">{r.title}</span>
+                    <span className="mt-0.5 block text-[13px]" style={{ color: "var(--paper-muted)" }}>
+                      {r.meta}
+                    </span>
                   </span>
-                </span>
-                <span className="whitespace-nowrap text-[15px] font-extrabold">{r.pay}</span>
+                  <span className="whitespace-nowrap text-[15px] font-extrabold">{r.pay}</span>
+                </div>
               </li>
             ))}
           </ul>
@@ -404,9 +431,75 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 const orDash = (v: string | null) => v ?? <span className="text-muted">—</span>;
 
+type RawChoiceProps = { raw: string | null; consent: boolean; setConsent: (v: boolean) => void; clear: () => void };
+
+/** Body for /api/profile/save: the raw answer only while the optional consent is ticked. */
+function saveBody(profile: unknown, c: RawChoiceProps) {
+  return JSON.stringify({ profile, raw: c.consent ? c.raw : null, rawConsent: c.consent });
+}
+
+/**
+ * "기업이 먼저 일감을 제안해요 (준비 중) [켜기]": the optional consent shown as the benefit it is
+ * (lib/profile/consent.ts). Off unless switched on; what it keeps is said right under it, the four
+ * notices are under 자세히 보기.
+ */
+function CompanyOffersSwitch({ c }: { c: RawChoiceProps }) {
+  return (
+    <div className="rounded-2xl bg-[var(--surface-2)] px-4 py-4">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold text-[var(--ink)]">
+            {RAW_CONSENT.benefit}
+            <span className="ml-2 rounded-full border border-[var(--line-2)] px-2 py-0.5 align-middle text-[11px] font-semibold text-muted">{RAW_CONSENT.badge}</span>
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">{RAW_CONSENT.pitch}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={c.consent}
+          aria-label={RAW_CONSENT.title}
+          onClick={() => c.setConsent(!c.consent)}
+          className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            c.consent ? "bg-[var(--accent)] text-[var(--on-accent)]" : "border-2 border-[var(--accent)] text-[var(--accent)]"
+          }`}
+        >
+          {c.consent ? "켜짐 ✓" : "켜기"}
+        </button>
+      </div>
+      <details className="mt-3 text-xs text-muted">
+        <summary className="cursor-pointer">자세히 보기 · {RAW_CONSENT.title}</summary>
+        <dl className="mt-2 space-y-1">
+          <div>
+            <dt className="inline font-semibold">수집 항목: </dt>
+            <dd className="inline">{RAW_CONSENT.items}</dd>
+          </div>
+          <div>
+            <dt className="inline font-semibold">이용 목적: </dt>
+            <dd className="inline">{RAW_CONSENT.purpose}</dd>
+          </div>
+          <div>
+            <dt className="inline font-semibold">보유 기간: </dt>
+            <dd className="inline">{RAW_CONSENT.retention}</dd>
+          </div>
+          <div>
+            <dt className="inline font-semibold">거부할 권리: </dt>
+            <dd className="inline">{RAW_CONSENT.refusal}</dd>
+          </div>
+        </dl>
+        <p className="mt-2">{RAW_CONSENT.sharing}</p>
+        <a href="/privacy" className="mt-2 inline-block underline">
+          개인정보 처리방침
+        </a>
+      </details>
+    </div>
+  );
+}
+
 function ConfirmCard(props: {
   profile: Profile;
   isSaved: boolean;
+  rawChoice: RawChoiceProps;
   onSaved: () => void;
   onEdit: () => void;
 }) {
@@ -422,13 +515,14 @@ function ConfirmCard(props: {
       const res = await fetch("/api/profile/save", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profile: p }),
+        body: saveBody(p, props.rawChoice),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.message ?? "저장하지 못했어요.");
         return;
       }
+      props.rawChoice.clear();
       props.onSaved();
     } catch {
       setError("네트워크 오류예요. 다시 시도해 주세요.");
@@ -461,8 +555,29 @@ function ConfirmCard(props: {
           <Row label="피하고 싶은 일">
             <Chips items={p.avoid} />
           </Row>
+          <Row label="지금 하는 일">
+            {orDash(
+              [optionLabel(WORK_STATUS_OPTIONS, p.work_status), p.job_role, p.industry, p.career_years !== null ? `경력 ${p.career_years}년` : null]
+                .filter(Boolean)
+                .join(" · ") || null,
+            )}
+          </Row>
+          <Row label="학력·자격">
+            <Chips items={[optionLabel(EDUCATION_OPTIONS, p.education_level), ...p.licenses].filter((x): x is string => Boolean(x))} />
+          </Row>
+          <Row label="AI 활용">
+            <Chips items={[optionLabel(AI_LEVEL_OPTIONS, p.ai_level), ...p.ai_tools].filter((x): x is string => Boolean(x))} />
+          </Row>
+          <Row label="하고 싶은 일">
+            <Chips items={p.wanted_work.map((w) => optionLabel(WANTED_WORK_OPTIONS, w)).filter((x): x is string => Boolean(x))} />
+          </Row>
+          <Row label="선호 보수">{orDash(optionLabel(PAY_PREFERENCE_OPTIONS, p.pay_preference))}</Row>
         </dl>
-        <p className="mt-3 text-xs text-muted">빈 칸은 그대로 둬도 돼요. 저장하면 이 항목만 보관하고, 붙여넣은 원문은 저장하지 않아요.</p>
+        <p className="mt-3 text-xs text-muted">빈 칸은 그대로 둬도 돼요. 위 항목은 일감을 고르는 데 써요(학교·회사 이름은 저장하지 않아요).</p>
+
+        <div className="mt-4">
+          <CompanyOffersSwitch c={props.rawChoice} />
+        </div>
 
         {error && (
           <p className="mt-4 alert-error" role="alert">
@@ -483,7 +598,7 @@ function ConfirmCard(props: {
 }
 
 // ── optional: edit ───────────────────────────────────────────────────────
-function EditForm(props: { base: Profile; onCancel: () => void; onSaved: (p: Profile) => void }) {
+function EditForm(props: { base: Profile; rawChoice: RawChoiceProps; onCancel: () => void; onSaved: (p: Profile) => void }) {
   const [draft, setDraft] = useState<ProfileDraft>(() => toDraft(props.base));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -497,13 +612,14 @@ function EditForm(props: { base: Profile; onCancel: () => void; onSaved: (p: Pro
       const res = await fetch("/api/profile/save", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profile: raw }),
+        body: saveBody(raw, props.rawChoice),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.message ?? "저장하지 못했어요.");
         return;
       }
+      props.rawChoice.clear();
       props.onSaved(ProfileSchema.parse(raw));
     } catch {
       setError("네트워크 오류예요. 다시 시도해 주세요.");
@@ -597,7 +713,88 @@ function EditForm(props: { base: Profile; onCancel: () => void; onSaved: (p: Pro
         <Field label="피하고 싶은 일" htmlFor="avoid" wide>
           <input id="avoid" value={draft.avoid} onChange={(e) => set("avoid", e.target.value)} className={input} />
         </Field>
+        <Field label="지금 상태" htmlFor="workStatus">
+          <select id="workStatus" value={draft.workStatus} onChange={(e) => set("workStatus", e.target.value as ProfileDraft["workStatus"])} className={input}>
+            <option value="">선택 안 함</option>
+            {WORK_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="경력 연수" htmlFor="careerYears">
+          <input
+            id="careerYears"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={50}
+            value={draft.careerYears}
+            onChange={(e) => set("careerYears", e.target.value)}
+            className={input}
+          />
+        </Field>
+        <Field label="직무 (회사 이름 빼고)" htmlFor="jobRole">
+          <input id="jobRole" value={draft.jobRole} maxLength={40} onChange={(e) => set("jobRole", e.target.value)} placeholder="예: 경영지원" className={input} />
+        </Field>
+        <Field label="업종" htmlFor="industry">
+          <input id="industry" value={draft.industry} maxLength={40} onChange={(e) => set("industry", e.target.value)} placeholder="예: 제조" className={input} />
+        </Field>
+        <Field label="최종 학력 (학교 이름 빼고)" htmlFor="education">
+          <select id="education" value={draft.education} onChange={(e) => set("education", e.target.value as ProfileDraft["education"])} className={input}>
+            <option value="">선택 안 함</option>
+            {EDUCATION_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="AI 활용 수준" htmlFor="aiLevel">
+          <select id="aiLevel" value={draft.aiLevel} onChange={(e) => set("aiLevel", e.target.value as ProfileDraft["aiLevel"])} className={input}>
+            <option value="">선택 안 함</option>
+            {AI_LEVEL_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="자격증·면허 (이름만)" htmlFor="licenses" wide>
+          <input id="licenses" value={draft.licenses} onChange={(e) => set("licenses", e.target.value)} className={input} />
+        </Field>
+        <Field label="자주 쓰는 AI 도구" htmlFor="aiTools" wide>
+          <input id="aiTools" value={draft.aiTools} onChange={(e) => set("aiTools", e.target.value)} placeholder="예: ChatGPT, Claude" className={input} />
+        </Field>
+        <fieldset className="sm:col-span-2">
+          <legend className="mb-1 block text-sm font-medium text-[var(--ink)]">하고 싶은 일</legend>
+          <div className="flex flex-wrap gap-2">
+            {WANTED_WORK_OPTIONS.map((o) => (
+              <label key={o.value} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--line-2)] px-3 py-1 text-sm has-[:checked]:border-[var(--accent)]">
+                <input
+                  type="checkbox"
+                  className="accent-[var(--accent)]"
+                  checked={draft.wantedWork.includes(o.value)}
+                  onChange={(e) => set("wantedWork", e.target.checked ? [...draft.wantedWork, o.value] : draft.wantedWork.filter((w) => w !== o.value))}
+                />
+                {o.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <Field label="선호 보수" htmlFor="payPreference">
+          <select id="payPreference" value={draft.payPreference} onChange={(e) => set("payPreference", e.target.value as ProfileDraft["payPreference"])} className={input}>
+            <option value="">선택 안 함</option>
+            {PAY_PREFERENCE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
+      <CompanyOffersSwitch c={props.rawChoice} />
       {error && (
         <p className="alert-error" role="alert">
           {error}

@@ -3,7 +3,7 @@
  * 프로필 블록을 꺼내 검증한다.
  *
  * 원칙
- * - 붙여넣은 원문은 저장하지 않는다. 이 모듈이 돌려주는 Profile만 저장한다.
+ * - 붙여넣은 원문은 (선택) 동의한 경우에만 lib/profile/raw.ts가 저장한다. 그 밖에는 이 모듈이 돌려주는 Profile만 저장한다.
  * - 원문은 데이터다. LLM 프롬프트에 넣지 않는다.
  * - 정해진 필드 밖의 값은 버리고, 길이·개수를 자른다.
  */
@@ -18,6 +18,23 @@ export type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
 
 export const PREFERRED_TIMES = ["morning", "daytime", "evening", "night", "any"] as const;
 export type PreferredTime = (typeof PREFERRED_TIMES)[number];
+
+/**
+ * Structured items added 2026-11-17 (user decision: keep as many structured items as the service
+ * can use without consent, for statistics later). Each one is used in matching (lib/match/fit.ts),
+ * which is what makes it necessary for the service (개인정보 보호법 제15조 제1항 제4호).
+ */
+export const WORK_STATUSES = ["employed", "freelancer", "self_employed", "student", "job_seeking", "homemaker", "other"] as const;
+export type WorkStatus = (typeof WORK_STATUSES)[number];
+export const EDUCATION_LEVELS = ["high_school", "associate", "bachelor", "master", "doctorate"] as const;
+export type EducationLevel = (typeof EDUCATION_LEVELS)[number];
+export const AI_LEVELS = ["beginner", "daily", "builder"] as const;
+export type AiLevel = (typeof AI_LEVELS)[number];
+/** Job categories (lib/jobs/categories.ts, without "other") plus office document work. */
+export const WANTED_WORK = ["language", "domain", "labeling", "video", "design", "motion_3d", "dev", "writing", "office"] as const;
+export type WantedWork = (typeof WANTED_WORK)[number];
+export const PAY_PREFERENCES = ["hourly", "project", "any"] as const;
+export type PayPreference = (typeof PAY_PREFERENCES)[number];
 
 /** 프롬프트 템플릿의 자리표시자. AI가 그대로 두면 빈 값으로 본다. */
 const PLACEHOLDERS = new Set([
@@ -37,6 +54,12 @@ const PLACEHOLDERS = new Set([
   "보여줄 수 있는 개인 작업물·채널·앱, 최대 5개",
   "하기 싫은 일, 예: 음성 녹음, 얼굴 촬영",
   "덕잡이 먼저 추천하면 좋을 일과 이유 1~2문장",
+  // Structured items (2026-11-17).
+  "지금(최근) 직무, 예: 경영지원",
+  "업종, 예: 제조",
+  "자격증·면허 이름만",
+  "자주 쓰는 AI 도구",
+  "하고 싶은 일 종류(아래 코드)",
 ]);
 
 /** 템플릿을 그대로 붙여넣었는지 판별하는 표지 */
@@ -75,6 +98,19 @@ function pickEnum<T extends readonly string[]>(values: T, v: unknown): T[number]
   const s = v.trim().toLowerCase();
   return (values as readonly string[]).includes(s) ? (s as T[number]) : null;
 }
+
+const enumField = <T extends readonly string[]>(values: T) => z.unknown().optional().transform((v) => pickEnum(values, v));
+
+const enumListField = <T extends readonly string[]>(values: T) =>
+  z.unknown().optional().transform((v): T[number][] => {
+    if (!Array.isArray(v)) return [];
+    const out: T[number][] = [];
+    for (const item of v) {
+      const e = pickEnum(values, item);
+      if (e && !out.includes(e)) out.push(e);
+    }
+    return out;
+  });
 
 const numberField = (min: number, max: number) =>
   z.unknown().optional().transform((v): number | null => {
@@ -119,6 +155,27 @@ export const ProfileSchema = z.object({
   job_keywords: listField(15, 40),
   /** Personal work the person can attach when applying (no in-house material). Added 2026-11-14. */
   portfolio_ko: listField(5, 80),
+  // ── Structured items (2026-11-17); see WORK_STATUSES above for why each is kept ──
+  /** Student-only roles are offered to students. */
+  work_status: enumField(WORK_STATUSES),
+  /** Current or latest role ("경영지원"): matched like experience. No employer names. */
+  job_role: textField(40),
+  /** Industry ("제조", "병원"): matched like experience. */
+  industry: textField(40),
+  /** Years in the person's fields: jobs asking for more are left out. */
+  career_years: numberField(0, 50),
+  /** Highest degree level, no school names: master's/PhD jobs need it. */
+  education_level: enumField(EDUCATION_LEVELS),
+  /** Licences and certificates by name, never numbers: credential jobs. */
+  licenses: listField(5, 40),
+  /** AI tools used often: tool matching and AI tries. */
+  ai_tools: listField(10, 40),
+  /** How far the person goes with AI: which AI tries suit them. */
+  ai_level: enumField(AI_LEVELS),
+  /** Kinds of work wanted: a small ranking boost. */
+  wanted_work: enumListField(WANTED_WORK),
+  /** Hourly or per-project pay preferred: a small ranking boost. */
+  pay_preference: enumField(PAY_PREFERENCES),
 });
 
 export type Profile = z.output<typeof ProfileSchema>;

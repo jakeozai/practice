@@ -19,7 +19,7 @@ import { CATEGORY_CHIP_KO, ENGLISH_LEVEL_LABELS_KO, formatPay, isBiddingGig } fr
 import { languageNameKo } from "../jobs/language";
 import { firstText } from "../llm/client";
 import { isServiceFailure, type MessagesClient } from "../llm/extractJob";
-import { ruleNote, type FitJob, type PickNote, type Ranked } from "./fit";
+import { quoteProfile, ruleNote, type FitJob, type PickNote, type Ranked } from "./fit";
 import type { StretchRanked } from "./stretch";
 
 /**
@@ -190,15 +190,41 @@ export function parsePick(text: string, poolSize: number, size: number, stretchP
 
 /** Reason and first step for a stretch the model didn't write. */
 export function ruleStretchNote(r: StretchRanked<PickJob>): PickNote {
+  // A link to the profile only when the job shares a concept with it; never a made-up one.
+  const howTo = `AI로 하는 법: ${r.aiHow}`;
   return {
-    reason: trimTo(`${r.kindLabel}: ${r.aiHow}로 도전해 볼 만해요`, REASON_MAX),
+    reason: trimTo(r.link ? `내 분석의 ‘${quoteProfile(r.link, 18)}’에서 이어지는 일 · ${howTo}` : howTo, REASON_MAX),
     today: isBiddingGig(r.job.url) ? "오늘 1시간: AI로 시안 1개를 만들어 첨부하고 견적 입찰해요" : "오늘 1시간: AI로 샘플 1개를 만들어 지원서에 붙여 제출해요",
   };
 }
 
+/** (제안값) Longest field name in a subject ("영상 편집", "3D 제품 모델링"); the model kept to 2–12 characters. */
+export const SUBJECT_FOCUS_MAX = 12;
+
+/**
+ * The person's first field as a short name for the subject, without a model:
+ * "Claude Code로 만드는 모션그래픽 영상" → "모션그래픽 영상", "기업 교육·홍보 영상 편집" → "기업 교육 영상 편집",
+ * "회계·재무 전문 AI 답변 평가" → "회계 AI 답변 평가", "Python 데이터 스크래핑" → "데이터 스크래핑".
+ */
+export function subjectFocus(field: string): string {
+  // "A·B" keeps the first of the pair ("영상 편집·후반작업" → "영상 편집"), as the model did.
+  let f = field.replace(/\([^)]*\)/g, " ").replace(/·[^\s·]+/g, "").replace(/\s+/g, " ").trim();
+  const fits = (t: string) => t.length <= SUBJECT_FOCUS_MAX;
+  if (fits(f)) return f;
+  // "…로 만드는 X", "…을 활용한 X", "… 기반 X": X is the work.
+  const tail = f.replace(/^.*?(?:(?:으로|로)\s*(?:만드는|하는|활용한)|(?:을|를)\s*활용한|\s기반)\s+/, "");
+  if (tail !== f && tail.length >= 4) f = tail;
+  if (fits(f)) return f;
+  f = f.replace(/\s(?:전문|중심|위주)(?=\s)/g, "");
+  // Leading words go first: the work is named last in Korean ("Python 데이터 스크래핑").
+  const words = f.split(" ");
+  while (words.length > 1 && !fits(words.join(" "))) words.shift();
+  return trimTo(words.join(" "), SUBJECT_FOCUS_MAX);
+}
+
 /** Subject line when the model didn't write one: conversational, the whole mail's count. */
 export function ruleSubject(profile: Profile, count: number): string {
-  const focus = profile.fields[0]?.split(/[·(,]/)[0]?.trim();
+  const focus = profile.fields[0] ? subjectFocus(profile.fields[0]) : "";
   return focus ? trimTo(`${focus} 실력으로 해볼 만한 일감 ${count}개 가져왔어요`, SUBJECT_MAX) : `오늘 해볼 만한 일감 ${count}개 가져왔어요`;
 }
 

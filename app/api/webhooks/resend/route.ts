@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { applyDeliveryAction } from "@/lib/email/delivery";
 import { deliveryAction, webhookSecret } from "@/lib/email/webhook";
 
 /**
@@ -34,13 +34,9 @@ export async function POST(request: Request) {
   console.log(`resend webhook: ${event.type} → ${action?.status ?? "ignored"}`);
   if (!action) return NextResponse.json({ ok: true, ignored: event.type });
 
-  const { error } = await createAdminClient()
-    .from("profiles")
-    .update({ digest_status: action.status, updated_at: new Date().toISOString() })
-    .in("email", action.emails)
-    .in("digest_status", action.status === "bounced" ? ["active", "paused", "unsubscribed"] : ["active", "paused"]);
+  const { error } = await applyDeliveryAction(action);
   if (error) {
-    console.error("resend webhook update failed", error.message);
+    console.error("resend webhook update failed", error);
     return NextResponse.json({ ok: false }, { status: 500 }); // Resend retries
   }
   return NextResponse.json({ ok: true, status: action.status });

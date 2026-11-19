@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { ProfileSchema, toProfileColumns } from "@/lib/profile/parse";
+import { MAX_INPUT_CHARS, ProfileSchema, toProfileColumns } from "@/lib/profile/parse";
+import { applyRawChoice } from "@/lib/profile/raw";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureProfile } from "@/lib/profile/store";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
-const Body = z.object({ profile: z.record(z.string(), z.unknown()) });
+const Body = z.object({
+  profile: z.record(z.string(), z.unknown()),
+  /** The pasted AI answer, sent only while the optional consent box is ticked (lib/profile/consent.ts). */
+  raw: z.string().max(MAX_INPUT_CHARS).nullable().optional(),
+  /** The optional consent box; absent from older pages = no change. */
+  rawConsent: z.boolean().optional(),
+});
 
-/** Re-validates the confirmed profile on the server and saves only the parsed fields. */
+/** Re-validates the confirmed profile on the server and saves the parsed fields; the raw answer only with consent. */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ ok: false, message: "로그인이 필요해요." }, { status: 401 });
@@ -39,6 +47,16 @@ export async function POST(request: Request) {
   if (error) {
     console.error("profile save failed", error.code, error.message);
     return NextResponse.json({ ok: false, message: "저장하지 못했어요. 잠시 후 다시 시도해 주세요." }, { status: 500 });
+  }
+
+  // The raw AI answer only with the optional consent; unticking it withdraws (deletes what was kept).
+  if (body.data.rawConsent !== undefined) {
+    try {
+      await applyRawChoice(createAdminClient(), user.id, { consent: body.data.rawConsent, raw: body.data.rawConsent ? body.data.raw : null });
+    } catch (e) {
+      console.error("raw choice failed", (e as Error).message); // never the text itself
+      return NextResponse.json({ ok: false, message: "분석 결과는 저장했지만 원문 동의를 처리하지 못했어요. 다시 시도해 주세요." }, { status: 500 });
+    }
   }
   return NextResponse.json({ ok: true });
 }
