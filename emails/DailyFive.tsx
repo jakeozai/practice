@@ -364,7 +364,7 @@ export default function DailyFive(props: DailyFiveProps) {
           {props.rateUrls && (
             <Section style={{ ...s.box, padding: "20px 20px 18px" }}>
               <Text style={s.boxTitle}>오늘 메일 어땠어요?</Text>
-              <Text style={{ ...s.boxText, margin: "0 0 14px" }}>누르면 한 줄 의견도 남길 수 있어요. 운영자가 직접 읽고 더 나은 추천에 반영해요.</Text>
+              <Text style={{ ...s.boxText, margin: "0 0 14px" }}>누르면 한 줄 의견도 남길 수 있어요. 운영자가 직접 읽고 일감을 고르는 데 반영해요.</Text>
               <table role="presentation" cellPadding={0} cellSpacing={0} width="100%">
                 <tbody>
                   <tr>

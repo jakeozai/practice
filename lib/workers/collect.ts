@@ -21,7 +21,7 @@ import { adminEmails } from "../env";
 import { fetchJson, fetchText, SourceFetchError } from "../sources/http";
 import { PAGE_FETCH_CAP, PAGE_FETCH_INTERVAL_MS, PAGE_SITES, listJobUrls, loadRobots, parseJobPage } from "../sources/pages";
 import { parseSource, sourceUrl } from "../sources/adapters";
-import { FREELANCER_PRESETS, freelancerUrl, parseFreelancer, selectProjects, toPosting } from "../sources/freelancer";
+import { FREELANCER_PRESETS, FREELANCER_RETIRED, freelancerUrl, parseFreelancer, selectProjects, toPosting } from "../sources/freelancer";
 import { SLUG_PATTERN, isFetchableKind, type FetchableKind, type SourcePosting } from "../sources/types";
 import {
   HIMALAYAS_INTERVAL_MS,
@@ -306,8 +306,9 @@ export async function collectSources(
   for (const s of data) {
     if (opts.only && s.name !== opts.only && s.endpoint !== opts.only) continue;
     if (s.kind === "manual") continue;
-    if (s.kind === "freelancer" && s.endpoint && FREELANCER_PRESETS[s.endpoint]) {
-      sources.push({ ...s, kind: "freelancer", endpoint: s.endpoint });
+    if (s.kind === "freelancer") {
+      // 2026-11-20 labor ministry reply: a client the platform keeps anonymous can't be listed.
+      opts.log(`  - skip ${s.name}: ${FREELANCER_RETIRED}`);
       continue;
     }
     if (s.kind === "page" && s.endpoint && PAGE_SITES[s.endpoint]) {

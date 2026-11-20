@@ -72,9 +72,10 @@
 9. 같은 사용자에게 같은 날 두 번 보내지 않는다(`digest_sends` PK). 같은 공고는 다시 보내지 않는다(`matches` PK).
 10. 비용: 공고당 LLM 호출 1회(추출+요약 통합). 사용자별 LLM 호출은 지금 0회(`PICK_WITH_MODEL` 끔, 2026-11-16 사용자 결정), 켜면 하루 1회까지(2026-11-14 사용자 결정): 프로필로 규칙이 거르고 순위를 매긴 상위 12개 중 3개 고르기 + 추천 이유·오늘 할 일·메일 제목(`lib/match/pick.ts`). 모델이 실패하면 규칙 결과로 보낸다. 모델에는 검증된 프로필과 우리 한국어 요약만 넘긴다.
 11. 수집: 공개 채용 시스템 API 우선. 페이지 수집은 robots.txt 확인 후, User-Agent에 서비스명과 연락처 URL 명시. 금지 표시가 있으면 수집하지 않는다. 새 페이지 수집처는 그 사이트 이용약관부터 읽는다: 자동 수집(scraping)을 금지하면 서면 허락 전에는 넣지 않는다(Mercor·OpenTrain은 2026-11-17 중단, `blockedByTerms`). 여러 회사 공고를 모은 보드(`lib/sources/aggregators.ts`): Jobicy는 하루 1회 호출(약관상 시간당 1회 이하)·출처 표기, Himalayas는 `HIMALAYAS_API_KEY`가 있을 때만·`applicationLink`로 지원·출처 표기·만료 공고 제외. 이미 직접 수집하는 회사의 재게시는 건너뛴다.
-12. Freelancer.com API 데이터는 약관상 캐시로만 둔다: 매일 새로고침하고, 목록에서 빠진 의뢰는 jobs째 삭제한다(`lib/workers/collect.ts` purgeRaw). 서비스 복제·경쟁 용도로 쓰지 않는다. 일반 이용약관(2025-06-05) 4·33조는 API 자동 접근과 다른 사이트 공고와 함께 표시하는 것에 서면 허락을 요구한다. 허락을 받기 전에는 Freelancer 공고가 든 메일에 유료화·광고를 붙이지 않는다(`docs/legal/freelancer-terms-2026-11-16.md`).
+12. Freelancer.com은 2026-11-20부터 쓰지 않는다(고용노동부 회신: 의뢰인이 익명이면 구인광고로 낼 수 없다, `docs/legal/moel-reply-2026-11-20.md`). 수집에서 건너뛰고(`FREELANCER_RETIRED`, `lib/workers/collect.ts`), 발송 후보에서도 뺀다(`lib/jobs/employers.ts`). 어댑터 코드는 의뢰인 신원을 보여 줄 수 있게 되는 날을 위해 남겨 둔다. 약관 점검은 `docs/legal/freelancer-terms-2026-11-16.md`.
 13. 시급이 한국 최저임금보다 낮게 적힌 일감은 보내지 않는다(2026-11-14 사용자 결정. 2026-11-20 고용노동부 회신: 해외 기업에는 국내 최저임금법을 그대로 적용하기 어려워 법적 의무는 아니다. 지금은 이용자 보호를 위해 유지한다). 기준은 표기된 가장 낮은 시급, 발송 시점에 `loadCandidatePool`에서 거른다(`lib/jobs/min-wage.ts`, 새 최저임금 고시가 나오면 표에 추가). 이용자 안내와 덕잡의 책임 범위는 `/guide`(사이트·메일 하단 링크), 법적 점검은 `docs/legal/overseas-gig-legal-check-2026-11-14.md`.
 
+14. 메일에 나가는 모든 공고는 구인자 업체명과 주소 또는 전화번호를 보여 준다(직업안정법 시행령 제28조 제1·2호, 2026-11-20 고용노동부 회신: 홈페이지·원문 링크·플랫폼 인증으로는 갈음할 수 없다). 확인한 회사만 `lib/jobs/employers.ts`에 넣는다(회사 자체 페이지나 공적 등록부만, `source`·`checked` 필수, 추측 금지). 목록에 없는 회사의 공고는 보내지 않는다(`loadCandidatePool`). 메일 카드에는 "회사 정보" 줄로 법인명·주소·전화를 싣고, 덕잡의 주소·전화는 싣지 않는다.
 ## 시간
 - DB는 `timestamptz`(UTC). `send_date`는 Asia/Seoul 기준 날짜.
 - 발송은 매일 06:00 KST 정각(2026-11-12 결정). Supabase pg_cron이 `0 21 * * *`(UTC)에 pg_net으로 `/api/cron/digest`를 부른다(`0007_exact_daily_schedule.sql`, 토큰은 Vault에만 있고 앱은 `verify_cron_token`으로 확인).

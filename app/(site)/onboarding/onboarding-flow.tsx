@@ -29,7 +29,7 @@ import { EXAMPLE_JOBS } from "@/lib/examples";
 type Step = "copy" | "ai" | "paste" | "confirm" | "edit" | "done" | "skipped";
 
 /** A row of the example mail on the done screen (/api/profile/example). */
-type ExampleJob = { id: string; headline: string; meta: string; pay: string | null; stretch: boolean };
+type ExampleJob = { id: string; headline: string; meta: string; pay: string | null; stretch: boolean; employer: string | null };
 
 const input = "field-box";
 const primary = "btn-primary";
@@ -107,7 +107,7 @@ export function OnboardingFlow(props: {
         <p className="mt-2 text-sm text-muted">
           <strong className="text-[var(--ink)]">{props.email}</strong>로 {analyzed ? "딱 맞는 일감 3개와 AI로 도전해 볼 일감 2개를" : "일감 5개를"} 보내드려요.
         </p>
-        <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받으면 추천이 더 정확해져요. 메일로 알려 드릴게요.</p>
+        <p className="mt-1 text-xs text-muted">2주마다 AI에게 다시 분석받으면 더 잘 맞는 일감이 와요. 메일로 알려 드릴게요.</p>
         <div className="mt-4 rounded-2xl bg-[var(--surface-2)] px-4 py-3 text-sm">
           <p className="font-semibold">받은편지함에서 바로 보려면</p>
           <p className="mt-1 text-muted">
@@ -341,8 +341,15 @@ function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
 
   // Five rows always: this person's candidates first, then the landing page's examples. With a
   // profile the mail is 3 fits + 2 AI tries (2026-11-16), so each group is filled on its own.
-  const real = (jobs ?? []).map((j) => ({ key: j.id, title: j.headline, meta: j.meta.replace(/^AI로 도전 · /, ""), pay: j.pay ?? "원문 확인", tryIt: j.stretch }));
-  const examples = EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay, tryIt: j.kind === "try" }));
+  const real = (jobs ?? []).map((j) => ({
+    key: j.id,
+    title: j.headline,
+    meta: j.meta.replace(/^AI로 도전 · /, ""),
+    pay: j.pay ?? "원문 확인",
+    tryIt: j.stretch,
+    employer: j.employer,
+  }));
+  const examples = EXAMPLE_JOBS.map((j) => ({ key: j.title, title: j.title, meta: j.meta, pay: j.pay, tryIt: j.kind === "try", employer: null as string | null }));
   const rows = personal
     ? [
         ...[...real.filter((r) => !r.tryIt), ...examples.filter((r) => !r.tryIt)].slice(0, 3),
@@ -389,6 +396,11 @@ function ExampleMail({ when, personal }: { when: string; personal: boolean }) {
                     <span className="mt-0.5 block text-[13px]" style={{ color: "var(--paper-muted)" }}>
                       {r.meta}
                     </span>
+                    {r.employer && (
+                      <span className="mt-0.5 block text-[11px]" style={{ color: "var(--paper-muted)" }}>
+                        {r.employer}
+                      </span>
+                    )}
                   </span>
                   <span className="whitespace-nowrap text-[15px] font-extrabold">{r.pay}</span>
                 </div>

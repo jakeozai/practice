@@ -12,6 +12,13 @@
 import { z } from "zod";
 import type { SourcePosting } from "./types";
 
+/**
+ * Not collected since 2026-11-20 (docs/legal/moel-reply-2026-11-20.md): a listing must name the
+ * hiring party and give its address or phone, and Freelancer.com keeps clients anonymous.
+ * The adapter stays for the day a client's identity can be shown.
+ */
+export const FREELANCER_RETIRED = "2026-11-20 고용노동부 회신: 의뢰인이 익명이라 구인자 이름·연락처를 표시할 수 없음";
+
 export const FREELANCER_API = "https://www.freelancer.com/api/projects/0.1/projects/active/";
 
 export type FreelancerPreset = {
