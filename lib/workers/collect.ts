@@ -123,6 +123,21 @@ async function purgeRaw(db: ServiceClient, rawIds: string[]): Promise<number> {
   return rawIds.length;
 }
 
+/** Stops a source for good: deletes its stored postings (and their jobs) and turns it off. */
+async function retireSource(db: ServiceClient, sourceId: string): Promise<number> {
+  const ids: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from("raw_postings").select("id").eq("source_id", sourceId).order("id").range(from, from + PAGE - 1);
+    if (error) throw new Error(`load raw_postings: ${error.message}`);
+    ids.push(...data.map((r) => r.id));
+    if (data.length < PAGE) break;
+  }
+  const purged = ids.length ? await purgeRaw(db, ids) : 0;
+  const { error } = await db.from("sources").update({ active: false }).eq("id", sourceId);
+  if (error) throw new Error(`turn off source: ${error.message}`);
+  return purged;
+}
+
 export async function fetchPostings(kind: FetchableKind, endpoint: string, userAgent: string): Promise<SourcePosting[]> {
   return parseSource(kind, await fetchJson(sourceUrl(kind, endpoint), { userAgent }));
 }
@@ -308,7 +323,9 @@ export async function collectSources(
     if (s.kind === "manual") continue;
     if (s.kind === "freelancer") {
       // 2026-11-20 labor ministry reply: a client the platform keeps anonymous can't be listed.
-      opts.log(`  - skip ${s.name}: ${FREELANCER_RETIRED}`);
+      // Its data may only be kept as a refreshed cache (CLAUDE.md rule 12), so what is left goes too.
+      const purged = await retireSource(db, s.id);
+      opts.log(`  - skip ${s.name}: ${FREELANCER_RETIRED}${purged ? ` (deleted ${purged} stored postings)` : ""}`);
       continue;
     }
     if (s.kind === "page" && s.endpoint && PAGE_SITES[s.endpoint]) {
