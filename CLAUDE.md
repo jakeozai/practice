@@ -82,6 +82,7 @@
 - 예약 호출 주소는 `https://www.duckjob.app`(0013). 경로 목록과 주소는 0017부터 `private.send_app_cron`에 있다. 다시 정의할 땐 최신 마이그레이션의 목록과 주소를 그대로 이어받는다.
 - 예약 호출 재시도(0017): 모든 호출을 `private.cron_calls`에 남기고, 1분마다 `private.retry_failed_cron_calls()`가 앱에 닿지 못하고 실패한 호출(pg_net "HTTP2 framing" 오류 등)을 다시 보낸다(최대 3회). 시간 초과는 앱이 받은 것이므로 재시도하지 않는다.
 - 공고 처리(AI 요약)는 pg_cron이 19:00~05:50 KST에 10분마다 `/api/cron/process` 호출(`0009_process_window.sql`). 무료 Gateway 분당 5회 제한에 맞춰 호출 간격을 둔다(`lib/llm/pace.ts`).
+- 주간 수집처 점검(2026-11-20 사용자 요청): 매주 월요일 09:50 KST 예약 작업이 이 대화로 돌아와, 회사 주소가 없어 막힌 공고의 회사를 확인해 `lib/jobs/employers.ts`에 넣고 규칙에 맞는 새 수집처를 찾아 추가·배포한 뒤 `docs/supply-check-<날짜>.md`에 남긴다. 수집처 하나만 바로 수집하려면 `/api/cron/collect?only=<이름 또는 endpoint>`.
 - Vercel Cron(`vercel.json`, UTC, Hobby는 지정한 시각부터 1시간 안에 실행): 수집 19:00 KST = `0 10 * * *`, 발송 예비 07:00 KST = `0 22 * * *`(6시에 못 받은 사람만 보냄).
 
 ## 컨벤션
