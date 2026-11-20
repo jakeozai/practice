@@ -200,6 +200,15 @@ export const EMPLOYERS: Employer[] = [
     checked: "2026-11-20",
   },
   {
+    names: ["LILT"],
+    legalName: "LILT, Inc.",
+    // Its privacy policy (the newest legal page) gives this; an older cookie policy says Emeryville.
+    address: "2 Embarcadero Center, Floor 8, San Francisco, CA 94111, USA",
+    phone: null,
+    source: "https://lilt.com/legal/privacy",
+    checked: "2026-11-20",
+  },
+  {
     names: ["Appen"],
     legalName: "Appen Limited",
     address: "Suite 8.03, Level 8, 1 Market Street, Sydney NSW 2000, Australia",
