@@ -53,7 +53,7 @@
 - 사용자별 AI 호출은 하지 않는다(`PICK_WITH_MODEL` 끔). AI는 공고 요약에만 쓰고(공고 수에 비례), Vercel AI Gateway 무료 크레딧($5/30일, 11/12부터 30일 주기) 안에서 운영한다. 크레딧을 한 번 사면 무료분이 끊기므로, 사기 전에 사용자에게 묻는다. 전체 재처리처럼 호출이 몰리는 작업은 남은 크레딧을 확인한 뒤에 한다.
 - 메일: Resend 무료(하루 100통·월 3,000통)로 운영하다가, 구독자 약 80명이 되면 Amazon SES(1,000통당 $0.10~0.16)로 옮긴다. Resend Pro($20)보다 싸다. 코드는 준비돼 있다: `EMAIL_TRANSPORT=ses`와 `SES_*` 환경변수만 넣으면 같은 메일이 SES로 나가고, 반송·스팸 신고는 `/api/webhooks/ses`(SNS 서명 확인)로 받는다. 절차는 `docs/email/ses-switch.md`.
 - 유료 플랜으로 바꾸는 일(Vercel Pro, Supabase Pro, 메일 유료 플랜 등)은 한도에 닿기 전에 사용자에게 묻는다.
-- 발송 처리량: 아침 발송 한 번 실행(최대 300초)은 한 명씩 600ms 간격이라 약 200~300명이 한계이고, 나머지는 7시 예비 발송으로 밀린다. 구독자 약 200명 전에 나눠서 동시에 보내도록 바꾼다. 1만 명 비용·수익 추정은 `docs/business/scale-10k-2026-11-18.md`.
+- 발송 처리량(2026-11-20 동시 발송): 여러 통을 한꺼번에 보내되 메일 서비스의 초당 한도 아래로 시작 간격을 둔다(`lib/email/rate.ts`: Resend 초당 8통(팀 한도 10, 로그인 메일 몫을 남김), SES 기본 10통, `EMAIL_SENDS_PER_SECOND`로 조정). 한 번 실행(270초)에 약 2,000명. 못 보낸 사람은 행이 없으므로 06:05~06:30에 5분마다 다시 부른다(0024, 남은 사람이 있을 때만). 1만 명이면 Resend는 약 20분, SES는 한도를 올려 받으면 더 빠르다. 실행은 하루에 하나씩만 돈다(`claim_digest_run` 임대, SES는 멱등 키가 없어서). 1만 명 비용·수익 추정은 `docs/business/scale-10k-2026-11-18.md`.
 
 ## 하지 않기로 한 것 (2026-11-14 사용자 결정)
 - 5문항 대체 폼(AI 없이 질문에 답해 프로필 만들기): 만들었다가 없앴다. 프로필은 사용자의 AI 분석으로만 받는다. 더 넣고 싶은 내용은 사용자가 AI와 대화해 넣는다(분석 프롬프트 규칙 4).
@@ -78,7 +78,7 @@
 14. 메일에 나가는 모든 공고는 구인자 업체명과 주소 또는 전화번호를 보여 준다(직업안정법 시행령 제28조 제1·2호, 2026-11-20 고용노동부 회신: 홈페이지·원문 링크·플랫폼 인증으로는 갈음할 수 없다). 확인한 회사만 `lib/jobs/employers.ts`에 넣는다(회사 자체 페이지나 공적 등록부만, `source`·`checked` 필수, 추측 금지). 목록에 없는 회사의 공고는 보내지 않는다(`loadCandidatePool`). 메일 카드에는 "회사 정보" 줄로 법인명·주소·전화를 싣고, 덕잡의 주소·전화는 싣지 않는다.
 ## 시간
 - DB는 `timestamptz`(UTC). `send_date`는 Asia/Seoul 기준 날짜.
-- 발송은 매일 06:00 KST 정각(2026-11-12 결정). Supabase pg_cron이 `0 21 * * *`(UTC)에 pg_net으로 `/api/cron/digest`를 부른다(`0007_exact_daily_schedule.sql`, 토큰은 Vault에만 있고 앱은 `verify_cron_token`으로 확인).
+- 발송은 매일 06:00 KST 정각(2026-11-12 결정). Supabase pg_cron이 `0 21 * * *`(UTC)에 pg_net으로 `/api/cron/digest`를 부른다(`0007_exact_daily_schedule.sql`, 토큰은 Vault에만 있고 앱은 `verify_cron_token`으로 확인). 06:05~06:30에는 5분마다 오늘 행이 없는 구독자가 있을 때만 다시 부른다(`duckjob-digest-followup`, 0024).
 - 예약 호출 주소는 `https://www.duckjob.app`(0013). 경로 목록과 주소는 0017부터 `private.send_app_cron`에 있다. 다시 정의할 땐 최신 마이그레이션의 목록과 주소를 그대로 이어받는다.
 - 예약 호출 재시도(0017): 모든 호출을 `private.cron_calls`에 남기고, 1분마다 `private.retry_failed_cron_calls()`가 앱에 닿지 못하고 실패한 호출(pg_net "HTTP2 framing" 오류 등)을 다시 보낸다(최대 3회). 시간 초과는 앱이 받은 것이므로 재시도하지 않는다.
 - 공고 처리(AI 요약)는 pg_cron이 19:00~05:50 KST에 10분마다 `/api/cron/process` 호출(`0009_process_window.sql`). 무료 Gateway 분당 5회 제한에 맞춰 호출 간격을 둔다(`lib/llm/pace.ts`).

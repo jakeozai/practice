@@ -399,6 +399,18 @@ export type Database = {
         Args: { p_token: string };
         Returns: boolean;
       };
+      claim_digest_run: {
+        Args: { p_send_date: string; p_holder: string; p_seconds: number };
+        Returns: boolean;
+      };
+      release_digest_run: {
+        Args: { p_send_date: string; p_holder: string };
+        Returns: undefined;
+      };
+      sent_job_ids: {
+        Args: { p_user_ids: string[]; p_job_ids: string[] };
+        Returns: { user_id: string; job_ids: string[] }[];
+      };
       claim_login_link: {
         Args: { p_email_hash: string; p_ip_hash: string | null };
         Returns: string;

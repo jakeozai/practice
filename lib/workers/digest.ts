@@ -15,16 +15,24 @@
  * `digest-{user_id}-{send_date}` → on success write matches + digest_sends('sent');
  * on failure digest_sends('failed') so a rerun on the same day retries.
  * `sent`/`skipped` rows are final for the day (CLAUDE.md rule 9).
+ *
+ * Throughput (2026-11-20): several mails are in flight at once, started no
+ * faster than the mail service allows (lib/email/rate.ts: Resend 8/s, SES 10/s
+ * by default), so one run reaches about 2,000 subscribers instead of about 250.
+ * Whoever a run doesn't reach has no digest_sends row; pg_cron calls again every
+ * 5 minutes until 06:30 KST while anyone is left (migration 0024). A lease
+ * (claim_digest_run) keeps two runs from mailing the same day at once.
  */
+import { randomUUID } from "node:crypto";
 import type { ServiceClient } from "../supabase/service";
 import { appEnv, emailEnv, linkEnv } from "../env";
-import { planManualDigest, summarizePlan, type DigestStatus, type Recipient } from "../digest/plan";
+import { planManualDigest, summarizePlan, type DigestStatus, type PlanItem, type Recipient } from "../digest/plan";
 import { composeDigestEmail } from "../digest/compose";
 import { profileNudge } from "../digest/nudge";
 import { loadCandidateJobs, loadCurationStats, type DigestJob } from "../digest/candidates";
 import { sendEmail } from "../email/send";
-import { SEND_INTERVAL_MS } from "../email/constants";
-import { pastDeadline, sleep, type RunOptions } from "./run";
+import { createRateGate, sendConcurrency, sendsPerSecond } from "../email/rate";
+import { chunks, forEachConcurrent, pastDeadline, type RunOptions } from "./run";
 import { loadSentJobIds, loadStoredPicks, preparePicks, STRETCH_SIZE, type StoredPick } from "./picks";
 
 const PAGE = 1000;
@@ -32,13 +40,21 @@ const PAGE = 1000;
 const DEADLINE_MARGIN_MS = 20_000;
 /** (제안값) Model picks at send time stop this long before the deadline; later ones use rules. */
 const PICKS_LLM_RESERVE_MS = 150_000;
+/** A run without a deadline (the CLI) holds the day's lease at most this long. */
+const CLI_LEASE_SECONDS = 1800;
+/** Lease beyond the run's own deadline: Vercel stops the function by then for sure. */
+const LEASE_SLACK_SECONDS = 30;
+const DONE: ReadonlySet<string> = new Set(["sent", "skipped"]);
 
-export async function loadRecipients(db: ServiceClient, only?: string): Promise<Recipient[]> {
-  const out: Recipient[] = [];
+type DigestRecipient = Recipient & { profile_imported_at: string | null };
+
+export async function loadRecipients(db: ServiceClient, only?: string): Promise<DigestRecipient[]> {
+  const out: DigestRecipient[] = [];
   for (let from = 0; ; from += PAGE) {
     let q = db
       .from("profiles")
-      .select("user_id, email")
+      // profile_imported_at: when they last saved a profile, for the reminder box.
+      .select("user_id, email, profile_imported_at")
       .eq("digest_status", "active")
       .order("created_at", { ascending: true })
       .range(from, from + PAGE - 1);
@@ -66,11 +82,11 @@ export async function loadDayStatus(db: ServiceClient, sendDate: string): Promis
   }
 }
 
-/** `${user_id}:${job_id}` for everything these subscribers were ever sent (looked up by user, not by job). */
-export async function loadMatched(db: ServiceClient, userIds: string[]): Promise<Set<string>> {
+/** `${user_id}:${job_id}` for the candidate jobs these subscribers were already sent. */
+export async function loadMatched(db: ServiceClient, userIds: string[], candidateIds: string[]): Promise<Set<string>> {
   const pairs = new Set<string>();
   if (userIds.length === 0) return pairs;
-  for (const [userId, jobIds] of await loadSentJobIds(db, userIds)) {
+  for (const [userId, jobIds] of await loadSentJobIds(db, userIds, candidateIds)) {
     for (const jobId of jobIds) pairs.add(`${userId}:${jobId}`);
   }
   return pairs;
@@ -107,6 +123,19 @@ async function recordSent(db: ServiceClient, userId: string, sendDate: string, j
   if (err) throw new Error(`Mail was sent (${messageId}) but recording failed: ${err.message}`);
 }
 
+/** Nothing new for these people today: one write for all of them. */
+async function recordSkipped(db: ServiceClient, userIds: string[], sendDate: string, log: RunOptions["log"]): Promise<number> {
+  let n = 0;
+  for (const ids of chunks(userIds, 500)) {
+    const { error } = await db
+      .from("digest_sends")
+      .upsert(ids.map((user_id) => ({ user_id, send_date: sendDate, status: "skipped" as const, job_count: 0, error: null })), { onConflict: "user_id,send_date" });
+    if (error) log(`  ! could not record skipped for ${ids.length} subscribers: ${error.message}`);
+    else n += ids.length;
+  }
+  return n;
+}
+
 async function recordStatus(db: ServiceClient, userId: string, sendDate: string, status: "failed" | "skipped", log: RunOptions["log"], error?: string) {
   const { error: dbErr } = await db.from("digest_sends").upsert(
     { user_id: userId, send_date: sendDate, status, job_count: 0, error: error?.slice(0, 1000) ?? null },
@@ -115,7 +144,33 @@ async function recordStatus(db: ServiceClient, userId: string, sendDate: string,
   if (dbErr) log(`  ! could not record ${status} for ${userId}: ${dbErr.message}`);
 }
 
-export type DigestResult = { recipients: number; sent: number; failed: number; skipped: number; alreadyDone: number; notReached: number };
+export type DigestResult = {
+  recipients: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  alreadyDone: number;
+  /** Left without a row for the next run today (out of time). */
+  notReached: number;
+  /** Another run held today's lease, so this one sent nothing. */
+  busy?: boolean;
+};
+
+/** One run at a time per send date. A failed check never blocks the morning mail: it goes on without the lease. */
+async function claimDay(db: ServiceClient, sendDate: string, seconds: number, log: RunOptions["log"]): Promise<{ holder: string | null; busy: boolean }> {
+  const holder = randomUUID();
+  const { data, error } = await db.rpc("claim_digest_run", { p_send_date: sendDate, p_holder: holder, p_seconds: seconds });
+  if (error) {
+    log(`  ! run lease unavailable (${error.message}); sending without it`);
+    return { holder: null, busy: false };
+  }
+  return data ? { holder, busy: false } : { holder: null, busy: true };
+}
+
+async function releaseDay(db: ServiceClient, sendDate: string, holder: string, log: RunOptions["log"]) {
+  const { error } = await db.rpc("release_digest_run", { p_send_date: sendDate, p_holder: holder });
+  if (error) log(`  ! run lease not released (${error.message}); it expires on its own`);
+}
 
 /**
  * Send one day's mail. `jobs` fixes the job list (Phase 0 manual pick);
@@ -125,9 +180,39 @@ export async function sendDigest(
   db: ServiceClient,
   opts: RunOptions & { sendDate: string; dryRun?: boolean; only?: string; jobs?: DigestJob[] },
 ): Promise<DigestResult> {
+  if (opts.dryRun) return runDigest(db, opts);
+  // Claim the day before reading who is still due, so a run that just finished is fully counted.
+  const seconds = opts.deadline === undefined ? CLI_LEASE_SECONDS : Math.ceil((opts.deadline - Date.now()) / 1000) + LEASE_SLACK_SECONDS;
+  const lease = await claimDay(db, opts.sendDate, Math.max(60, seconds), opts.log);
+  if (lease.busy) {
+    opts.log(`send_date ${opts.sendDate}: another run is sending today's mail; leaving it to that run.`);
+    return { recipients: 0, sent: 0, failed: 0, skipped: 0, alreadyDone: 0, notReached: 0, busy: true };
+  }
+  try {
+    return await runDigest(db, opts);
+  } finally {
+    if (lease.holder) await releaseDay(db, opts.sendDate, lease.holder, opts.log);
+  }
+}
+
+async function runDigest(
+  db: ServiceClient,
+  opts: RunOptions & { sendDate: string; dryRun?: boolean; only?: string; jobs?: DigestJob[] },
+): Promise<DigestResult> {
+  const started = Date.now();
   const { APP_URL, DIGEST_SIZE } = appEnv();
   const { EMAIL_LINK_SECRET } = linkEnv();
-  if (!opts.dryRun) emailEnv(); // fail before the loop, not once per recipient
+  const mailEnv = opts.dryRun ? null : emailEnv(); // fail before the loop, not once per recipient
+
+  const recipients = await loadRecipients(db, opts.only);
+  const todayStatus = await loadDayStatus(db, opts.sendDate);
+  const pending = recipients.filter((r) => !DONE.has(todayStatus.get(r.user_id) ?? ""));
+  const result: DigestResult = { recipients: recipients.length, sent: 0, failed: 0, skipped: 0, alreadyDone: recipients.length - pending.length, notReached: 0 };
+  if (pending.length === 0) {
+    // The follow-up calls after 06:00 end here once everyone is done.
+    opts.log(`send_date ${opts.sendDate}: all ${recipients.length} active subscribers are done for today.`);
+    return result;
+  }
 
   const jobs = opts.jobs ?? (await loadCandidateJobs(db));
   // The top-line numbers describe the automatic pick, not a hand-picked (Phase 0) list.
@@ -136,14 +221,11 @@ export async function sendDigest(
     return null;
   });
   const jobById = new Map(jobs.map((j) => [j.id, j]));
-  const recipients = await loadRecipients(db, opts.only);
-  const todayStatus = await loadDayStatus(db, opts.sendDate);
 
   // Personal picks for everyone still to be mailed today (a hand-picked list skips this).
   const picks = new Map<string, StoredPick>();
   const perRecipient = new Map<string, string[]>();
-  const pending = recipients.filter((r) => !["sent", "skipped"].includes(todayStatus.get(r.user_id) ?? ""));
-  if (!opts.jobs && pending.length > 0) {
+  if (!opts.jobs) {
     try {
       const llmDeadline = opts.deadline === undefined ? undefined : Math.min(opts.deadline - PICKS_LLM_RESERVE_MS, Date.now() + PICKS_LLM_RESERVE_MS);
       const prep = await preparePicks(db, {
@@ -153,6 +235,7 @@ export async function sendDigest(
         sendDate: opts.sendDate,
         size: DIGEST_SIZE,
         onlyUser: opts.only ? pending[0]?.user_id : undefined,
+        onlyUsers: pending.map((r) => r.user_id),
         dryRun: opts.dryRun,
       });
       const stored = opts.dryRun
@@ -174,48 +257,42 @@ export async function sendDigest(
     recipients,
     jobIds: jobs.map((j) => j.id),
     todayStatus,
-    alreadyMatched: await loadMatched(db, pending.map((r) => r.user_id)),
+    alreadyMatched: await loadMatched(
+      db,
+      pending.map((r) => r.user_id),
+      jobs.map((j) => j.id),
+    ),
     // Everyone gets five (2026-11-14 page: "하루 5개 공고"); a personal list is 3 fits + 2 AI stretches.
     maxJobs: DIGEST_SIZE + STRETCH_SIZE,
     perRecipient,
   });
   const summary = summarizePlan(plan);
+  const rate = sendsPerSecond(mailEnv?.EMAIL_TRANSPORT ?? "file", mailEnv?.EMAIL_SENDS_PER_SECOND);
+  const concurrency = sendConcurrency(rate);
   opts.log(
     `send_date ${opts.sendDate}: ${jobs.length} candidate jobs, ${recipients.length} active subscribers (${perRecipient.size} personal) → ` +
-      `send ${summary.send}, nothing new ${summary.skipEmpty}, already done today ${summary.alreadyDone}`,
+      `send ${summary.send}, nothing new ${summary.skipEmpty}, already done today ${summary.alreadyDone}` +
+      (opts.dryRun ? "" : ` · ${rate}/s, ${concurrency} at once`),
   );
-
-  const result: DigestResult = { recipients: recipients.length, sent: 0, failed: 0, skipped: 0, alreadyDone: summary.alreadyDone, notReached: 0 };
   if (opts.dryRun) return result;
 
-  // When each recipient last saved a profile, for the reminder box.
-  const toSend = plan.filter((p) => p.kind === "send").map((p) => p.recipient.user_id);
-  const importedAt = new Map<string, string | null>();
-  for (let i = 0; i < toSend.length; i += 200) {
-    // 200 ids per request keeps the query URL short.
-    const { data, error } = await db.from("profiles").select("user_id, profile_imported_at").in("user_id", toSend.slice(i, i + 200));
-    if (error) opts.log(`  ! profile dates not loaded (${error.message}); no reminder box`);
-    for (const r of data ?? []) importedAt.set(r.user_id, r.profile_imported_at);
-  }
+  result.skipped = await recordSkipped(
+    db,
+    plan.filter((p) => p.kind === "skip_empty").map((p) => p.recipient.user_id),
+    opts.sendDate,
+    opts.log,
+  );
 
-  for (const [index, item] of plan.entries()) {
+  const importedAt = new Map(recipients.map((r) => [r.user_id, r.profile_imported_at]));
+  const gate = createRateGate(rate);
+  const sends = plan.filter((p): p is Extract<PlanItem, { kind: "send" }> => p.kind === "send");
+  let outOfTime = false;
+
+  async function sendOne(item: Extract<PlanItem, { kind: "send" }>) {
     const { recipient } = item;
-    if (item.kind === "already_done") continue;
-    if (item.kind === "skip_empty") {
-      await recordStatus(db, recipient.user_id, opts.sendDate, "skipped", opts.log);
-      result.skipped++;
-      continue;
-    }
-    if (pastDeadline(opts.deadline, DEADLINE_MARGIN_MS)) {
-      // Nothing is recorded for them, so the next run on the same day picks them up.
-      result.notReached = plan.slice(index).filter((p) => p.kind === "send").length;
-      opts.log(`  ! out of time: ${result.notReached} subscribers left for a rerun today`);
-      break;
-    }
-
+    const pick = picks.get(recipient.user_id);
     let messageId: string;
     try {
-      const pick = picks.get(recipient.user_id);
       // No reason line in the mail (2026-11-16 user decision); the first step for today only when the model wrote it.
       const written = pick?.method === "llm" ? pick : undefined;
       const mail = await composeDigestEmail({
@@ -232,18 +309,18 @@ export async function sendDigest(
         appUrl: APP_URL,
         linkSecret: EMAIL_LINK_SECRET,
       });
+      await gate.take();
       ({ id: messageId } = await sendEmail(mail));
     } catch (e) {
       result.failed++;
       const message = e instanceof Error ? e.message : String(e);
       opts.log(`  ✖ ${recipient.user_id}: ${message}`);
       await recordStatus(db, recipient.user_id, opts.sendDate, "failed", opts.log, message);
-      await sleep(SEND_INTERVAL_MS);
-      continue;
+      return;
     }
 
     try {
-      await recordSent(db, recipient.user_id, opts.sendDate, item.jobIds, messageId, picks.get(recipient.user_id));
+      await recordSent(db, recipient.user_id, opts.sendDate, item.jobIds, messageId, pick);
       result.sent++;
     } catch (e) {
       // Do not mark as failed: the mail went out. A rerun replays the same
@@ -251,9 +328,22 @@ export async function sendDigest(
       result.failed++;
       opts.log(`  ! ${recipient.user_id}: ${e instanceof Error ? e.message : e}`);
     }
-    await sleep(SEND_INTERVAL_MS);
   }
 
-  opts.log(`Done: sent ${result.sent}, failed ${result.failed}, skipped ${result.skipped}, already done ${result.alreadyDone}.`);
+  await forEachConcurrent(sends, concurrency, async (item) => {
+    if (outOfTime || pastDeadline(opts.deadline, DEADLINE_MARGIN_MS)) {
+      // Nothing is recorded for them, so the next run on the same day picks them up.
+      outOfTime = true;
+      result.notReached++;
+      return;
+    }
+    await sendOne(item);
+  });
+  if (result.notReached) opts.log(`  ! out of time: ${result.notReached} subscribers left for the next run today`);
+
+  opts.log(
+    `Done: sent ${result.sent}, failed ${result.failed}, skipped ${result.skipped}, already done ${result.alreadyDone}` +
+      `${result.notReached ? `, not reached ${result.notReached}` : ""} in ${Math.round((Date.now() - started) / 1000)}s.`,
+  );
   return result;
 }

@@ -54,8 +54,31 @@ export type PickDetail = {
 
 export type PicksResult = { users: number; kept: number; llm: number; rules: number; empty: number; skipped: number; details: PickDetail[] };
 
-export async function loadSentJobIds(db: ServiceClient, userIds: string[]): Promise<Map<string, Set<string>>> {
+/** Users per sent_job_ids call: one row per user, under PostgREST's 1,000-row cap. */
+const SENT_USERS_PER_CALL = 500;
+
+/**
+ * Which of `jobIds` each user was already sent (matches). Only the jobs in play
+ * are asked about, so the answer stays small however long someone has been
+ * subscribed (2026-11-20: a full history per run would not scale to thousands).
+ */
+export async function loadSentJobIds(db: ServiceClient, userIds: string[], jobIds: string[]): Promise<Map<string, Set<string>>> {
   const sent = new Map<string, Set<string>>(userIds.map((u) => [u, new Set<string>()]));
+  if (userIds.length === 0 || jobIds.length === 0) return sent;
+  for (const ids of chunks(userIds, SENT_USERS_PER_CALL)) {
+    const { data, error } = await db.rpc("sent_job_ids", { p_user_ids: ids, p_job_ids: jobIds });
+    // PGRST202: the function isn't in the database yet (migration 0024); read the table instead.
+    if (error?.code === "PGRST202") return loadSentFromTable(db, userIds, new Set(jobIds), sent);
+    if (error) throw new Error(`load matches: ${error.message}`);
+    for (const row of data ?? []) {
+      const set = sent.get(row.user_id);
+      if (set) for (const id of row.job_ids) set.add(id);
+    }
+  }
+  return sent;
+}
+
+async function loadSentFromTable(db: ServiceClient, userIds: string[], jobs: Set<string>, sent: Map<string, Set<string>>) {
   for (const ids of chunks(userIds, 100)) {
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await db
@@ -66,7 +89,7 @@ export async function loadSentJobIds(db: ServiceClient, userIds: string[]): Prom
         .order("job_id")
         .range(from, from + PAGE - 1);
       if (error) throw new Error(`load matches: ${error.message}`);
-      for (const m of data) sent.get(m.user_id)?.add(m.job_id);
+      for (const m of data) if (jobs.has(m.job_id)) sent.get(m.user_id)?.add(m.job_id);
       if (data.length < PAGE) break;
     }
   }
@@ -199,12 +222,17 @@ export async function preparePicks(
     dryRun?: boolean;
     /** Recompute even when a stored pick still holds. */
     force?: boolean;
+    /** Only these subscribers (the send's wave still to be mailed); default everyone. */
+    onlyUsers?: string[];
     now?: Date;
   },
 ): Promise<PicksResult> {
   const now = opts.now ?? new Date();
   const result: PicksResult = { users: 0, kept: 0, llm: 0, rules: 0, empty: 0, skipped: 0, details: [] };
-  const { subs, skipped } = await loadSubscribers(db, opts.onlyUser);
+  const loaded = await loadSubscribers(db, opts.onlyUser);
+  const only = opts.onlyUsers ? new Set(opts.onlyUsers) : null;
+  const subs = only ? loaded.subs.filter((s) => only.has(s.user_id)) : loaded.subs;
+  const skipped = loaded.skipped;
   result.users = subs.length;
   result.skipped = skipped;
   if (subs.length === 0) return result;
@@ -212,7 +240,7 @@ export async function preparePicks(
   const pool = await loadCandidatePool(db);
   const open = new Set(pool.map((j) => j.id));
   const userIds = subs.map((s) => s.user_id);
-  const [sentBy, stored] = await Promise.all([loadSentJobIds(db, userIds), loadStoredPicks(db, opts.sendDate, userIds)]);
+  const [sentBy, stored] = await Promise.all([loadSentJobIds(db, userIds, pool.map((j) => j.id)), loadStoredPicks(db, opts.sendDate, userIds)]);
 
   const llm = PICK_WITH_MODEL ? await fastModelConfig() : null;
   const pacer = opts.pacer ?? createPacer(llmRequestsPerMinute());
