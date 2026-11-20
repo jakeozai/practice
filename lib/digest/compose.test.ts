@@ -192,3 +192,10 @@ test("AI-made summaries are labelled in the mail (AI기본법 제31조)", async 
   const mail = await composeDigestEmail(input);
   assert.match(mail.html, /한국어 제목과 요약은 AI가 원문을 바탕으로 만들었어요/);
 });
+
+test("each card names the hiring company with its address (직업안정법 시행령 제28조)", () => {
+  const card = digestCard({ ...job, company: "Invisible" }, "https://x/r/t");
+  const fact = card.facts.find((f) => f.label === "회사 정보");
+  assert.equal(fact?.value, "Invisible Technologies, Inc. · 548 Market St #85820, San Francisco, CA 94104, USA");
+  assert.equal(digestCard({ ...job, company: "Somebody Unchecked" }, "https://x/r/t").facts.find((f) => f.label === "회사 정보"), undefined);
+});

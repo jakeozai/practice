@@ -41,6 +41,8 @@ const EmailEnv = z.object({
   SES_SECRET_ACCESS_KEY: z.string().optional(),
   /** Configuration set whose event destination (SNS) reports bounces and complaints to /api/webhooks/ses. */
   SES_CONFIGURATION_SET: z.string().optional(),
+  /** Morning mail starts per second (lib/email/rate.ts); default by transport. Keep it under the service's limit. */
+  EMAIL_SENDS_PER_SECOND: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().positive().max(40).optional()),
 });
 
 function parseGroup<T extends z.ZodType>(schema: T, group: string): z.output<T> {

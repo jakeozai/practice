@@ -18,6 +18,25 @@ export function pastDeadline(deadline: number | undefined, marginMs = 0): boolea
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Runs `fn` over `items` with at most `concurrency` calls in flight, in item
+ * order. A throwing call does not stop the others; `fn` handles its own errors.
+ */
+export async function forEachConcurrent<T>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<void>): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      try {
+        await fn(items[i], i);
+      } catch (e) {
+        console.error(`forEachConcurrent item ${i}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, worker));
+}
+
 export function chunks<T>(xs: T[], n: number): T[][] {
   return Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 }

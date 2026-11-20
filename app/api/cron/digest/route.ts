@@ -6,13 +6,15 @@ import { cronLogger, isCronRequest } from "@/lib/cron";
 
 /** Vercel function limit for this route (seconds). */
 export const maxDuration = 300;
-const BUDGET_MS = 285_000;
+/** Ends well inside 300 s so the next 5-minute call (migration 0024) never finds this run still going. */
+const BUDGET_MS = 270_000;
 
 /**
  * Today's mail (spec §9). Called at 06:00 KST sharp by Supabase pg_cron
- * (migration 0007) and again around 07:00 KST by Vercel Cron as a backup.
- * Safe to call again the same day: sent/skipped users are not mailed twice and
- * failed ones are retried (digest_sends PK + Resend idempotency key).
+ * (migration 0007), every 5 minutes until 06:30 KST while anyone is left
+ * (migration 0024), and around 07:00 KST by Vercel Cron as a backup.
+ * Safe to call again the same day: sent/skipped users are not mailed twice,
+ * failed ones are retried, and only one run sends at a time (claim_digest_run).
  */
 export async function GET(request: Request) {
   await connection(); // request-time only, never prerendered

@@ -18,6 +18,7 @@ import type { CurationStats } from "./candidates";
 // The job shape and columns live in candidates.ts (no React Email there); re-exported for callers.
 export { DIGEST_JOB_COLUMNS, type DigestJob } from "./candidates";
 import type { DigestJob } from "./candidates";
+import { employerLine } from "../jobs/employers";
 
 // Lives with the other display helpers (no React there); re-exported for existing callers.
 export { isBiddingGig } from "../jobs/format";
@@ -35,6 +36,8 @@ export function digestCard(job: DigestJob, detailUrl: string, reason: string | n
     category: job.category && job.category !== "other" ? CATEGORY_CHIP_KO[job.category] : null,
     facts: [
       ...jobFacts(job),
+      // The hiring company's legal name and address or phone (직업안정법 시행령 제28조, lib/jobs/employers.ts).
+      ...(employerLine(job.company) ? [{ label: "회사 정보", value: employerLine(job.company)! }] : []),
       ...(isBiddingGig(job.url) ? [{ label: "지원", value: "견적 입찰 (경쟁)" }] : []),
       ...(sourceCredit(job.url) ? [{ label: "출처", value: sourceCredit(job.url)! }] : []),
     ],

@@ -13,6 +13,7 @@ import { ProfileSchema } from "../profile/parse";
 import { buildSignals, rankForProfile } from "../match/fit";
 import { rankStretch, stretchPool } from "../match/stretch";
 import { CATEGORY_CHIP_KO, compactPay } from "../jobs/format";
+import { employerLine, isListable, listedCompanyNames } from "../jobs/employers";
 
 export type Db = SupabaseClient<Database>;
 
@@ -64,6 +65,8 @@ export async function loadCandidatePool(db: Db, limit = CANDIDATE_POOL): Promise
     .select(DIGEST_JOB_COLUMNS)
     .eq("review_state", "approved")
     .eq("korea_eligible", true)
+    // Only companies whose address or phone we checked (lib/jobs/employers.ts, 2026-11-20 labor ministry reply).
+    .in("company", listedCompanyNames())
     .neq("status", "closed")
     .or("engagement.is.null,engagement.neq.permanent")
     .order("first_seen_at", { ascending: false })
@@ -72,7 +75,7 @@ export async function loadCandidatePool(db: Db, limit = CANDIDATE_POOL): Promise
   if (error) throw new Error(`load candidate jobs: ${error.message}`);
   // Jobs approved before the rule, or before a new minimum wage took effect, are left out at send time.
   const today = seoulDate();
-  return data.filter((j) => !belowMinimumWage(j, today));
+  return data.filter((j) => isListable(j) && !belowMinimumWage(j, today));
 }
 
 /**
@@ -129,7 +132,7 @@ export async function loadCurationStats(db: Db, sendDate: string): Promise<Curat
 }
 
 /** A row of the "이런 메일이 가요" example on the onboarding finish screen. */
-export type ExampleJob = { id: string; headline: string; meta: string; pay: string | null; stretch: boolean };
+export type ExampleJob = { id: string; headline: string; meta: string; pay: string | null; stretch: boolean; employer: string | null };
 
 /**
  * Five jobs shaped like this person's next mail, for the finish screen: with
@@ -152,6 +155,7 @@ export async function exampleMailJobs(db: Db, userId: string): Promise<ExampleJo
     meta: [stretch ? "AI로 도전" : null, j.category && j.category !== "other" ? CATEGORY_CHIP_KO[j.category] : null, j.company].filter(Boolean).join(" · "),
     pay: compactPay(j),
     stretch,
+    employer: employerLine(j.company),
   });
 
   const profile = prof.data?.profile_json ? ProfileSchema.safeParse(prof.data.profile_json) : null;

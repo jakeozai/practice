@@ -41,4 +41,6 @@ export const SEED_SOURCES: SeedSource[] = [
   { name: "Jobicy (원격 계약·파트타임)", kind: "jobicy", endpoint: "south-korea", trusted: true },
   { name: "Himalayas (원격 계약·파트타임)", kind: "himalayas", endpoint: "KR", trusted: true },
   { name: "Superside", kind: "lever", endpoint: "superside", trusted: true },
+  // 2026-11-20: Korean AI training, expert and voice gigs on LILT's own board (0023)
+  { name: "LILT (AI Training)", kind: "ashby", endpoint: "lilt-production", trusted: true },
 ];
